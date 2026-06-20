@@ -8,12 +8,24 @@ The project goal is to make model combat skill measurable:
 - Compare LLM agents against scripted tactical baselines.
 - Track model, prompt, and team variants on an Elo/Glicko-style ladder.
 - Publish benchmark results, head-to-head records, and replay links on a public LMArena-inspired website.
-- Reuse Battlecast as a read-only reference for monster data, tactics, engine ideas, and graphical assets.
+- Reuse Battlecast's SRD rules implementation, monster data, tactics, engine ideas, and graphical assets through explicit copied/imported artifacts.
 
-The Battlecast checkout lives beside this repo at `../battlecast` and should remain unmodified. Any extraction work should copy or transform data into this project through explicit import scripts after license and attribution checks.
+The Battlecast checkout lives beside this repo at `../battlecast` and should remain unmodified. D20bench may copy or transform Battlecast code, data, and assets into this project because both projects share the same author/copyright holder, but imports should still record source paths, source commits, and attribution metadata.
+
+## Development
+
+```bash
+npm install
+npm test
+npm run build
+```
+
+The first package is `@d20bench/engine`, which contains deterministic rules primitives such as seeded randomness and Battlecast-compatible dice helpers.
 
 ## Planning Docs
 
 - [Project plan](docs/PROJECT_PLAN.md)
+- [Architecture and design](docs/ARCHITECTURE.md)
 - [Implementation roadmap](docs/ROADMAP.md)
 - [Battlecast extraction plan](docs/BATTLECAST_EXTRACTION.md)
+- [Legal and attribution notes](docs/legal-and-attribution.md)

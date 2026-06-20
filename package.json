@@ -1,0 +1,22 @@
+{
+  "name": "d20bench",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tactical D&D benchmark for LLM combat agents.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.0",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.4"
+  }
+}

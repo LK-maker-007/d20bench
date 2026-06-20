@@ -23,12 +23,17 @@ The public website is still an important product surface: it should present the 
 
 - **Language**: TypeScript, because Battlecast is TypeScript and we will likely want compatibility with its schemas and tests.
 - **Runtime**: Node.js CLI first, web UI later.
+- **Rules scope**: SRD rules as implemented in Battlecast, copied or adapted into D20bench with deterministic boundaries and provenance notes.
+- **Website stack**: Battlecast ecosystem: React, Vite, Vitest, and Playwright where useful.
 - **LLM gateway**: OpenRouter Chat Completions.
 - **LLM contract**: strict JSON Schema action responses through OpenRouter `response_format` where supported.
 - **Config**: versioned YAML or JSON scenario, season, and agent configs.
 - **Persistence**: JSONL replays and SQLite for ratings/results once local files get noisy.
 - **Publication**: static website generated from season artifacts, rating snapshots, match summaries, and replay indexes.
 - **Validation**: engine-generated legal actions are the source of truth; agents choose action ids, never mutate state.
+- **Scenario visibility**: public practice suites plus hidden eval suites and private Elo arena seasons whose archived results can be published without revealing hidden scenario details.
+- **Initial budget posture**: start around $50 of OpenRouter spend with strict per-run caps, token/cost logging, and cheap dry runs before frontier model sweeps.
+- **Initial model roster**: prioritize strong agentic models such as Kimi K2, Claude Sonnet, and DeepSeek; add frontier models after the harness, retries, and cost controls work.
 
 ## Phase 0: Source, License, And Scope
 
@@ -117,6 +122,7 @@ Goal: let many models control units through one reliable adapter.
 Deliverables:
 
 - `agents/openrouter` adapter using `OPENROUTER_API_KEY`.
+- Budget guardrails for max dollars per run, max calls per match, max concurrent calls, and dry-run cost estimates.
 - Agent config fields:
   - `model`
   - `models` fallback list

@@ -2,18 +2,29 @@
 
 ## North Star
 
-Build a reproducible tactical combat benchmark where LLMs control D&D-style characters and monsters under a strict action schema. The system should answer: "Which model, prompt, and tactical policy wins more often under the same rules, maps, teams, and random seeds?"
+Build a reproducible tactical combat benchmark where LLMs control D&D-style characters and monsters under a strict action schema. The system should answer: "Which model, prompt, and tactical policy wins more often under the same Battlecast-compatible SRD rules, maps, teams, and random seeds?"
 
 ## Core Product
 
 The first usable version should support:
 
 - Two-sided grid combat with deterministic initiative, movement, attacks, saves, reactions, conditions, hit points, and simple objectives.
+- SRD rules behavior matching Battlecast's implementation wherever Battlecast has already encoded the rule.
 - LLM agents that receive a concise combat observation and must return a validated JSON action.
 - Scripted baseline agents for non-LLM comparison.
 - Seeded match execution, full replay logs, state hashes, and model/prompt metadata.
 - A CLI runner for local tournaments and a generated leaderboard report.
 - A public results website that presents benchmark suites, Elo-style head-to-head battles, model pages, and replay links.
+
+## Current Product Decisions
+
+- **Rules scope**: SRD rules as implemented in Battlecast, copied or adapted into this repo.
+- **Public identity**: D20bench.
+- **Website stack**: Battlecast ecosystem: TypeScript, React, Vite, Vitest, Playwright where useful.
+- **Benchmark philosophy**: visible public scenarios, hidden eval suites, and private Elo arena seasons whose archived results can be published without exposing hidden details.
+- **Initial model strategy**: start with strong agentic models such as Kimi K2, Claude Sonnet, and DeepSeek before spending on frontier model sweeps.
+- **Initial budget posture**: target roughly $50 for early OpenRouter experiments, with per-run caps and cost reporting before larger seasons.
+- **Battlecast reuse**: Battlecast may be freely reused by D20bench, but the sibling repo stays read-only and all copied/imported material should carry provenance.
 
 ## Tournament Formats
 

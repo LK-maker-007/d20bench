@@ -6,7 +6,7 @@ Battlecast is a read-only upstream reference for this project. The local checkou
 ../battlecast
 ```
 
-Do not edit files in that repository for this project. Import work should happen through scripts and generated artifacts inside `D20bench`.
+Do not edit files in that repository for this project. Import work should happen through scripts, copied source files, and generated artifacts inside `D20bench`.
 
 ## Current Snapshot
 
@@ -20,11 +20,11 @@ Do not edit files in that repository for this project. Import work should happen
 
 Battlecast's `LICENSE` says the original code, UI, artwork, AI-generated portraits, preset scenarios, and other non-SRD elements are proprietary with no general license grant. It also says included SRD 5.2 content remains under CC-BY-4.0.
 
-Practical implication:
+Project-specific permission:
 
-- Treat Battlecast as a read-only reference until the copyright holder explicitly permits reuse.
-- Do not copy Battlecast engine code or graphical assets into this repo by default.
-- SRD-derived monster or rules data may be importable, but only with source attribution and a clean provenance trail.
+- The D20bench and Battlecast author/copyright holder has explicitly permitted D20bench to reuse Battlecast code, assets, and data.
+- Reuse should still copy or transform material into this repo rather than importing from or editing the sibling checkout.
+- SRD-derived monster or rules data remains subject to CC-BY-4.0 attribution requirements.
 - Generated import bundles should record the Battlecast commit and source-file path for auditability.
 
 ## What We Want From Battlecast
@@ -37,7 +37,7 @@ Practical implication:
 
 ## Extraction Rules
 
-- Check Battlecast license and asset provenance before copying data or graphics.
+- Record Battlecast source paths and commit SHAs before copying data, code, or graphics.
 - Prefer generated canonical data over editing upstream files.
 - Keep import scripts deterministic and idempotent.
 - Store source commit SHA with every generated import bundle.
