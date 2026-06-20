@@ -36,6 +36,8 @@ interface OpenRouterDecisionJson {
   rationale?: string;
 }
 
+const openRouterRequestTimeoutMs = 90_000;
+
 export async function chooseOpenRouterAction(
   agent: OpenRouterAgent,
   context: AgentDecisionContext,
@@ -219,16 +221,31 @@ async function sendOpenRouterRequest(input: {
     } : {}),
   };
 
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${input.apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://github.com/opengandalf/d20bench',
-      'X-Title': 'D20bench',
-    },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, openRouterRequestTimeoutMs);
+  let res: Response;
+  try {
+    res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${input.apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://github.com/opengandalf/d20bench',
+        'X-Title': 'D20bench',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(`OpenRouter request timed out after ${openRouterRequestTimeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
   const bodyText = await res.text();
   let parsedBody: any;
   try {
