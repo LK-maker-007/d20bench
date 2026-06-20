@@ -276,6 +276,8 @@ The fair-action-space LLM season is `llm-frontier-fullturn-v1`. It uses the same
 
 The going-forward public frontier benchmark is `llm-frontier-smart-v1`: the same model roster, but only against fixed `battlecast.smart` on the chokepoint and status-pressure hero-party mirrors. It uses the full-turn delegate action space and two seeds, giving each model 8 matches total: two scenarios, two side assignments, and two seeds. This keeps the public benchmark easier to interpret: each model is judged against one strong Battlecast reference tactic instead of a mix of random and alternate tactic personalities.
 
+Replication runs use new season ids rather than overwriting prior artifacts. For example, `llm-frontier-smart-top3-10x-v1` reruns Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash against `battlecast.smart` with 20 seeds, giving each model 80 matches while preserving `llm-frontier-smart-v1` unchanged.
+
 LLM seasons use a bounded parallel worker pool because model latency is the bottleneck. Completed matches are stored by fixture index, then Elo is applied in deterministic fixture order so rating results do not depend on API response timing.
 
 LLM seasons also checkpoint completed matches incrementally to `results/seasons/<season-id>/completed-matches.jsonl`. Running the CLI with `--resume` restores those completed fixtures, retries failed or unstarted fixtures, and then recomputes blended and per-battle-type Elo from the recovered match set.

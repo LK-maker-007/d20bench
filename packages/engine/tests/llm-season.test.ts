@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   llmFrontierModelAgents,
   llmFrontierSmartSeason,
+  llmFrontierSmartTop3TenXSeason,
+  llmSmartTop3ModelAgents,
 } from '../src/index.js';
 
 describe('LLM seasons', () => {
@@ -36,5 +38,42 @@ describe('LLM seasons', () => {
 
     expect(pairings).toHaveLength(llmFrontierModelAgents.length * 2);
     expect([...matchesByModel.values()]).toEqual(llmFrontierModelAgents.map(() => 8));
+  });
+
+  it('defines the top-three replication benchmark as a separate 10x season', () => {
+    const pairings = llmFrontierSmartTop3TenXSeason.pairings ?? [];
+    const modelAgents = new Set(llmSmartTop3ModelAgents);
+    const matchesByModel = new Map(llmSmartTop3ModelAgents.map((agent) => [agent, 0]));
+
+    expect(llmFrontierSmartTop3TenXSeason.id).toBe('llm-frontier-smart-top3-10x-v1');
+    expect(llmFrontierSmartTop3TenXSeason.llmActionSpace).toBe('battlecast-full-turn');
+    expect(llmFrontierSmartTop3TenXSeason.seeds).toEqual(
+      Array.from({ length: 20 }, (_, index) => index + 1),
+    );
+    expect(llmFrontierSmartTop3TenXSeason.scenarios.map((scenario) => scenario.battleType)).toEqual([
+      'hero-party-chokepoint',
+      'hero-party-status',
+    ]);
+    expect(llmFrontierSmartTop3TenXSeason.agents).toEqual(expect.arrayContaining([
+      'openrouter:mistralai/ministral-8b-2512',
+      'openrouter:meta-llama/llama-3.1-8b-instruct',
+      'openrouter:qwen/qwen3.5-flash-02-23',
+      'battlecast.smart',
+    ]));
+    expect(llmFrontierSmartTop3TenXSeason.agents).not.toContain('openrouter:openai/gpt-5.5');
+
+    for (const pairing of pairings) {
+      const agents = [pairing.redAgent, pairing.blueAgent];
+      expect(agents).toContain('battlecast.smart');
+      const model = agents.find((agent) => modelAgents.has(agent));
+      expect(model).toBeDefined();
+      matchesByModel.set(
+        model!,
+        matchesByModel.get(model!)! + llmFrontierSmartTop3TenXSeason.scenarios.length * llmFrontierSmartTop3TenXSeason.seeds.length,
+      );
+    }
+
+    expect(pairings).toHaveLength(llmSmartTop3ModelAgents.length * 2);
+    expect([...matchesByModel.values()]).toEqual(llmSmartTop3ModelAgents.map(() => 80));
   });
 });

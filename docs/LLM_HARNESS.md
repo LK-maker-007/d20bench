@@ -126,7 +126,9 @@ The first implementation is deliberately narrow:
 - `llm-frontier-public-v1` runs the 6v6 goblin control plus the three 4v4 level-5 hero-party mirrors, capped at 3 rounds, with concurrency 8 by default.
 - `llm-frontier-fullturn-v1` uses the same schedule but sets `llmActionSpace: battlecast-full-turn`, so LLMs can select the same full-turn Battlecast executor modes as the fixed tactic agents.
 - `llm-frontier-smart-v1` is the going-forward public frontier benchmark. It keeps only `battlecast.smart` as the fixed opponent, uses the full-turn delegate action space, and runs two seeds across the chokepoint and status-pressure hero-party scenarios in both side assignments for 8 matches per model.
+- `llm-frontier-smart-top3-10x-v1` is a separate replication run for Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash. It uses the same two battle types and full-turn action space, but runs 20 seeds for 80 matches per model.
 - LLM ladder runs write `completed-matches.jsonl` checkpoints as matches finish; `--resume` reloads completed fixtures and continues with failed or unstarted fixtures.
+- Published benchmark results are append-only by season id: new experiments get new ids and new `results/seasons/<id>/` directories rather than overwriting previous runs.
 
 This gives us a safe, auditable harness before we spend significant model budget.
 

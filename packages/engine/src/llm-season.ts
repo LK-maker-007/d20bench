@@ -198,6 +198,12 @@ export const llmSmartOpponentAgents: AgentId[] = [
   'battlecast.smart',
 ];
 
+export const llmSmartTop3ModelAgents: OpenRouterAgentId[] = [
+  createOpenRouterAgentId('mistralai/ministral-8b-2512'),
+  createOpenRouterAgentId('meta-llama/llama-3.1-8b-instruct'),
+  createOpenRouterAgentId('qwen/qwen3.5-flash-02-23'),
+];
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -261,8 +267,29 @@ export const llmFrontierSmartSeason: LlmSeasonConfig = {
   concurrency: 8,
 };
 
+export const llmFrontierSmartTop3TenXSeason: LlmSeasonConfig = {
+  id: 'llm-frontier-smart-top3-10x-v1',
+  description: 'Ten-times replication season for Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash against Battlecast Smart on the chokepoint and status-pressure level-5 4v4 hero-party mirrors.',
+  agents: [
+    ...llmSmartTop3ModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: Array.from({ length: 20 }, (_, index) => index + 1),
+  maxRounds: 3,
+  pairings: createModelOpponentPairings(llmSmartTop3ModelAgents, llmSmartOpponentAgents),
+  llmActionSpace: 'battlecast-full-turn',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 16,
+};
+
 export const llmSeasons = [
   llmFrontierSmartSeason,
+  llmFrontierSmartTop3TenXSeason,
   llmFrontierFullTurnSeason,
   llmFrontierPublicSeason,
   llmSmokeSeason,
