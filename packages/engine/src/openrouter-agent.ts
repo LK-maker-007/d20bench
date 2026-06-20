@@ -18,6 +18,7 @@ export interface OpenRouterDecisionTrace {
   acceptedActionId: string;
   invalidActionId?: string;
   rationale?: string;
+  parseError?: string;
   usage?: OpenRouterUsage;
   latencyMs: number;
   structuredOutput: boolean;
@@ -47,13 +48,13 @@ export async function chooseOpenRouterAction(
 
   const observation = buildLlmBattleObservation(context.state, context.activeCreature, context.catalogue);
   const startedAt = Date.now();
-  const first = await sendOpenRouterRequest({
+  const first = await sendOpenRouterRequestWithRetry({
     apiKey,
     model: agent.model,
     observation,
     structuredOutput: true,
   });
-  let response = first.ok ? first : await sendOpenRouterRequest({
+  let response = first.ok ? first : await sendOpenRouterRequestWithRetry({
     apiKey,
     model: agent.model,
     observation,
@@ -65,23 +66,35 @@ export async function chooseOpenRouterAction(
   }
 
   let decision: OpenRouterDecisionJson;
+  let parseError: string | undefined;
   try {
     decision = parseDecisionJson(extractDecisionContent(response.body?.choices?.[0]?.message));
   } catch (error) {
-    if (!response.structuredOutput) throw error;
-    response = await sendOpenRouterRequest({
-      apiKey,
-      model: agent.model,
-      observation,
-      structuredOutput: false,
-    });
-    if (!response.ok) {
-      throw new Error(`OpenRouter fallback request failed (${response.status}): ${response.bodyText.slice(0, 500)}`);
-    }
-    try {
-      decision = parseDecisionJson(extractDecisionContent(response.body?.choices?.[0]?.message));
-    } catch (fallbackError) {
-      throw new Error(`OpenRouter response for ${agent.model} did not include parseable action JSON. Message: ${JSON.stringify(response.body?.choices?.[0]?.message).slice(0, 700)}. Error: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+    if (response.structuredOutput) {
+      response = await sendOpenRouterRequestWithRetry({
+        apiKey,
+        model: agent.model,
+        observation,
+        structuredOutput: false,
+      });
+      if (!response.ok) {
+        throw new Error(`OpenRouter fallback request failed (${response.status}): ${response.bodyText.slice(0, 500)}`);
+      }
+      try {
+        decision = parseDecisionJson(extractDecisionContent(response.body?.choices?.[0]?.message));
+      } catch (fallbackError) {
+        parseError = formatParseError(agent.model, response.body?.choices?.[0]?.message, fallbackError);
+        decision = {
+          actionId: 'end_turn',
+          rationale: 'Fallback: model did not return parseable action JSON.',
+        };
+      }
+    } else {
+      parseError = formatParseError(agent.model, response.body?.choices?.[0]?.message, error);
+      decision = {
+        actionId: 'end_turn',
+        rationale: 'Fallback: model did not return parseable action JSON.',
+      };
     }
   }
   const requestedActionId = decision.actionId;
@@ -99,12 +112,51 @@ export async function chooseOpenRouterAction(
       acceptedActionId: acceptedAction.id,
       invalidActionId: acceptedAction.id === requestedActionId ? undefined : requestedActionId,
       rationale: decision.rationale,
+      parseError,
       usage: normalizeUsage(response.body?.usage),
       latencyMs: Date.now() - startedAt,
       structuredOutput: response.structuredOutput,
       repairedJson: response.repairedJson,
     },
   };
+}
+
+async function sendOpenRouterRequestWithRetry(input: {
+  apiKey: string;
+  model: string;
+  observation: unknown;
+  structuredOutput: boolean;
+}): Promise<{
+  ok: boolean;
+  status: number;
+  bodyText: string;
+  body?: any;
+  structuredOutput: boolean;
+  repairedJson: boolean;
+}> {
+  const maxAttempts = 4;
+  let lastResponse: Awaited<ReturnType<typeof sendOpenRouterRequest>> | undefined;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const response = await sendOpenRouterRequest(input);
+      if (response.ok || !isRetryableOpenRouterStatus(response.status) || attempt === maxAttempts) {
+        return response;
+      }
+      lastResponse = response;
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+    }
+
+    await sleep(1000 * attempt * attempt);
+  }
+
+  if (lastResponse) return lastResponse;
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
 async function sendOpenRouterRequest(input: {
@@ -193,6 +245,10 @@ async function sendOpenRouterRequest(input: {
   };
 }
 
+function isRetryableOpenRouterStatus(status: number): boolean {
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
 function parseDecisionJson(content: unknown): OpenRouterDecisionJson {
   if (content && typeof content === 'object' && !Array.isArray(content)) {
     const parsed = content as Partial<OpenRouterDecisionJson>;
@@ -247,6 +303,16 @@ function parseDecisionJson(content: unknown): OpenRouterDecisionJson {
 function extractDecisionContent(message: any): unknown {
   if (!message || typeof message !== 'object') return undefined;
   return message.content ?? message.parsed ?? message.reasoning ?? message;
+}
+
+function formatParseError(model: string, message: unknown, error: unknown): string {
+  const detail = error instanceof Error ? error.message : String(error);
+  const sample = (JSON.stringify(message) ?? String(message)).slice(0, 700);
+  return `OpenRouter response for ${model} did not include parseable action JSON. Message: ${sample}. Error: ${detail}`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function normalizeUsage(usage: any): OpenRouterUsage | undefined {

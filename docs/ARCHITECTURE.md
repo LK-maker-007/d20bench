@@ -270,7 +270,7 @@ The first non-duel public baseline season is `public-baseline-v0`: D20bench simp
 
 The first LLM smoke season is `llm-smoke-v0`: latest Kimi, GLM 5.2, latest DeepSeek, and several cheaper smaller OpenRouter models against each other and `baseline.focus-fire`.
 
-The first meaningful public LLM season is `llm-frontier-public-v1`: latest available Opus (`anthropic/claude-opus-4.8`), Gemini 3.1 Pro (`google/gemini-3.1-pro-preview`), GPT-5.5 (`openai/gpt-5.5`), the existing cheap LLM roster, `baseline.focus-fire`, `baseline.random-legal`, and all copied Battlecast tactic agents. It runs the 6v6 goblin control and the three 4v4 level-5 hero-party mirrors with concurrency 6 by default. The full configured suite is 960 ordered matches, so the CLI supports `--match-limit` for shakedowns and `--max-cost` for budget-capped frontier runs.
+The first meaningful public LLM season is `llm-frontier-public-v1`: latest available Opus (`anthropic/claude-opus-4.8`), Gemini 3.1 Pro (`google/gemini-3.1-pro-preview`), GPT-5.5 (`openai/gpt-5.5`), and the existing cheap LLM roster. To keep it budget-friendly, it does not run model-vs-model pairings. Instead, each model fights `baseline.random-legal` and every copied Battlecast tactic agent in both side assignments across the 6v6 goblin control and three 4v4 level-5 hero-party mirrors. The full configured suite is 400 ordered matches at max 3 rounds, so the CLI supports `--match-limit` for shakedowns and `--max-cost` for budget-capped frontier runs.
 
 LLM seasons use a bounded parallel worker pool because model latency is the bottleneck. Completed matches are stored by fixture index, then Elo is applied in deterministic fixture order so rating results do not depend on API response timing.
 

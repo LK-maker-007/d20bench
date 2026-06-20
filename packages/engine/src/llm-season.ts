@@ -26,9 +26,15 @@ export interface LlmSeasonConfig {
   scenarios: D20benchScenario[];
   seeds: Array<string | number>;
   maxRounds: number;
+  pairings?: LlmSeasonPairing[];
   initialRating?: number;
   kFactor?: number;
   concurrency?: number;
+}
+
+export interface LlmSeasonPairing {
+  redAgent: AgentId;
+  blueAgent: AgentId;
 }
 
 export interface LlmSeasonRunOptions {
@@ -179,6 +185,11 @@ export const llmFrontierModelAgents: OpenRouterAgentId[] = [
   ...llmSmokeModelAgents,
 ];
 
+export const llmBattlecastOpponentAgents: AgentId[] = [
+  'baseline.random-legal',
+  ...listBattlecastTacticAgentIds(),
+];
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -196,12 +207,10 @@ export const llmSmokeSeason: LlmSeasonConfig = {
 
 export const llmFrontierPublicSeason: LlmSeasonConfig = {
   id: 'llm-frontier-public-v1',
-  description: 'Public LLM ladder across the 6v6 goblin control and three level-5 4v4 hero-party mirrors, adding latest available Opus, Gemini 3.1 Pro, GPT-5.5, cheap models, random, focus-fire, and copied Battlecast tactic agents.',
+  description: 'Public LLM ladder across the 6v6 goblin control and three level-5 4v4 hero-party mirrors, matching each model against random and copied Battlecast tactic agents in both side assignments.',
   agents: [
     ...llmFrontierModelAgents,
-    'baseline.focus-fire',
-    'baseline.random-legal',
-    ...listBattlecastTacticAgentIds(),
+    ...llmBattlecastOpponentAgents,
   ],
   scenarios: [
     goblinWarbandMirrorScenario,
@@ -210,10 +219,11 @@ export const llmFrontierPublicSeason: LlmSeasonConfig = {
     statusPressureHeroMirrorScenario,
   ],
   seeds: [1],
-  maxRounds: 4,
+  maxRounds: 3,
+  pairings: createModelOpponentPairings(llmFrontierModelAgents, llmBattlecastOpponentAgents),
   initialRating: 1000,
   kFactor: 32,
-  concurrency: 6,
+  concurrency: 8,
 };
 
 export const llmSeasons = [
@@ -289,6 +299,7 @@ export async function runLlmSeason(
 
   const runWorker = async (): Promise<void> => {
     while (true) {
+      if (stopReason) return;
       if (runOptions.maxCostUsd !== undefined && finalizeCostSummary(costAccumulators).estimatedCostUsd >= runOptions.maxCostUsd) {
         stopReason = stopReason ?? `estimated cost reached $${runOptions.maxCostUsd.toFixed(2)}`;
         return;
@@ -350,6 +361,10 @@ export async function runLlmSeason(
           console.log(formatMatchProgressLine(config.id, completedMatches, failedMatches, fixtures.length, progressMatch, finalizeCostSummary(costAccumulators)));
         }
       } catch (error) {
+        const errorMessage = stringifyError(error);
+        if (isFatalSeasonError(errorMessage)) {
+          stopReason = stopReason ?? formatFatalSeasonStopReason(errorMessage);
+        }
         const completedAt = new Date();
         const failure: LlmSeasonFailure = {
           index: fixture.index,
@@ -358,7 +373,7 @@ export async function runLlmSeason(
           seed: fixture.seed,
           redAgent: fixture.redAgent,
           blueAgent: fixture.blueAgent,
-          error: stringifyError(error),
+          error: errorMessage,
         };
         const progressMatch: LlmSeasonMatchProgress = {
           ...failure,
@@ -569,23 +584,44 @@ interface MatchRatingResult {
 
 function createLlmMatchFixtures(config: LlmSeasonConfig): LlmMatchFixture[] {
   const fixtures: LlmMatchFixture[] = [];
+  const pairings = config.pairings ?? createRoundRobinPairings(config.agents);
   for (const scenario of config.scenarios) {
     for (const seed of config.seeds) {
-      for (const redAgent of config.agents) {
-        for (const blueAgent of config.agents) {
-          if (redAgent === blueAgent) continue;
-          fixtures.push({
-            index: fixtures.length,
-            scenario,
-            seed,
-            redAgent,
-            blueAgent,
-          });
-        }
+      for (const pairing of pairings) {
+        fixtures.push({
+          index: fixtures.length,
+          scenario,
+          seed,
+          redAgent: pairing.redAgent,
+          blueAgent: pairing.blueAgent,
+        });
       }
     }
   }
   return fixtures;
+}
+
+function createRoundRobinPairings(agents: AgentId[]): LlmSeasonPairing[] {
+  const pairings: LlmSeasonPairing[] = [];
+  for (const redAgent of agents) {
+    for (const blueAgent of agents) {
+      if (redAgent === blueAgent) continue;
+      pairings.push({ redAgent, blueAgent });
+    }
+  }
+  return pairings;
+}
+
+function createModelOpponentPairings(
+  models: AgentId[],
+  opponents: AgentId[],
+): LlmSeasonPairing[] {
+  return opponents.flatMap((opponent) =>
+    models.flatMap((model) => [
+      { redAgent: model, blueAgent: opponent },
+      { redAgent: opponent, blueAgent: model },
+    ])
+  );
 }
 
 function buildProgress(input: {
@@ -820,6 +856,16 @@ function formatMatchProgressLine(
 function stringifyError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   return message.length > 1200 ? `${message.slice(0, 1197)}...` : message;
+}
+
+function isFatalSeasonError(errorMessage: string): boolean {
+  return /OpenRouter (fallback )?request failed \(402\)/.test(errorMessage)
+    || /Insufficient credits/i.test(errorMessage)
+    || /requires more credits/i.test(errorMessage);
+}
+
+function formatFatalSeasonStopReason(errorMessage: string): string {
+  return `OpenRouter billing or credit limit reached: ${errorMessage}`;
 }
 
 function numberOrUndefined(value: string | undefined): number | undefined {
