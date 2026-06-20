@@ -1,4 +1,4 @@
-import { mkdir, rename, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { runAgentMatchAsync, type AgentMatchResult } from './agent-match.js';
@@ -43,6 +43,7 @@ export interface LlmSeasonRunOptions {
   concurrency?: number;
   matchLimit?: number;
   maxCostUsd?: number;
+  resume?: boolean;
   logProgress?: boolean;
   onProgress?: (progress: LlmSeasonProgress) => void | Promise<void>;
 }
@@ -255,6 +256,7 @@ export async function runLlmSeason(
     : allFixtures;
   const concurrency = normalizeConcurrency(runOptions.concurrency ?? config.concurrency, fixtures.length);
   const progressPath = runOptions.outDir ? join(runOptions.outDir, 'progress.json') : undefined;
+  const checkpointPath = runOptions.outDir ? join(runOptions.outDir, 'completed-matches.jsonl') : undefined;
   const costAccumulators = new Map<string, LlmModelCostSummary>();
   const outcomes: Array<LlmMatchOutcome | undefined> = Array(fixtures.length).fill(undefined);
   const activeMatches = new Map<number, LlmSeasonMatchProgress>();
@@ -266,7 +268,29 @@ export async function runLlmSeason(
   let nextFixtureIndex = 0;
   let progressSequence = 0;
   let progressWriteChain = Promise.resolve();
+  let checkpointWriteChain = Promise.resolve();
   let stopReason: string | undefined;
+
+  if (checkpointPath) {
+    await mkdir(dirname(checkpointPath), { recursive: true });
+    if (runOptions.resume) {
+      const restored = await loadCompletedMatchCheckpoints(checkpointPath, config.id, fixtures);
+      for (const record of restored) {
+        const fixture = fixtures[record.fixture.index];
+        const matchCost = summarizeMatchCost(record.match, pricing, costAccumulators);
+        outcomes[fixture.index] = {
+          status: 'completed',
+          fixture,
+          match: record.match,
+          matchCost,
+        };
+        completedMatches += 1;
+        pushRecentMatch(recentMatches, record.progressMatch);
+      }
+    } else {
+      await writeFile(checkpointPath, '', 'utf8');
+    }
+  }
 
   const emitProgress = async (status: LlmSeasonProgressStatus): Promise<void> => {
     const progress = buildProgress({
@@ -304,8 +328,9 @@ export async function runLlmSeason(
         stopReason = stopReason ?? `estimated cost reached $${runOptions.maxCostUsd.toFixed(2)}`;
         return;
       }
-      const fixture = fixtures[nextFixtureIndex];
-      nextFixtureIndex += 1;
+      const fixture = takeNextFixture(fixtures, outcomes, () => nextFixtureIndex, (value) => {
+        nextFixtureIndex = value;
+      });
       if (!fixture) return;
 
       const matchStartedAt = new Date();
@@ -355,6 +380,21 @@ export async function runLlmSeason(
           match,
           matchCost,
         };
+        await appendCompletedMatchCheckpoint({
+          checkpointPath,
+          writeChain: checkpointWriteChain,
+          setWriteChain: (value) => {
+            checkpointWriteChain = value;
+          },
+          record: {
+            version: 1,
+            seasonId: config.id,
+            fixture: serializeFixture(fixture),
+            match,
+            matchCost,
+            progressMatch,
+          },
+        });
         completedMatches += 1;
         pushRecentMatch(recentMatches, progressMatch);
         if (runOptions.logProgress) {
@@ -560,6 +600,23 @@ type LlmMatchOutcome =
       failure: LlmSeasonFailure;
     };
 
+interface LlmCompletedMatchCheckpoint {
+  version: 1;
+  seasonId: string;
+  fixture: SerializedLlmMatchFixture;
+  match: AgentMatchResult;
+  matchCost: { decisions: number; estimatedCostUsd: number };
+  progressMatch: LlmSeasonMatchProgress;
+}
+
+interface SerializedLlmMatchFixture {
+  index: number;
+  scenarioId: string;
+  seed: string | number;
+  redAgent: AgentId;
+  blueAgent: AgentId;
+}
+
 interface RatingPool {
   ratings: Map<AgentId, number>;
   standings: Map<AgentId, EloStanding>;
@@ -622,6 +679,113 @@ function createModelOpponentPairings(
       { redAgent: opponent, blueAgent: model },
     ])
   );
+}
+
+function takeNextFixture(
+  fixtures: LlmMatchFixture[],
+  outcomes: Array<LlmMatchOutcome | undefined>,
+  getNextIndex: () => number,
+  setNextIndex: (value: number) => void,
+): LlmMatchFixture | undefined {
+  while (true) {
+    const index = getNextIndex();
+    const fixture = fixtures[index];
+    setNextIndex(index + 1);
+    if (!fixture) return undefined;
+    if (!outcomes[fixture.index]) return fixture;
+  }
+}
+
+function serializeFixture(fixture: LlmMatchFixture): SerializedLlmMatchFixture {
+  return {
+    index: fixture.index,
+    scenarioId: fixture.scenario.id,
+    seed: fixture.seed,
+    redAgent: fixture.redAgent,
+    blueAgent: fixture.blueAgent,
+  };
+}
+
+async function appendCompletedMatchCheckpoint(input: {
+  checkpointPath: string | undefined;
+  writeChain: Promise<void>;
+  setWriteChain: (value: Promise<void>) => void;
+  record: LlmCompletedMatchCheckpoint;
+}): Promise<void> {
+  if (!input.checkpointPath) return;
+
+  const write = input.writeChain.then(() =>
+    appendFile(input.checkpointPath!, `${JSON.stringify(input.record)}\n`, 'utf8')
+  );
+  input.setWriteChain(write.catch(() => undefined));
+  await write;
+}
+
+async function loadCompletedMatchCheckpoints(
+  path: string,
+  seasonId: string,
+  fixtures: LlmMatchFixture[],
+): Promise<LlmCompletedMatchCheckpoint[]> {
+  let text: string;
+  try {
+    text = await readFile(path, 'utf8');
+  } catch (error) {
+    if (isMissingFileError(error)) return [];
+    throw error;
+  }
+
+  const byIndex = new Map<number, LlmCompletedMatchCheckpoint>();
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      continue;
+    }
+    const record = normalizeCompletedMatchCheckpoint(parsed, seasonId, fixtures);
+    if (record) byIndex.set(record.fixture.index, record);
+  }
+
+  return [...byIndex.values()].sort((left, right) => left.fixture.index - right.fixture.index);
+}
+
+function normalizeCompletedMatchCheckpoint(
+  value: unknown,
+  seasonId: string,
+  fixtures: LlmMatchFixture[],
+): LlmCompletedMatchCheckpoint | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const record = value as Partial<LlmCompletedMatchCheckpoint>;
+  if (record.version !== 1 || record.seasonId !== seasonId) return undefined;
+  if (!record.fixture || typeof record.fixture.index !== 'number') return undefined;
+  const fixture = fixtures[record.fixture.index];
+  if (!fixture || !serializedFixtureMatches(record.fixture, fixture)) return undefined;
+  if (!record.match || !record.matchCost || !record.progressMatch) return undefined;
+  return {
+    version: 1,
+    seasonId,
+    fixture: record.fixture,
+    match: record.match,
+    matchCost: record.matchCost,
+    progressMatch: record.progressMatch,
+  };
+}
+
+function serializedFixtureMatches(serialized: SerializedLlmMatchFixture, fixture: LlmMatchFixture): boolean {
+  return serialized.index === fixture.index
+    && serialized.scenarioId === fixture.scenario.id
+    && String(serialized.seed) === String(fixture.seed)
+    && serialized.redAgent === fixture.redAgent
+    && serialized.blueAgent === fixture.blueAgent;
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return !!error
+    && typeof error === 'object'
+    && 'code' in error
+    && (error as { code?: unknown }).code === 'ENOENT';
 }
 
 function buildProgress(input: {

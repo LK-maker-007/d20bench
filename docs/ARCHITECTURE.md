@@ -274,6 +274,8 @@ The first meaningful public LLM season is `llm-frontier-public-v1`: latest avail
 
 LLM seasons use a bounded parallel worker pool because model latency is the bottleneck. Completed matches are stored by fixture index, then Elo is applied in deterministic fixture order so rating results do not depend on API response timing.
 
+LLM seasons also checkpoint completed matches incrementally to `results/seasons/<season-id>/completed-matches.jsonl`. Running the CLI with `--resume` restores those completed fixtures, retries failed or unstarted fixtures, and then recomputes blended and per-battle-type Elo from the recovered match set.
+
 Live LLM run progress is written to:
 
 ```text

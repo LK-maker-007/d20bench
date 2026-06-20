@@ -119,6 +119,7 @@ The first implementation is deliberately narrow:
 - `llm-frontier-public-v1` adds `anthropic/claude-opus-4.8`, `google/gemini-3.1-pro-preview`, `openai/gpt-5.5`, `baseline.random-legal`, and all copied Battlecast tactic agents.
 - `llm-frontier-public-v1` does not run model-vs-model pairings. It matches each OpenRouter model against random and each copied Battlecast tactic agent in both side assignments.
 - `llm-frontier-public-v1` runs the 6v6 goblin control plus the three 4v4 level-5 hero-party mirrors, capped at 3 rounds, with concurrency 8 by default.
+- LLM ladder runs write `completed-matches.jsonl` checkpoints as matches finish; `--resume` reloads completed fixtures and continues with failed or unstarted fixtures.
 
 This gives us a safe, auditable harness before we spend significant model budget.
 

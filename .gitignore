@@ -13,6 +13,7 @@ coverage/
 *.tsbuildinfo
 replays/
 artifacts/
+completed-matches.jsonl
 .env
 .env.*
 !.env.example

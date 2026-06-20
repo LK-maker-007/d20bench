@@ -183,11 +183,13 @@ async function commandLlmLadderRun(options: ParsedArgs['options']): Promise<void
   const concurrency = parseOptionalPositiveInteger(options.concurrency, '--concurrency');
   const matchLimit = parseOptionalPositiveInteger(options['match-limit'], '--match-limit');
   const maxCostUsd = parseOptionalPositiveNumber(options['max-cost'], '--max-cost');
+  const resume = options.resume === true || options.resume === 'true';
   const result = await runLlmSeason(season, {
     outDir,
     concurrency,
     matchLimit,
     maxCostUsd,
+    resume,
     logProgress: true,
   });
   await mkdir(outDir, { recursive: true });
@@ -303,7 +305,7 @@ Commands:
   d20bench scenario verify <replay.jsonl>
   d20bench match run --scenario <id> --red <agent> --blue <agent> --seed 1 [--max-rounds 10] [--out dir]
   d20bench ladder run [--season public-baseline-v0] [--out results/seasons/public-baseline-v0]
-  d20bench llm ladder run [--season llm-frontier-public-v1] [--out results/seasons/<id>] [--concurrency 6] [--match-limit 16] [--max-cost 50]
+  d20bench llm ladder run [--season llm-frontier-public-v1] [--out results/seasons/<id>] [--concurrency 6] [--match-limit 16] [--max-cost 50] [--resume]
 
 Seasons:
   ${seasons.map((season) => season.id).join('\n  ')}
