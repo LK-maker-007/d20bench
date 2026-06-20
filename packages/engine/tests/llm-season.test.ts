@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   llmFrontierModelAgents,
+  llmFrontierSmartGlmTenXSeason,
   llmFrontierSmartSeason,
   llmFrontierSmartTop3TenXSeason,
+  llmSmartGlmModelAgents,
   llmSmartTop3ModelAgents,
 } from '../src/index.js';
 
@@ -75,5 +77,41 @@ describe('LLM seasons', () => {
 
     expect(pairings).toHaveLength(llmSmartTop3ModelAgents.length * 2);
     expect([...matchesByModel.values()]).toEqual(llmSmartTop3ModelAgents.map(() => 80));
+  });
+
+  it('defines the GLM replication benchmark as a separate 10x season', () => {
+    const pairings = llmFrontierSmartGlmTenXSeason.pairings ?? [];
+    const modelAgents = new Set(llmSmartGlmModelAgents);
+    const matchesByModel = new Map(llmSmartGlmModelAgents.map((agent) => [agent, 0]));
+
+    expect(llmFrontierSmartGlmTenXSeason.id).toBe('llm-frontier-smart-glm-10x-v1');
+    expect(llmFrontierSmartGlmTenXSeason.llmActionSpace).toBe('battlecast-full-turn');
+    expect(llmFrontierSmartGlmTenXSeason.seeds).toEqual(
+      Array.from({ length: 20 }, (_, index) => index + 1),
+    );
+    expect(llmFrontierSmartGlmTenXSeason.scenarios.map((scenario) => scenario.battleType)).toEqual([
+      'hero-party-chokepoint',
+      'hero-party-status',
+    ]);
+    expect(llmFrontierSmartGlmTenXSeason.agents).toEqual(expect.arrayContaining([
+      'openrouter:z-ai/glm-5.2',
+      'battlecast.smart',
+    ]));
+    expect(llmFrontierSmartGlmTenXSeason.agents).not.toContain('openrouter:openai/gpt-5.5');
+    expect(llmFrontierSmartGlmTenXSeason.agents).not.toContain('openrouter:qwen/qwen3.5-flash-02-23');
+
+    for (const pairing of pairings) {
+      const agents = [pairing.redAgent, pairing.blueAgent];
+      expect(agents).toContain('battlecast.smart');
+      const model = agents.find((agent) => modelAgents.has(agent));
+      expect(model).toBeDefined();
+      matchesByModel.set(
+        model!,
+        matchesByModel.get(model!)! + llmFrontierSmartGlmTenXSeason.scenarios.length * llmFrontierSmartGlmTenXSeason.seeds.length,
+      );
+    }
+
+    expect(pairings).toHaveLength(llmSmartGlmModelAgents.length * 2);
+    expect([...matchesByModel.values()]).toEqual(llmSmartGlmModelAgents.map(() => 80));
   });
 });

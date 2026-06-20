@@ -204,6 +204,10 @@ export const llmSmartTop3ModelAgents: OpenRouterAgentId[] = [
   createOpenRouterAgentId('qwen/qwen3.5-flash-02-23'),
 ];
 
+export const llmSmartGlmModelAgents: OpenRouterAgentId[] = [
+  createOpenRouterAgentId('z-ai/glm-5.2'),
+];
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -287,9 +291,30 @@ export const llmFrontierSmartTop3TenXSeason: LlmSeasonConfig = {
   concurrency: 16,
 };
 
+export const llmFrontierSmartGlmTenXSeason: LlmSeasonConfig = {
+  id: 'llm-frontier-smart-glm-10x-v1',
+  description: 'Ten-times replication season for GLM 5.2 against Battlecast Smart on the chokepoint and status-pressure level-5 4v4 hero-party mirrors.',
+  agents: [
+    ...llmSmartGlmModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: Array.from({ length: 20 }, (_, index) => index + 1),
+  maxRounds: 3,
+  pairings: createModelOpponentPairings(llmSmartGlmModelAgents, llmSmartOpponentAgents),
+  llmActionSpace: 'battlecast-full-turn',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 16,
+};
+
 export const llmSeasons = [
   llmFrontierSmartSeason,
   llmFrontierSmartTop3TenXSeason,
+  llmFrontierSmartGlmTenXSeason,
   llmFrontierFullTurnSeason,
   llmFrontierPublicSeason,
   llmSmokeSeason,
