@@ -88,11 +88,23 @@ results/seasons/<season-id>/progress.json
 
 That file contains status, concurrency, completed/failed/running counts, active matches, recent matches, token usage, and estimated OpenRouter cost. Failed matches are recorded and the remaining fixtures continue, so one model/provider failure does not erase the whole run.
 
-Run the current smoke ladder with:
+Run the current public frontier ladder with:
 
 ```bash
 npm run build
-npm run d20bench -- llm ladder run --concurrency 3
+npm run d20bench -- llm ladder run --season llm-frontier-public-v1 --concurrency 6
+```
+
+Use a cost cap for full frontier runs:
+
+```bash
+npm run d20bench -- llm ladder run --season llm-frontier-public-v1 --concurrency 6 --max-cost 50
+```
+
+For a cheap shakedown, cap the scheduled fixture list:
+
+```bash
+npm run d20bench -- llm ladder run --season llm-frontier-public-v1 --match-limit 16 --concurrency 6 --out /tmp/d20bench-frontier-shakedown
 ```
 
 ## Current Scope
@@ -103,7 +115,9 @@ The first implementation is deliberately narrow:
 - Current legal actions are `attack`, `move_toward`, and `end_turn`.
 - Battlecast tactic agents still delegate to copied Battlecast `executeTurn`.
 - LLM replay verification checks structure but skips model reruns.
-- The first LLM season roster uses OpenRouter models for Kimi K2.7 Code, GLM 5.2, DeepSeek v4 Pro, DeepSeek v4 Flash, Qwen 3.5 Flash, Ministral 8B, and Llama 3.1 8B, plus `baseline.focus-fire`.
+- `llm-smoke-v0` uses OpenRouter models for Kimi K2.7 Code, GLM 5.2, DeepSeek v4 Pro, DeepSeek v4 Flash, Qwen 3.5 Flash, Ministral 8B, and Llama 3.1 8B, plus `baseline.focus-fire`.
+- `llm-frontier-public-v1` adds `anthropic/claude-opus-4.8`, `google/gemini-3.1-pro-preview`, `openai/gpt-5.5`, `baseline.random-legal`, and all copied Battlecast tactic agents.
+- `llm-frontier-public-v1` runs the 6v6 goblin control plus the three 4v4 level-5 hero-party mirrors with concurrency 6 by default.
 
 This gives us a safe, auditable harness before we spend significant model budget.
 

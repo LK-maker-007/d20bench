@@ -2,11 +2,22 @@ import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { runAgentMatchAsync, type AgentMatchResult } from './agent-match.js';
-import { createOpenRouterAgentId, type AgentId, type OpenRouterAgentId } from './agents.js';
+import {
+  createOpenRouterAgentId,
+  listBattlecastTacticAgentIds,
+  type AgentId,
+  type OpenRouterAgentId,
+} from './agents.js';
 import { loadLocalEnv } from './env.js';
 import type { EloStanding } from './ratings.js';
 import type { BattleType, D20benchScenario } from './scenario.js';
 import { goblinDuelScenario } from './scenarios/public/goblin-duel.js';
+import { goblinWarbandMirrorScenario } from './scenarios/public/goblin-squad.js';
+import {
+  balancedHeroMirrorScenario,
+  chokeControlHeroMirrorScenario,
+  statusPressureHeroMirrorScenario,
+} from './scenarios/public/hero-party-mirrors.js';
 
 export interface LlmSeasonConfig {
   id: string;
@@ -24,6 +35,8 @@ export interface LlmSeasonRunOptions {
   generatedAt?: string;
   outDir?: string;
   concurrency?: number;
+  matchLimit?: number;
+  maxCostUsd?: number;
   logProgress?: boolean;
   onProgress?: (progress: LlmSeasonProgress) => void | Promise<void>;
 }
@@ -53,7 +66,7 @@ export interface LlmSeasonCostSummary {
   byModel: LlmModelCostSummary[];
 }
 
-export type LlmSeasonProgressStatus = 'running' | 'complete' | 'failed';
+export type LlmSeasonProgressStatus = 'running' | 'complete' | 'failed' | 'stopped';
 export type LlmSeasonMatchProgressStatus = 'running' | 'completed' | 'failed';
 
 export interface LlmSeasonMatchProgress {
@@ -97,6 +110,7 @@ export interface LlmSeasonProgress {
   completedMatches: number;
   failedMatches: number;
   runningMatches: number;
+  stopReason?: string;
   costSummary: LlmSeasonCostSummary;
   activeMatches: LlmSeasonMatchProgress[];
   recentMatches: LlmSeasonMatchProgress[];
@@ -116,6 +130,7 @@ export interface LlmSeasonResult {
   totalMatches: number;
   completedMatches: number;
   failedMatches: number;
+  stopReason?: string;
   standings: EloStanding[];
   battleTypeStandings: Array<{
     battleType: BattleType;
@@ -157,6 +172,13 @@ export const llmSmokeModelAgents: OpenRouterAgentId[] = [
   createOpenRouterAgentId('meta-llama/llama-3.1-8b-instruct'),
 ];
 
+export const llmFrontierModelAgents: OpenRouterAgentId[] = [
+  createOpenRouterAgentId('anthropic/claude-opus-4.8'),
+  createOpenRouterAgentId('google/gemini-3.1-pro-preview'),
+  createOpenRouterAgentId('openai/gpt-5.5'),
+  ...llmSmokeModelAgents,
+];
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -172,6 +194,41 @@ export const llmSmokeSeason: LlmSeasonConfig = {
   concurrency: 3,
 };
 
+export const llmFrontierPublicSeason: LlmSeasonConfig = {
+  id: 'llm-frontier-public-v1',
+  description: 'Public LLM ladder across the 6v6 goblin control and three level-5 4v4 hero-party mirrors, adding latest available Opus, Gemini 3.1 Pro, GPT-5.5, cheap models, random, focus-fire, and copied Battlecast tactic agents.',
+  agents: [
+    ...llmFrontierModelAgents,
+    'baseline.focus-fire',
+    'baseline.random-legal',
+    ...listBattlecastTacticAgentIds(),
+  ],
+  scenarios: [
+    goblinWarbandMirrorScenario,
+    balancedHeroMirrorScenario,
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: [1],
+  maxRounds: 4,
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 6,
+};
+
+export const llmSeasons = [
+  llmFrontierPublicSeason,
+  llmSmokeSeason,
+];
+
+export function getLlmSeasonById(id: string): LlmSeasonConfig {
+  const season = llmSeasons.find((candidate) => candidate.id === id);
+  if (!season) {
+    throw new Error(`unknown LLM season: ${id}. Available LLM seasons: ${llmSeasons.map((candidate) => candidate.id).join(', ')}`);
+  }
+  return season;
+}
+
 export async function runLlmSeason(
   config: LlmSeasonConfig,
   options: LlmSeasonRunOptions | string = {},
@@ -182,7 +239,10 @@ export async function runLlmSeason(
   const initialRating = config.initialRating ?? 1000;
   const kFactor = config.kFactor ?? 32;
   const pricing = await loadOpenRouterPricing();
-  const fixtures = createLlmMatchFixtures(config);
+  const allFixtures = createLlmMatchFixtures(config);
+  const fixtures = typeof runOptions.matchLimit === 'number'
+    ? allFixtures.slice(0, runOptions.matchLimit)
+    : allFixtures;
   const concurrency = normalizeConcurrency(runOptions.concurrency ?? config.concurrency, fixtures.length);
   const progressPath = runOptions.outDir ? join(runOptions.outDir, 'progress.json') : undefined;
   const costAccumulators = new Map<string, LlmModelCostSummary>();
@@ -196,6 +256,7 @@ export async function runLlmSeason(
   let nextFixtureIndex = 0;
   let progressSequence = 0;
   let progressWriteChain = Promise.resolve();
+  let stopReason: string | undefined;
 
   const emitProgress = async (status: LlmSeasonProgressStatus): Promise<void> => {
     const progress = buildProgress({
@@ -207,6 +268,7 @@ export async function runLlmSeason(
       completedMatches,
       failedMatches,
       runningMatches,
+      stopReason,
       costSummary: finalizeCostSummary(costAccumulators),
       activeMatches: [...activeMatches.values()],
       recentMatches,
@@ -227,6 +289,10 @@ export async function runLlmSeason(
 
   const runWorker = async (): Promise<void> => {
     while (true) {
+      if (runOptions.maxCostUsd !== undefined && finalizeCostSummary(costAccumulators).estimatedCostUsd >= runOptions.maxCostUsd) {
+        stopReason = stopReason ?? `estimated cost reached $${runOptions.maxCostUsd.toFixed(2)}`;
+        return;
+      }
       const fixture = fixtures[nextFixtureIndex];
       nextFixtureIndex += 1;
       if (!fixture) return;
@@ -385,6 +451,7 @@ export async function runLlmSeason(
     totalMatches: fixtures.length,
     completedMatches,
     failedMatches,
+    stopReason,
     standings: finalizeStandings(overallPool),
     battleTypeStandings: [...battleTypePools.entries()].map(([battleType, pool]) => ({
       battleType,
@@ -395,7 +462,7 @@ export async function runLlmSeason(
     matches,
   };
 
-  await emitProgress('complete');
+  await emitProgress(stopReason ? 'stopped' : 'complete');
   return result;
 }
 
@@ -412,6 +479,7 @@ export function renderLlmSeasonMarkdown(result: LlmSeasonResult): string {
     `Initial rating: ${result.initialRating}`,
     `K-factor: ${result.kFactor}`,
     `Matches: ${result.completedMatches}/${result.totalMatches} completed${result.failedMatches ? `, ${result.failedMatches} failed` : ''}`,
+    ...(result.stopReason ? [`Stopped: ${result.stopReason}`] : []),
     '',
     '## Standings',
     '',
@@ -529,6 +597,7 @@ function buildProgress(input: {
   completedMatches: number;
   failedMatches: number;
   runningMatches: number;
+  stopReason: string | undefined;
   costSummary: LlmSeasonCostSummary;
   activeMatches: LlmSeasonMatchProgress[];
   recentMatches: LlmSeasonMatchProgress[];
@@ -546,6 +615,7 @@ function buildProgress(input: {
     completedMatches: input.completedMatches,
     failedMatches: input.failedMatches,
     runningMatches: input.runningMatches,
+    stopReason: input.stopReason,
     costSummary: input.costSummary,
     activeMatches: [...input.activeMatches].sort((left, right) => left.index - right.index),
     recentMatches: [...input.recentMatches].slice(-20).reverse(),

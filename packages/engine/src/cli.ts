@@ -10,7 +10,7 @@ import { buildMatchReport, renderMatchReportMarkdown } from './report.js';
 import { readReplayJsonl, verifyReplayStructure, writeReplayJsonl } from './replay.js';
 import { renderEloSeasonMarkdown, runEloSeason } from './ratings.js';
 import { getSeasonById, publicBaselineSeason, seasons } from './seasons.js';
-import { llmSmokeSeason, renderLlmSeasonMarkdown, runLlmSeason } from './llm-season.js';
+import { getLlmSeasonById, llmFrontierPublicSeason, llmSeasons, renderLlmSeasonMarkdown, runLlmSeason } from './llm-season.js';
 
 interface ParsedArgs {
   positional: string[];
@@ -178,11 +178,16 @@ async function commandLadderRun(options: ParsedArgs['options']): Promise<void> {
 }
 
 async function commandLlmLadderRun(options: ParsedArgs['options']): Promise<void> {
-  const outDir = typeof options.out === 'string' ? options.out : join('results/seasons', llmSmokeSeason.id);
+  const season = typeof options.season === 'string' ? getLlmSeasonById(options.season) : llmFrontierPublicSeason;
+  const outDir = typeof options.out === 'string' ? options.out : join('results/seasons', season.id);
   const concurrency = parseOptionalPositiveInteger(options.concurrency, '--concurrency');
-  const result = await runLlmSeason(llmSmokeSeason, {
+  const matchLimit = parseOptionalPositiveInteger(options['match-limit'], '--match-limit');
+  const maxCostUsd = parseOptionalPositiveNumber(options['max-cost'], '--max-cost');
+  const result = await runLlmSeason(season, {
     outDir,
     concurrency,
+    matchLimit,
+    maxCostUsd,
     logProgress: true,
   });
   await mkdir(outDir, { recursive: true });
@@ -213,6 +218,7 @@ async function commandLlmLadderRun(options: ParsedArgs['options']): Promise<void
       })),
     },
     failedMatches: result.failedMatches,
+    stopReason: result.stopReason,
   }, null, 2));
 }
 
@@ -273,6 +279,16 @@ function parseOptionalPositiveInteger(value: string | boolean | undefined, label
   return numeric;
 }
 
+function parseOptionalPositiveNumber(value: string | boolean | undefined, label: string): number | undefined {
+  if (value === undefined || value === false) return undefined;
+  if (typeof value !== 'string') throw new Error(`${label} requires a number value`);
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    throw new Error(`${label} requires a positive number, got ${value}`);
+  }
+  return numeric;
+}
+
 async function writeJson(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
@@ -287,11 +303,11 @@ Commands:
   d20bench scenario verify <replay.jsonl>
   d20bench match run --scenario <id> --red <agent> --blue <agent> --seed 1 [--max-rounds 10] [--out dir]
   d20bench ladder run [--season public-baseline-v0] [--out results/seasons/public-baseline-v0]
-  d20bench llm ladder run [--out results/seasons/llm-smoke-v0] [--concurrency 3]
+  d20bench llm ladder run [--season llm-frontier-public-v1] [--out results/seasons/<id>] [--concurrency 6] [--match-limit 16] [--max-cost 50]
 
 Seasons:
   ${seasons.map((season) => season.id).join('\n  ')}
-  ${llmSmokeSeason.id}
+  ${llmSeasons.map((season) => season.id).join('\n  ')}
 
 Agents:
   ${listAgentIds().join('\n  ')}

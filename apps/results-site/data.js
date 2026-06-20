@@ -1,5 +1,5 @@
 window.D20BENCH_RESULTS = {
-  "generatedAt": "2026-06-20T16:12:53.568Z",
+  "generatedAt": "2026-06-20T16:24:22.090Z",
   "seasons": [
     {
       "seasonId": "llm-smoke-v0",

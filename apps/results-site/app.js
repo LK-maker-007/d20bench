@@ -579,6 +579,7 @@
         <div>
           <span class="eyebrow">${escapeHtml(progress.seasonId || "Season")}</span>
           <h3>${escapeHtml(progress.description || "Benchmark run")}</h3>
+          ${progress.stopReason ? `<p class="progress-note">${escapeHtml(progress.stopReason)}</p>` : ""}
         </div>
         <div class="progress-meter" aria-label="${Math.round(ratio * 100)} percent complete">
           <span style="width:${(ratio * 100).toFixed(2)}%"></span>
@@ -773,6 +774,7 @@
 
   function liveProgressIds() {
     const ids = new Set(DATA.seasons.map((item) => item.seasonId).filter(Boolean));
+    ids.add("llm-frontier-public-v1");
     ids.add("llm-smoke-v0");
     return [...ids];
   }

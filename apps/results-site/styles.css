@@ -785,6 +785,12 @@ code {
   color: #b42318;
 }
 
+.status-pill.stopped {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #b45309;
+}
+
 .progress-panel h3 {
   margin: 0;
 }
@@ -797,6 +803,13 @@ code {
 .progress-summary h3 {
   overflow-wrap: anywhere;
   font-size: 1.05rem;
+}
+
+.progress-note {
+  margin: 8px 0 0;
+  color: var(--amber);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .progress-meter {
