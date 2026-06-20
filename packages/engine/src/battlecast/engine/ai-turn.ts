@@ -1,5 +1,5 @@
-import { Condition, ConditionDuration, Creature, LegendaryAction, MonsterAction } from '../types/monster';
-import { BASE_DURATIONS } from '../types/animation';
+import { Condition, ConditionDuration, Creature, LegendaryAction, MonsterAction } from '../types/monster.js';
+import { BASE_DURATIONS } from '../types/animation.js';
 import {
   BattleState, distance, getFootprintSize, creatureDistance, isPositionBlocked,
   getEnemies, getAliveCreatures,
@@ -17,11 +17,11 @@ import {
   processTargetTurnEndOngoingEffects,
   tryEscapeContainer, processHydraEndOfTurn,
   rollSaveWithBuffs,
-} from './combat';
-import { abilityModifier, averageDamage, battlecastRandom, rollSave, rollDice } from './dice';
-import { getEligibleWildShapeBeasts } from '../data/heroes';
-import { moveToward } from './ai-movement';
-import { chooseSmartDestination } from './ai-movement-evaluator';
+} from './combat.js';
+import { abilityModifier, averageDamage, battlecastRandom, rollSave, rollDice } from './dice.js';
+import { getEligibleWildShapeBeasts } from '../data/heroes.js';
+import { moveToward } from './ai-movement.js';
+import { chooseSmartDestination } from './ai-movement-evaluator.js';
 import {
   getActiveActions, getSpecialActions, getMultiattack,
   getMeleeActions, getRangedActions,
@@ -29,8 +29,8 @@ import {
   estimateActionDamage, estimateDamage, expectedHitDamage,
   shouldUseAoE, shouldRetreat, bestAoEPosition,
   adjustForResistance,
-} from './ai-targeting';
-import { trySpellcast } from './ai-spellcasting';
+} from './ai-targeting.js';
+import { trySpellcast } from './ai-spellcasting.js';
 
 /**
  * Turn orchestration: end-to-end "creature takes a turn" logic.

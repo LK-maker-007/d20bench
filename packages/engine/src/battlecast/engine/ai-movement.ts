@@ -33,9 +33,9 @@
  * to spend, how to route around a wall) is behaviour, not mechanics.
  */
 
-import { Creature } from '../types/monster';
-import { BASE_DURATIONS } from '../types/animation';
-import { BattleState, getFootprintSize, isPositionBlocked } from './combat';
+import { Creature } from '../types/monster.js';
+import { BASE_DURATIONS } from '../types/animation.js';
+import { BattleState, getFootprintSize, isPositionBlocked } from './combat.js';
 
 /**
  * Check if a position is within grid bounds for a creature of a given footprint size.

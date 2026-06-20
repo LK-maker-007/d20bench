@@ -1,4 +1,4 @@
-import { parseTerrainMask, type TerrainCell } from '../types/terrain';
+import { parseTerrainMask, type TerrainCell } from '../types/terrain.js';
 
 /**
  * Map presets - background images that paint under the battle grid. Each

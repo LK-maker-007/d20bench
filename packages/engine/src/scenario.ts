@@ -6,7 +6,7 @@ import {
   type BattlecastBattleSummary,
   type BattlecastCombatantSpec,
 } from './battlecast-runner.js';
-import type { BattleState, TeamTactics } from './battlecast/engine/combat';
+import type { BattleState, TeamTactics } from './battlecast/engine/combat.js';
 import type { RandomSeed } from './random.js';
 
 export type ScenarioVisibility = 'public' | 'hidden' | 'private_arena';

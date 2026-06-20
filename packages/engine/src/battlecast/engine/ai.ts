@@ -16,12 +16,12 @@
  *                      multiattack parsing, passive auras).
  *
  * External callers (tests, hooks, components, the worker) keep importing
- * from './ai'. This file simply re-exports the public surface so the
+ * from './ai.js'. This file simply re-exports the public surface so the
  * split is invisible to the rest of the codebase.
  */
-export { moveToward, nearestFootprintEdge } from './ai-movement';
-export { executeRound, runBattle, runMonteCarlo } from './ai-loop';
-export type { MonteCarloResult, MonteCarloProgress } from './ai-loop';
-export { shouldPreferRanged } from './ai-targeting';
-export { trySpellcast } from './ai-spellcasting';
-export { processConditionTimers, executeTurn, executeLegendaryAction, runOpportunityAttacks } from './ai-turn';
+export { moveToward, nearestFootprintEdge } from './ai-movement.js';
+export { executeRound, runBattle, runMonteCarlo } from './ai-loop.js';
+export type { MonteCarloResult, MonteCarloProgress } from './ai-loop.js';
+export { shouldPreferRanged } from './ai-targeting.js';
+export { trySpellcast } from './ai-spellcasting.js';
+export { processConditionTimers, executeTurn, executeLegendaryAction, runOpportunityAttacks } from './ai-turn.js';

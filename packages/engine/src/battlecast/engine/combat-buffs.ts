@@ -19,14 +19,14 @@
  * (lazy named-binding), not at module init - same pattern as the
  * ai-loop <-> ai cycle from the AI refactor.
  */
-import { ActiveBuff, Creature, MonsterAction } from '../types/monster';
-import { BASE_DURATIONS } from '../types/animation';
-import { rollDice, rollSave } from './dice';
-import { distance } from './combat-geometry';
+import { ActiveBuff, Creature, MonsterAction } from '../types/monster.js';
+import { BASE_DURATIONS } from '../types/animation.js';
+import { rollDice, rollSave } from './dice.js';
+import { distance } from './combat-geometry.js';
 import {
   applyDamage, pushLog, getEffectiveAbilityScore, getEffectiveSaveModifier, hasActiveTrait,
   type BattleState,
-} from './combat';
+} from './combat.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Buff bonus math

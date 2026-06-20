@@ -26,8 +26,8 @@
  * This matches a legal 2024 standard-array-plus-background-boost chassis
  * without modeling species traits or origin feats.
  */
-import { MonsterData, MonsterAction, MonsterTrait, Abilities, type Speed, type WeaponMasteryProperty } from '../types/monster';
-import { monsters } from './monsters';
+import { MonsterData, MonsterAction, MonsterTrait, Abilities, type Speed, type WeaponMasteryProperty } from '../types/monster.js';
+import { monsters } from './monsters.js';
 import {
   FULL_CASTER_SLOTS, HALF_CASTER_SLOTS, WARLOCK_SLOTS, slotsToResources,
   magicMissile, burningHands, thunderwave, sleep,
@@ -44,7 +44,7 @@ import {
   aid, magicWeapon, shiningSmite,
   circleOfDeath, chainLightning, disintegrate, fingerOfDeath,
   befuddlement, powerWordHeal, powerWordKill,
-} from './spells';
+} from './spells.js';
 
 export type HeroClassName =
   | 'Barbarian' | 'Bard' | 'Cleric' | 'Druid' | 'Fighter' | 'Monk'

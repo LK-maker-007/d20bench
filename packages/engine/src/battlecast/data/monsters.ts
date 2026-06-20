@@ -1,4 +1,4 @@
-import { MonsterData } from '../types/monster';
+import { MonsterData } from '../types/monster.js';
 
 export const monsters: MonsterData[] = [
   // ============ CR 0 ============

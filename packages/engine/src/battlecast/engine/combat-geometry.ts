@@ -6,10 +6,10 @@
  * shapes - no battle-state mutation, no random rolls, no logging.
  *
  * combat.ts re-exports each of these so external callers can keep
- * importing from './combat'. New callers should import from this file
+ * importing from './combat.js'. New callers should import from this file
  * directly.
  */
-import { Creature } from '../types/monster';
+import { Creature } from '../types/monster.js';
 
 /** Footprint side length, in 5-foot cells, for a given size category. */
 export function getFootprintSize(size: string): number {

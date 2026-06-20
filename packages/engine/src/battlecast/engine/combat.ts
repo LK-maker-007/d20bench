@@ -1,11 +1,11 @@
-import { ActiveBuff, Creature, Condition, ConditionDuration, MonsterAction, MonsterData, RuntimeTraitEffect } from '../types/monster';
-import { AnimationEvent, BASE_DURATIONS, OA_ATTACK_DURATIONS } from '../types/animation';
-import { battlecastRandom, rollAttack, rollDamage, rollDice, rollInitiative, abilityModifier, rollSave, rollD20, maxDiceTotal } from './dice';
-import { lineOfSightBlocked } from '../types/terrain';
+import { ActiveBuff, Creature, Condition, ConditionDuration, MonsterAction, MonsterData, RuntimeTraitEffect } from '../types/monster.js';
+import { AnimationEvent, BASE_DURATIONS, OA_ATTACK_DURATIONS } from '../types/animation.js';
+import { battlecastRandom, rollAttack, rollDamage, rollDice, rollInitiative, abilityModifier, rollSave, rollD20, maxDiceTotal } from './dice.js';
+import { lineOfSightBlocked } from '../types/terrain.js';
 import {
   distance, getFootprintSize, creatureDistance, isPositionBlocked,
   isInMeleeRange, isInCone, isInLine,
-} from './combat-geometry';
+} from './combat-geometry.js';
 import {
   rollAttackBuffBonus, getRageDamageBonus,
   rollSaveWithBuffs, applyBuffDamageResistance,
@@ -13,8 +13,8 @@ import {
   lowestAvailableSlot,
   addBuff,
   dropConcentratedBuffsFrom,
-} from './combat-buffs';
-import { applyHealing, applyTemporaryHp } from './combat-spellcasting';
+} from './combat-buffs.js';
+import { applyHealing, applyTemporaryHp } from './combat-spellcasting.js';
 
 export interface BattleLog {
   round: number;
@@ -4208,13 +4208,13 @@ export { distance, getFootprintSize, creatureDistance, isPositionBlocked, getEne
 export {
   getSingleTargetVisual, resolveSingleTargetSave,
   resolveAoE, bestDirectionalTargets, getAoETargets, pickRangedSphereCenter,
-} from './combat-aoe';
+} from './combat-aoe.js';
 // Spellcasting lives in ./combat-spellcasting; re-export the same way.
 export {
   applyHealing, applyTemporaryHp, applyAutoDarts, applyBuffFromSpell, executeSpell, tryUseBonusActionDamageBuff,
-} from './combat-spellcasting';
+} from './combat-spellcasting.js';
 // Buff / resource / concentration-aura helpers live in ./combat-buffs;
-// re-export them here so external `from './combat'` imports keep working.
+// re-export them here so external `from './combat.js'` imports keep working.
 export {
   rollAttackBuffBonus, rollSaveBuffBonus, getRageDamageBonus, getSpellSaveDcBonus,
   rollSaveWithBuffs, applyBuffDamageResistance,
@@ -4223,5 +4223,5 @@ export {
   hasBuff, getBuff, addBuff, removeBuff,
   dropConcentratedBuffsFrom, expireBuffsForCreature, expireSourceTurnBuffs, resetTurnFlags,
   attachConcentrationAura, processConcentrationAuras, checkAuraEntry,
-} from './combat-buffs';
-export type { AnimationEvent } from '../types/animation';
+} from './combat-buffs.js';
+export type { AnimationEvent } from '../types/animation.js';

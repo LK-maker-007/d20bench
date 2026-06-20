@@ -10,9 +10,13 @@
   ],
   "scripts": {
     "build": "tsc -b",
+    "d20bench": "node packages/engine/dist/cli.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -b --pretty false"
+  },
+  "bin": {
+    "d20bench": "packages/engine/dist/cli.js"
   },
   "devDependencies": {
     "@types/node": "^24.12.0",

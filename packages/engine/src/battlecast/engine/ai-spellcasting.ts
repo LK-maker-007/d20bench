@@ -41,7 +41,7 @@
  * druids can't cast (gated at the top).
  */
 
-import { Creature, MonsterAction } from '../types/monster';
+import { Creature, MonsterAction } from '../types/monster.js';
 import {
   BattleState, creatureDistance, distance,
   getEnemies, getAllies,
@@ -49,12 +49,12 @@ import {
   tryUseBonusActionDamageBuff,
   isInCone, isInLine, bestDirectionalTargets,
   pushLog, getEffectiveMoveSpeed,
-} from './combat';
-import { moveToward } from './ai-movement';
-import { averageDamage } from './dice';
+} from './combat.js';
+import { moveToward } from './ai-movement.js';
+import { averageDamage } from './dice.js';
 import {
   estimateDamage, estimateSpellDamage, inferSpellDamageType, adjustForResistance,
-} from './ai-targeting';
+} from './ai-targeting.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Spell list helpers

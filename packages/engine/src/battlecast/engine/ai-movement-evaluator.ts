@@ -22,12 +22,12 @@
  * stays close to today.
  */
 
-import { Creature } from '../types/monster';
+import { Creature } from '../types/monster.js';
 import {
   BattleState, getFootprintSize, isPositionBlocked,
   getActiveSize, getActiveSpeed, getEffectiveMoveSpeed, hasActiveTrait,
-} from './combat';
-import { canRepeatMeleeOrRangedAtRange, getActiveActions, shouldPreferRanged } from './ai-targeting';
+} from './combat.js';
+import { canRepeatMeleeOrRangedAtRange, getActiveActions, shouldPreferRanged } from './ai-targeting.js';
 
 export type MovementArchetype =
   | 'melee'           // pure melee, charges in

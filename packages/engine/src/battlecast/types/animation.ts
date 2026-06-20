@@ -1,4 +1,4 @@
-import { Condition } from './monster';
+import { Condition } from './monster.js';
 
 export type AnimationEvent =
   | { kind: 'move'; creatureId: string; from: { x: number; y: number }; to: { x: number; y: number }; path?: { x: number; y: number }[]; durationMs: number }

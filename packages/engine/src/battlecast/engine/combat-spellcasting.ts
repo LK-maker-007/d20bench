@@ -21,21 +21,21 @@
  * as the other Phase 4 modules - all cross-module calls happen inside
  * function bodies, never at module init.
  */
-import { ActiveBuff, Condition, Creature, MonsterAction } from '../types/monster';
-import { BASE_DURATIONS } from '../types/animation';
-import { rollDice, abilityModifier, maxDiceTotal } from './dice';
-import { creatureDistance } from './combat-geometry';
+import { ActiveBuff, Condition, Creature, MonsterAction } from '../types/monster.js';
+import { BASE_DURATIONS } from '../types/animation.js';
+import { rollDice, abilityModifier, maxDiceTotal } from './dice.js';
+import { creatureDistance } from './combat-geometry.js';
 import {
   addBuff, dropConcentratedBuffsFrom,
   hasResource, consumeResource,
   attachConcentrationAura, rollSaveWithBuffs, getSpellSaveDcBonus,
-} from './combat-buffs';
-import { resolveAoE } from './combat-aoe';
+} from './combat-buffs.js';
+import { resolveAoE } from './combat-aoe.js';
 import {
   applyDamage, gainHp, pushLog, resolveAttack, getAliveCreatures,
   getEffectiveSaveModifier, resolveSpellReflection,
   type BattleState,
-} from './combat';
+} from './combat.js';
 
 function hasBoonOfSpellRecall(caster: Creature): boolean {
   const heroLevel = caster.monsterData.heroLevel ?? 0;

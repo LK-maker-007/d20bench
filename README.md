@@ -18,6 +18,8 @@ The Battlecast checkout lives beside this repo at `../battlecast` and should rem
 npm install
 npm test
 npm run build
+npm run d20bench -- scenario list
+npm run d20bench -- ladder run
 ```
 
 The first package is `@d20bench/engine`, which contains deterministic rules primitives such as seeded randomness and Battlecast-compatible dice helpers.

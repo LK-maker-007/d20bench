@@ -31,15 +31,15 @@
  * cycle dissolves.
  */
 
-import { Creature, MonsterData } from '../types/monster';
-import { BASE_DURATIONS } from '../types/animation';
+import { Creature, MonsterData } from '../types/monster.js';
+import { BASE_DURATIONS } from '../types/animation.js';
 import {
   BattleState, DEFAULT_TACTICS, type TeamTactics,
   creatureIdPrefix, getAliveCreatures, checkBattleComplete, pushLog,
   rollAllInitiatives, getInitiativeOrder, hasThiefsReflexes,
-} from './combat';
-import { executeTurn, executeLegendaryAction } from './ai';
-import { battlecastRandom } from './dice';
+} from './combat.js';
+import { executeTurn, executeLegendaryAction } from './ai.js';
+import { battlecastRandom } from './dice.js';
 
 /** Execute one full round of combat. */
 export function executeRound(state: BattleState): void {

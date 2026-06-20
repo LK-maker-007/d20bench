@@ -1,4 +1,4 @@
-import type { HeroClassName } from './heroes';
+import type { HeroClassName } from './heroes.js';
 
 export type PresetMonsterEntry = { monster: string; count: number };
 export type PresetHeroEntry = { heroClass: HeroClassName; level: number; count?: number };

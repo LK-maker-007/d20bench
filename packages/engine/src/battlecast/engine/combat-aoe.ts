@@ -22,15 +22,15 @@
  * inside a function body (lazy named binding) - same pattern as the
  * combat <-> combat-buffs cycle from Phase 4b.
  */
-import { Condition, Creature, MonsterAction } from '../types/monster';
-import { BASE_DURATIONS, type AnimationEvent, type AoEDamageTarget } from '../types/animation';
-import { rollDice, abilityModifier, maxDiceTotal } from './dice';
+import { Condition, Creature, MonsterAction } from '../types/monster.js';
+import { BASE_DURATIONS, type AnimationEvent, type AoEDamageTarget } from '../types/animation.js';
+import { rollDice, abilityModifier, maxDiceTotal } from './dice.js';
 import {
   creatureDistance, parseAoEShape, isInCone, isInLine, isPositionBlocked, distance,
-} from './combat-geometry';
+} from './combat-geometry.js';
 import {
   rollSaveWithBuffs, hasResource, consumeResource, addBuff, getSpellSaveDcBonus,
-} from './combat-buffs';
+} from './combat-buffs.js';
 import {
   applyDamage, applyCondition, resolveConditionOnHit,
   pushLog, getAliveCreatures, getEnemies,
@@ -39,7 +39,7 @@ import {
   conditionTargetMatchesActionSize, hasTotalCoverFromContainer, logTotalCoverFromContainer,
   isImmuneToDamageType,
   type BattleState,
-} from './combat';
+} from './combat.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Single-target visual categorization

@@ -1,6 +1,13 @@
+export * from './agent-match.js';
+export * from './agents.js';
 export * from './battlecast-runner.js';
 export * from './dice.js';
+export * from './legal-actions.js';
 export * from './random.js';
+export * from './ratings.js';
+export * from './report.js';
+export * from './replay.js';
 export * from './scenario.js';
 export * from './scenarios/index.js';
+export * from './seasons.js';
 export * as battlecast from './battlecast/index.js';

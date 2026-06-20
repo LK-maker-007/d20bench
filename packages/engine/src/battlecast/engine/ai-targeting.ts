@@ -32,15 +32,15 @@
  * dice itself.
  */
 
-import { Creature, MonsterAction } from '../types/monster';
+import { Creature, MonsterAction } from '../types/monster.js';
 import {
   BattleState, creatureDistance, getFootprintSize, isPositionBlocked,
   getEnemies, getAliveCreatures, getAoETargets,
   isInCone, isInLine,
   getActiveSize, getActiveSpeed,
-} from './combat';
-import { abilityModifier, averageDamage } from './dice';
-import { lineOfSightBlocked } from '../types/terrain';
+} from './combat.js';
+import { abilityModifier, averageDamage } from './dice.js';
+import { lineOfSightBlocked } from '../types/terrain.js';
 
 // ─────────────────────────────────────────────────────────────────────
 // Action list helpers - used by targeting, spellcasting, and turn

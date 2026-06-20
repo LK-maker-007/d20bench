@@ -35,6 +35,7 @@
 
 - `packages/engine/src/battlecast/engine/dice.ts` keeps Battlecast's public dice API but can now use a D20bench seeded RNG via `setBattlecastRng`, `seedBattlecastRng`, or `withBattlecastRng`.
 - Remaining randomness in copied Battlecast files now flows through `battlecastRandom()` so D20bench seeded runs cover creature id suffixes, initiative tie-breaks, recharges, Monte Carlo placement, and random Beholder eye ray selection.
+- Relative imports in copied Battlecast files use explicit `.js` specifiers so the compiled D20bench CLI can run under Node's ESM loader.
 - `packages/engine/src/battlecast-runner.ts` is D20bench-original wrapper code, not copied Battlecast code. It runs seeded Battlecast-style battles while keeping the copied Battlecast `BattleState` as the returned rules state.
 - The sibling Battlecast repository remains read-only. Future updates should copy or transform material into D20bench and update this provenance note.
 

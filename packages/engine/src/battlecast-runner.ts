@@ -1,19 +1,19 @@
-import { runBattle } from './battlecast/engine/ai';
+import { runBattle } from './battlecast/engine/ai.js';
 import {
   DEFAULT_TACTICS,
   createCreature,
   createCreatureWithFixedHp,
   type BattleState,
   type TeamTactics,
-} from './battlecast/engine/combat';
-import { withBattlecastRng } from './battlecast/engine/dice';
-import { maps } from './battlecast/data/maps';
-import { getMonsterByName } from './battlecast/data/monsters';
+} from './battlecast/engine/combat.js';
+import { withBattlecastRng } from './battlecast/engine/dice.js';
+import { maps } from './battlecast/data/maps.js';
+import { getMonsterByName } from './battlecast/data/monsters.js';
 import {
   buildMovementBlockedSet,
   buildSightBlockedSet,
-} from './battlecast/types/terrain';
-import type { Creature, MonsterData } from './battlecast/types/monster';
+} from './battlecast/types/terrain.js';
+import type { Creature, MonsterData } from './battlecast/types/monster.js';
 import type { RandomSeed } from './random.js';
 
 export type BattlecastTeam = 'red' | 'blue';

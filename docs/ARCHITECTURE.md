@@ -46,7 +46,6 @@ Future packages/apps:
 
 ```text
   packages/
-    agents/       baseline agents and LLM provider adapters
     evals/        suites, match runner, report generation
     ratings/      Elo/Glicko seasons and pairing logic
     replays/      replay writer, verifier, and compact indexes
@@ -125,6 +124,20 @@ It defines:
 
 The first public scenario fixture is `public.goblin-duel.v1`.
 
+The first CLI entrypoint is:
+
+```text
+packages/engine/src/cli.ts
+```
+
+Current commands:
+
+- `d20bench scenario list`
+- `d20bench scenario run <scenario-id> --seed 1`
+- `d20bench scenario verify <replay.jsonl>`
+- `d20bench match run --scenario <id> --red <agent> --blue <agent> --seed 1`
+- `d20bench ladder run`
+
 ## Layering
 
 ### 1. Battlecast-Compatible Rules Layer
@@ -169,6 +182,14 @@ Responsibilities:
 
 The legal-action catalogue is the central contract between the engine and agents.
 
+Current implementation:
+
+```text
+packages/engine/src/legal-actions.ts
+```
+
+The first catalogue supports `attack`, `move_toward`, and `end_turn`. It is intentionally small but already JSON-safe and validated by action id before mutation.
+
 ### 4. Agent Layer
 
 Purpose: compare policies under the same rules.
@@ -178,6 +199,22 @@ Responsibilities:
 - Baseline agents: random legal, nearest target, focus fire, expected damage, kiter, objective-first.
 - OpenRouter LLM adapter with structured output, retry policy, token/cost/latency logging, and budget caps.
 - Agent identity: model slug, provider routing, prompt template version, parameters, agent code version, ruleset id, and data pack id.
+
+Current implementation:
+
+```text
+packages/engine/src/agents.ts
+packages/engine/src/agent-match.ts
+```
+
+Baseline agents currently available:
+
+- `baseline.random-legal`
+- `baseline.nearest`
+- `baseline.focus-fire`
+- `baseline.expected-damage`
+
+`runAgentMatch` is the first D20bench-owned match loop. It uses Battlecast creature state and attack/movement resolution, but D20bench owns the active legal-action catalogue, agent selection, replay events, and final hash.
 
 ### 5. Eval And Rating Layer
 
@@ -190,6 +227,24 @@ Responsibilities:
 - Private Elo arena seasons.
 - Batch scheduling with concurrency and budget limits.
 - Metrics, reports, Elo/Glicko snapshots, and immutable season artifacts.
+
+Current implementation:
+
+```text
+packages/engine/src/replay.ts
+packages/engine/src/report.ts
+packages/engine/src/ratings.ts
+packages/engine/src/seasons.ts
+```
+
+The first season is `smoke-v0`: a visible public smoke ladder for baseline agents on `public.goblin-duel.v1`.
+
+First generated output:
+
+```text
+results/seasons/smoke-v0/standings.json
+results/seasons/smoke-v0/standings.md
+```
 
 ### 6. Public Website Layer
 
@@ -222,15 +277,15 @@ Current hashing status:
 
 - Final state hashes are SHA-256 hashes of stable JSON snapshots.
 - The initial snapshot includes battle clock, initiative, creature runtime state, logs, and animation events.
-- Future replay hashing should add per-turn hashes after each accepted action, not only a final hash.
+- Agent-match replay events include state hashes for match start, round start/end, turn start, action resolution, and match finish.
 
 ## Near-Term Build Plan
 
-1. Add replay JSONL logging with per-turn hashes.
-2. Add legal-action catalogue generation for one active creature.
-3. Add baseline agents.
-4. Add CLI commands for `scenario list`, `scenario run`, and `scenario verify`.
-5. Add OpenRouter only after deterministic local matches and replays are reliable.
+1. Broaden legal-action generation to cover spells, bonus actions, reactions, dodge, dash, disengage, and multiattack.
+2. Add more public scenario fixtures and hidden-suite plumbing.
+3. Add richer replay verification that replays accepted actions from JSONL and confirms every recorded hash.
+4. Add report aggregation across scenario families.
+5. Add OpenRouter only after deterministic local matches, legal actions, replays, reports, and ratings are reliable.
 
 ## Non-Goals For The First Engine Slice
 

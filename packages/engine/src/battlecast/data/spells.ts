@@ -22,7 +22,7 @@
  *   - Concentration spells that require sustained per-turn bookkeeping
  *     beyond simple buffs (e.g., Flaming Sphere moves each turn)
  */
-import type { MonsterAction, Abilities } from '../types/monster';
+import type { MonsterAction, Abilities } from '../types/monster.js';
 
 export type SpellcastingAbility = keyof Abilities;
 

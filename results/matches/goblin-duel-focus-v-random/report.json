@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-06-20T14:46:28.848Z",
+  "matches": [
+    {
+      "matchId": "public.goblin-duel.v1__1__baseline.focus-fire__baseline.random-legal",
+      "scenarioId": "public.goblin-duel.v1",
+      "seed": 1,
+      "redAgent": "baseline.focus-fire",
+      "blueAgent": "baseline.random-legal",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "finalStateHash": "bcd6d07a7c1d3339c1d9e745059fd9c6312e5b0cff1a74cbb263041be11956d1"
+    }
+  ],
+  "records": [
+    {
+      "agentId": "baseline.focus-fire",
+      "matches": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "score": 1,
+      "winRate": 1
+    },
+    {
+      "agentId": "baseline.random-legal",
+      "matches": 1,
+      "wins": 0,
+      "losses": 1,
+      "draws": 0,
+      "score": 0,
+      "winRate": 0
+    }
+  ]
+}
