@@ -92,19 +92,19 @@ Run the current public frontier ladder with:
 
 ```bash
 npm run build
-npm run d20bench -- llm ladder run --season llm-frontier-public-v1 --concurrency 6
+npm run d20bench -- llm ladder run --season llm-frontier-smart-v1 --concurrency 6
 ```
 
 Use a cost cap for full frontier runs:
 
 ```bash
-npm run d20bench -- llm ladder run --season llm-frontier-public-v1 --concurrency 6 --max-cost 50
+npm run d20bench -- llm ladder run --season llm-frontier-smart-v1 --concurrency 6 --max-cost 50
 ```
 
-For a cheap shakedown, cap the scheduled fixture list:
+For a cheap one-model-equivalent shakedown, cap the scheduled fixture list:
 
 ```bash
-npm run d20bench -- llm ladder run --season llm-frontier-public-v1 --match-limit 16 --concurrency 6 --out /tmp/d20bench-frontier-shakedown
+npm run d20bench -- llm ladder run --season llm-frontier-smart-v1 --match-limit 16 --concurrency 6 --out /tmp/d20bench-frontier-shakedown
 ```
 
 ## Current Scope
@@ -121,6 +121,7 @@ The first implementation is deliberately narrow:
 - `llm-frontier-public-v1` does not run model-vs-model pairings. It matches each OpenRouter model against random and each copied Battlecast tactic agent in both side assignments.
 - `llm-frontier-public-v1` runs the 6v6 goblin control plus the three 4v4 level-5 hero-party mirrors, capped at 3 rounds, with concurrency 8 by default.
 - `llm-frontier-fullturn-v1` uses the same schedule but sets `llmActionSpace: battlecast-full-turn`, so LLMs can select the same full-turn Battlecast executor modes as the fixed tactic agents.
+- `llm-frontier-smart-v1` is the going-forward public frontier benchmark. It keeps only `battlecast.smart` as the fixed opponent, uses the full-turn delegate action space, and runs two seeds across four scenarios and both side assignments for 16 matches per model.
 - LLM ladder runs write `completed-matches.jsonl` checkpoints as matches finish; `--resume` reloads completed fixtures and continues with failed or unstarted fixtures.
 
 This gives us a safe, auditable harness before we spend significant model budget.

@@ -194,6 +194,10 @@ export const llmBattlecastOpponentAgents: AgentId[] = [
   ...listBattlecastTacticAgentIds(),
 ];
 
+export const llmSmartOpponentAgents: AgentId[] = [
+  'battlecast.smart',
+];
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -237,7 +241,30 @@ export const llmFrontierFullTurnSeason: LlmSeasonConfig = {
   llmActionSpace: 'battlecast-full-turn',
 };
 
+export const llmFrontierSmartSeason: LlmSeasonConfig = {
+  id: 'llm-frontier-smart-v1',
+  description: 'Public LLM ladder against only Battlecast Smart, using Battlecast full-turn delegate actions across the 6v6 goblin control and three level-5 4v4 hero-party mirrors, with two seeds for 16 matches per model.',
+  agents: [
+    ...llmFrontierModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    goblinWarbandMirrorScenario,
+    balancedHeroMirrorScenario,
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: [1, 2],
+  maxRounds: 3,
+  pairings: createModelOpponentPairings(llmFrontierModelAgents, llmSmartOpponentAgents),
+  llmActionSpace: 'battlecast-full-turn',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 8,
+};
+
 export const llmSeasons = [
+  llmFrontierSmartSeason,
   llmFrontierFullTurnSeason,
   llmFrontierPublicSeason,
   llmSmokeSeason,
