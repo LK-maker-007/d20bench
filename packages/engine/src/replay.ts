@@ -6,6 +6,7 @@ import type { TacticType } from './battlecast/engine/combat.js';
 import type { AnimationEvent } from './battlecast/types/animation.js';
 import type { AgentId } from './agents.js';
 import type { LegalActionCatalogue, LegalAction } from './legal-actions.js';
+import type { OpenRouterDecisionTrace } from './openrouter-agent.js';
 import type { D20benchScenario } from './scenario.js';
 
 export type ReplayEventController =
@@ -17,6 +18,11 @@ export type ReplayEventController =
       mode: 'battlecast-tactic';
       agentId: AgentId;
       tactic: TacticType;
+    }
+  | {
+      mode: 'openrouter-llm';
+      agentId: AgentId;
+      model: string;
     };
 
 export type ReplayEvent =
@@ -55,6 +61,7 @@ export type ReplayEvent =
       agentId: AgentId;
       requestedActionId: string;
       acceptedAction: LegalAction;
+      llmTrace?: OpenRouterDecisionTrace;
       logs: BattleLog[];
       events: AnimationEvent[];
       stateHash: string;

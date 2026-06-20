@@ -10,7 +10,8 @@ export type BaselineAgentId =
   | 'baseline.focus-fire'
   | 'baseline.expected-damage';
 export type BattlecastTacticAgentId = `battlecast.${TacticType}`;
-export type AgentId = BaselineAgentId | BattlecastTacticAgentId;
+export type OpenRouterAgentId = `openrouter:${string}`;
+export type AgentId = BaselineAgentId | BattlecastTacticAgentId | OpenRouterAgentId;
 
 export interface AgentDecisionContext {
   state: BattleState;
@@ -33,7 +34,13 @@ export interface BattlecastTacticAgent {
   description: string;
 }
 
-export type Agent = LegalActionAgent | BattlecastTacticAgent;
+export interface OpenRouterAgent {
+  kind: 'openrouter-llm';
+  id: OpenRouterAgentId;
+  model: string;
+}
+
+export type Agent = LegalActionAgent | BattlecastTacticAgent | OpenRouterAgent;
 
 export const baselineAgents: Record<BaselineAgentId, LegalActionAgent> = {
   'baseline.random-legal': {
@@ -79,6 +86,9 @@ export const agents: Record<AgentId, Agent> = {
 };
 
 export function getAgent(agentId: AgentId): Agent {
+  if (isOpenRouterAgentId(agentId)) {
+    return createOpenRouterAgent(agentId);
+  }
   const agent = agents[agentId];
   if (!agent) {
     throw new Error(`unknown agent: ${agentId}`);
@@ -87,7 +97,7 @@ export function getAgent(agentId: AgentId): Agent {
 }
 
 export function isAgentId(value: string): value is AgentId {
-  return value in agents;
+  return value in agents || isOpenRouterAgentId(value);
 }
 
 export function listAgentIds(): AgentId[] {
@@ -98,6 +108,14 @@ export function listBattlecastTacticAgentIds(): BattlecastTacticAgentId[] {
   return Object.keys(battlecastTacticAgents) as BattlecastTacticAgentId[];
 }
 
+export function isOpenRouterAgentId(value: string): value is OpenRouterAgentId {
+  return value.startsWith('openrouter:') && value.slice('openrouter:'.length).length > 0;
+}
+
+export function createOpenRouterAgentId(model: string): OpenRouterAgentId {
+  return `openrouter:${model}` as OpenRouterAgentId;
+}
+
 function createBattlecastTacticAgent(tactic: TacticType): BattlecastTacticAgent {
   const label = TACTIC_LABELS[tactic];
   return {
@@ -106,6 +124,14 @@ function createBattlecastTacticAgent(tactic: TacticType): BattlecastTacticAgent 
     tactic,
     name: label.name,
     description: label.description,
+  };
+}
+
+function createOpenRouterAgent(agentId: OpenRouterAgentId): OpenRouterAgent {
+  return {
+    kind: 'openrouter-llm',
+    id: agentId,
+    model: agentId.slice('openrouter:'.length),
   };
 }
 

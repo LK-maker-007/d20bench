@@ -2,8 +2,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { isAgentId, listAgentIds, type AgentId } from './agents.js';
-import { runAgentMatch } from './agent-match.js';
+import { isAgentId, isOpenRouterAgentId, listAgentIds, type AgentId } from './agents.js';
+import { runAgentMatch, runAgentMatchAsync } from './agent-match.js';
 import { runD20benchScenario } from './scenario.js';
 import { getScenarioById, listScenarios } from './scenarios/index.js';
 import { buildMatchReport, renderMatchReportMarkdown } from './report.js';
@@ -92,6 +92,10 @@ async function commandScenarioVerify(target: string | undefined): Promise<void> 
   const first = events[0];
   const last = events[events.length - 1];
   if (first?.type === 'match_started' && last?.type === 'match_finished') {
+    if (isOpenRouterAgentId(first.redAgent) || isOpenRouterAgentId(first.blueAgent)) {
+      console.log(`Replay OK: ${target} (LLM replay structure verified; deterministic rerun skipped)`);
+      return;
+    }
     const rerun = runAgentMatch({
       scenario: getScenarioById(first.scenario.id),
       seed: first.seed,
@@ -112,7 +116,8 @@ async function commandMatchRun(options: ParsedArgs['options']): Promise<void> {
   const redAgent = parseAgent(expectString(options.red, '--red'));
   const blueAgent = parseAgent(expectString(options.blue, '--blue'));
   const seed = parseSeed(options.seed ?? '1');
-  const result = runAgentMatch({ scenario, seed, redAgent, blueAgent });
+  const maxRounds = parseOptionalPositiveInteger(options['max-rounds'], '--max-rounds');
+  const result = await runAgentMatchAsync({ scenario, seed, redAgent, blueAgent, maxRounds });
   const report = buildMatchReport([result]);
   const output = {
     matchId: result.matchId,
@@ -213,6 +218,16 @@ function parseSeed(value: string | boolean): string | number {
   return Number.isInteger(numeric) && String(numeric) === value ? numeric : value;
 }
 
+function parseOptionalPositiveInteger(value: string | boolean | undefined, label: string): number | undefined {
+  if (value === undefined || value === false) return undefined;
+  if (typeof value !== 'string') throw new Error(`${label} requires an integer value`);
+  const numeric = Number(value);
+  if (!Number.isInteger(numeric) || numeric <= 0) {
+    throw new Error(`${label} requires a positive integer, got ${value}`);
+  }
+  return numeric;
+}
+
 async function writeJson(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
@@ -225,7 +240,7 @@ Commands:
   d20bench scenario list
   d20bench scenario run <scenario-id> --seed 1 [--out result.json]
   d20bench scenario verify <replay.jsonl>
-  d20bench match run --scenario <id> --red <agent> --blue <agent> --seed 1 [--out dir]
+  d20bench match run --scenario <id> --red <agent> --blue <agent> --seed 1 [--max-rounds 10] [--out dir]
   d20bench ladder run [--season public-baseline-v0] [--out results/seasons/public-baseline-v0]
 
 Seasons:
@@ -233,6 +248,7 @@ Seasons:
 
 Agents:
   ${listAgentIds().join('\n  ')}
+  openrouter:<model-slug> (example: openrouter:openai/gpt-4o-mini)
 `);
 }
 

@@ -25,6 +25,16 @@ export function withBattlecastRng<T>(rngOrSeed: RandomSource | RandomSeed, fn: (
   }
 }
 
+export async function withBattlecastRngAsync<T>(rngOrSeed: RandomSource | RandomSeed, fn: () => Promise<T>): Promise<T> {
+  const previous = currentRng;
+  currentRng = isRandomSource(rngOrSeed) ? rngOrSeed : createRng(rngOrSeed);
+  try {
+    return await fn();
+  } finally {
+    currentRng = previous;
+  }
+}
+
 export function battlecastRandom(): number {
   return currentRng?.next() ?? Math.random();
 }

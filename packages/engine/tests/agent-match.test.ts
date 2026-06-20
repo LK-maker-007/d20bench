@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildLlmBattleObservation,
+  generateLegalActions,
   goblinDuelScenario,
+  isAgentId,
   listAgentIds,
   runAgentMatch,
+  runAgentMatchAsync,
   verifyReplayStructure,
 } from '../src/index.js';
 
@@ -40,6 +44,54 @@ describe('agent matches', () => {
     expect(firstTurn?.type).toBe('turn_started');
     expect(firstTurn?.legalActions.some((action) => action.type === 'attack')).toBe(true);
     expect(firstTurn?.legalActions.some((action) => action.type === 'end_turn')).toBe(true);
+  });
+
+  it('supports OpenRouter agent ids on the async harness path', async () => {
+    expect(isAgentId('openrouter:openai/gpt-4o-mini')).toBe(true);
+    expect(() => runAgentMatch({
+      scenario: goblinDuelScenario,
+      seed: 1,
+      redAgent: 'openrouter:openai/gpt-4o-mini',
+      blueAgent: 'baseline.random-legal',
+    })).toThrow(/requires runAgentMatchAsync/);
+
+    const sync = runAgentMatch({
+      scenario: goblinDuelScenario,
+      seed: 1,
+      redAgent: 'baseline.focus-fire',
+      blueAgent: 'baseline.random-legal',
+    });
+    const asyncResult = await runAgentMatchAsync({
+      scenario: goblinDuelScenario,
+      seed: 1,
+      redAgent: 'baseline.focus-fire',
+      blueAgent: 'baseline.random-legal',
+    });
+
+    expect(asyncResult.finalStateHash).toBe(sync.finalStateHash);
+    expect(asyncResult.replay).toEqual(sync.replay);
+  });
+
+  it('builds a compact LLM observation from legal actions and combat state', () => {
+    const match = runAgentMatch({
+      scenario: goblinDuelScenario,
+      seed: 1,
+      redAgent: 'baseline.focus-fire',
+      blueAgent: 'baseline.random-legal',
+      maxRounds: 1,
+    });
+    const active = match.state.creatures.find((creature) => creature.isAlive);
+    if (!active) throw new Error('expected an active creature');
+
+    const catalogue = generateLegalActions(match.state, active);
+    const observation = buildLlmBattleObservation(match.state, active, catalogue);
+
+    expect(observation.schemaVersion).toBe('d20bench.llm_observation.v1');
+    expect(observation.activeCreatureId).toBe(active.id);
+    expect(observation.creatures.some((creature) => creature.relation === 'enemy')).toBe(true);
+    expect(observation.legalActions.map((action) => action.id)).toEqual(
+      catalogue.actions.map((action) => action.id),
+    );
   });
 
   it('runs copied Battlecast tactic options as agents', () => {

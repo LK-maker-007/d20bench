@@ -21,6 +21,7 @@ npm run build
 npm run d20bench -- scenario list
 npm run d20bench -- ladder run
 npm run d20bench -- ladder run --season smoke-v0
+npm run d20bench -- match run --scenario public.goblin-duel.v1 --red openrouter:openai/gpt-4o-mini --blue baseline.focus-fire --seed 1 --max-rounds 3
 ```
 
 The first package is `@d20bench/engine`, which contains deterministic rules primitives such as seeded randomness and Battlecast-compatible dice helpers.
@@ -35,6 +36,7 @@ Put local secrets in `.env.local`. For OpenRouter, set `OPENROUTER_API_KEY`.
 
 - [Project plan](docs/PROJECT_PLAN.md)
 - [Architecture and design](docs/ARCHITECTURE.md)
+- [LLM agent harness](docs/LLM_HARNESS.md)
 - [Benchmark scenario design](docs/BENCHMARK_SCENARIOS.md)
 - [Implementation roadmap](docs/ROADMAP.md)
 - [Battlecast extraction plan](docs/BATTLECAST_EXTRACTION.md)
