@@ -87,10 +87,29 @@ describe('agent matches', () => {
     const catalogue = generateLegalActions(match.state, active);
     const observation = buildLlmBattleObservation(match.state, active, catalogue);
 
-    expect(observation.schemaVersion).toBe('d20bench.llm_observation.v1');
+    expect(observation.schemaVersion).toBe('d20bench.llm_observation.v2');
     expect(observation.actionSpace).toBe('primitive');
+    expect(observation.teamTactics.red).toEqual(expect.any(String));
+    expect(observation.teamTactics.blue).toEqual(expect.any(String));
     expect(observation.activeCreatureId).toBe(active.id);
     expect(observation.grid.movementBlocked).toEqual(expect.any(Array));
+    expect(observation.tacticReference.map((tactic) => tactic.id)).toEqual([
+      'battlecast_tactic:aggressive',
+      'battlecast_tactic:smart',
+      'battlecast_tactic:kiting',
+      'battlecast_tactic:defensive',
+    ]);
+    expect(observation.activeCreature.abilities.str).toEqual(expect.objectContaining({
+      score: expect.any(Number),
+      modifier: expect.any(Number),
+    }));
+    expect(observation.activeCreature.actions.length).toBeGreaterThan(0);
+    expect(observation.activeCreature.actions[0]).toEqual(expect.objectContaining({
+      name: expect.any(String),
+      type: expect.any(String),
+    }));
+    expect(observation.activeCreature.runtime.recharges).toEqual(expect.any(Object));
+    expect(observation.activeCreature.defenses.conditionImmunities).toEqual(expect.any(Array));
     expect(observation.creatures.some((creature) => creature.relation === 'enemy')).toBe(true);
     expect(observation.legalActions.map((action) => action.id)).toEqual(
       catalogue.actions.map((action) => action.id),

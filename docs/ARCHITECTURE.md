@@ -235,7 +235,7 @@ Baseline agents currently available:
 
 The `baseline.*` agents choose from the D20bench legal-action catalogue. The `battlecast.*` agents expose copied Battlecast tactic options as benchmark agents; their turns delegate to Battlecast `executeTurn`, so they can use the richer copied Battlecast AI for spells, AoE, healing, status, retreating, and special abilities. Replays mark those turns with a `battlecast_tactic:<tactic>` accepted action while preserving the resulting Battlecast logs and animation events.
 
-OpenRouter LLM agents use dynamic ids of the form `openrouter:<model-slug>`. They run through the async match harness, receive compact JSON observations, and must return a legal action id in structured JSON. Detailed design notes live in `docs/LLM_HARNESS.md`.
+OpenRouter LLM agents use dynamic ids of the form `openrouter:<model-slug>`. They run through the async match harness, receive structured JSON observations with Battlecast-relevant tactical metadata, and must return a legal action id in structured JSON. Detailed design notes live in `docs/LLM_HARNESS.md`.
 
 ### 5. Eval And Rating Layer
 

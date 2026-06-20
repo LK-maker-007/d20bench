@@ -183,6 +183,7 @@ async function sendOpenRouterRequest(input: {
           'You are controlling one creature in a deterministic D20bench tactical combat benchmark.',
           'Choose exactly one action id from the provided legalActions list.',
           'Do not invent actions. Do not explain rules. The engine handles all rules, dice, movement, and damage.',
+          'Use the observation metadata: action profiles, defenses, resources, recharges, active buffs, condition timers, and tacticReference.',
           'When legalActions include battlecast_tactic ids, those are full-turn delegates that may move, cast spells, heal, buff, use AoE, and attack through the copied Battlecast engine.',
           'Return concise JSON with actionId and rationale only.',
         ].join(' '),

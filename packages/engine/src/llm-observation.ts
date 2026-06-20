@@ -1,6 +1,227 @@
-import { TACTIC_LABELS, type BattleState } from './battlecast/engine/combat.js';
-import type { Creature } from './battlecast/types/monster.js';
+import {
+  TACTIC_LABELS,
+  getActiveSize,
+  getActiveSpeed,
+  type BattleState,
+} from './battlecast/engine/combat.js';
+import { abilityModifier, averageDamage } from './battlecast/engine/dice.js';
+import { getActiveActions } from './battlecast/engine/ai-targeting.js';
+import type {
+  ActiveBuff,
+  Abilities,
+  BuffTemplate,
+  Creature,
+  MonsterAction,
+  MonsterTrait,
+  RuntimeActionEffect,
+  RuntimeContainerState,
+  RuntimeOngoingEffect,
+  RuntimeTraitEffect,
+  Speed,
+} from './battlecast/types/monster.js';
 import type { LegalActionCatalogue, LegalAction } from './legal-actions.js';
+
+type AbilityKey = keyof Abilities;
+
+export interface LlmAbilityView {
+  score: number;
+  modifier: number;
+}
+
+export interface LlmDefenseView {
+  resistances: string[];
+  immunities: string[];
+  vulnerabilities: string[];
+  nonmagicalResistances: string[];
+  nonmagicalImmunities: string[];
+  conditionImmunities: string[];
+}
+
+export interface LlmConditionTimerView {
+  condition: string;
+  duration: string;
+  appliedRound: number;
+  sourceId: string;
+  sourceLabel?: string;
+  saveDC?: number;
+  saveAbility?: AbilityKey;
+  stage?: {
+    stages: string[];
+    currentIndex: number;
+    finalDuration?: string;
+  };
+}
+
+export interface LlmBuffView {
+  name: string;
+  key: string;
+  casterId: string;
+  casterLabel?: string;
+  appliedRound: number;
+  endRound: number | 'infinite';
+  requiresConcentration?: boolean;
+  attackBonusDice?: string;
+  attackBonus?: number;
+  saveBonusDice?: string;
+  acBonus?: number;
+  damageRider?: string;
+  reactiveDamage?: string;
+  resistPhysical?: boolean;
+  resistDamageTypes?: string[];
+  resistAllDamageExcept?: string[];
+  rageDamageBonus?: number;
+  speedPenalty?: number;
+  attackDisadvantage?: boolean;
+  saveDisadvantage?: boolean;
+  preventsOpportunityAttacks?: boolean;
+  advantageForAttackerId?: string;
+  advantageForAllAttackers?: boolean;
+  spellAttackAdvantage?: boolean;
+  spellSaveDcBonus?: number;
+}
+
+export interface LlmActionProfileView {
+  name: string;
+  type: MonsterAction['type'];
+  attackBonus?: number;
+  damage?: string;
+  averageDamage?: number;
+  damageType?: string;
+  additionalDamage?: string;
+  reach?: number;
+  range?: MonsterAction['range'];
+  savingThrow?: MonsterAction['savingThrow'];
+  conditionOnHit?: MonsterAction['conditionOnHit'];
+  recharge?: string;
+  rechargeReady?: boolean;
+  isBonusAction?: boolean;
+  magical?: boolean;
+  weaponMastery?: MonsterAction['weaponMastery'];
+  loading?: boolean;
+  spellLevel?: number;
+  spellSchool?: MonsterAction['spellSchool'];
+  atWill?: boolean;
+  concentration?: boolean;
+  durationRounds?: number;
+  targetScope?: MonsterAction['targetScope'];
+  targetTypeRestriction?: string;
+  resourceCost?: MonsterAction['resourceCost'];
+  resourceAvailable?: number;
+  heal?: MonsterAction['heal'];
+  temporaryHp?: MonsterAction['temporaryHp'];
+  buff?: LlmBuffTemplateView;
+  buffOnHit?: LlmBuffTemplateView;
+  buffOnFailedSave?: LlmBuffTemplateView;
+  smiteOnHit?: MonsterAction['smiteOnHit'];
+  autoDarts?: number;
+  autoDartDamage?: string;
+  autoDartDamageType?: string;
+  effects?: Array<LlmActionEffectView | LlmTraitEffectView>;
+  mechanicsStatus?: string;
+}
+
+export interface LlmBuffTemplateView {
+  name: string;
+  key: string;
+  requiresConcentration?: boolean;
+  attackBonus?: number;
+  attackBonusDice?: string;
+  saveBonusDice?: string;
+  acBonus?: number;
+  damageRider?: string;
+  resistPhysical?: boolean;
+  resistDamageTypes?: string[];
+  resistAllDamageExcept?: string[];
+  rageDamageBonus?: number;
+  reactiveDamage?: string;
+  preventDeath?: boolean;
+  attackDisadvantage?: boolean;
+  saveDisadvantage?: boolean;
+  speedPenalty?: number;
+  spellAttackAdvantage?: boolean;
+  spellSaveDcBonus?: number;
+}
+
+export interface LlmActionEffectView {
+  kind: RuntimeActionEffect['kind'];
+  summary: Record<string, unknown>;
+}
+
+export interface LlmTraitEffectView {
+  kind: RuntimeTraitEffect['kind'];
+  summary: Record<string, unknown>;
+}
+
+export interface LlmTraitView {
+  name: string;
+  effects?: LlmTraitEffectView[];
+  mechanicsStatus?: string;
+}
+
+export interface LlmRuntimeView {
+  hasActed: boolean;
+  hasMovedThisTurn: boolean;
+  bonusActionUsed: boolean;
+  reactionUsed: boolean;
+  airborne: boolean;
+  recharges: Record<string, boolean>;
+  activeBuffs: LlmBuffView[];
+  conditionTimers: LlmConditionTimerView[];
+  concentratingOn?: string;
+  concentrationAura?: Creature['concentrationAura'];
+  wildShape?: {
+    beastName: string;
+    tempHp: number;
+    maxTempHp: number;
+    formHp: number;
+    ac: number;
+    speed: Speed;
+    actions: LlmActionProfileView[];
+  };
+  deathSaves?: Creature['deathSaves'];
+  ongoingEffects?: LlmOngoingEffectView[];
+  containedBy?: LlmContainerView;
+  swallowedBy?: Creature['swallowedBy'];
+  abilityScoreDamage?: Creature['abilityScoreDamage'];
+  hpMaxReduction?: number;
+}
+
+export interface LlmOngoingEffectView {
+  key: string;
+  sourceId: string;
+  sourceLabel?: string;
+  condition?: string;
+  damage?: string;
+  damageType?: string;
+  tick: RuntimeOngoingEffect['tick'];
+  noHealing?: boolean;
+  saveEnds?: RuntimeOngoingEffect['saveEnds'];
+  appliedRound: number;
+  expiresRound?: number;
+}
+
+export interface LlmContainerView {
+  key: string;
+  sourceId: string;
+  sourceLabel?: string;
+  conditions: string[];
+  sourceTurnDamage?: string;
+  sourceTurnDamageType?: string;
+  targetTurnDamage?: string;
+  targetTurnDamageType?: string;
+  totalCover?: boolean;
+  movesWithSource?: boolean;
+  escapeDc?: number;
+}
+
+export interface LlmTacticView {
+  id: string;
+  label: string;
+  targetPriority: string;
+  movement: string;
+  retreat: string;
+  spellAndSpecialPriority: string;
+}
 
 export interface LlmCreatureView {
   id: string;
@@ -11,13 +232,28 @@ export interface LlmCreatureView {
   maxHp: number;
   temporaryHp: number;
   ac: number;
+  size: string;
+  creatureType: string;
   position: { x: number; y: number };
+  speed: Speed;
   speedRemaining: number;
+  initiative: number;
   alive: boolean;
   dying: boolean;
   conditions: string[];
+  conditionImmunities: string[];
+  abilities: Record<AbilityKey, LlmAbilityView>;
+  saves: Partial<Record<AbilityKey, number>>;
+  defenses: LlmDefenseView;
   resources: Record<string, number>;
   role?: string;
+  heroClass?: string;
+  heroLevel?: number;
+  proficiencyBonus: number;
+  senses: string;
+  traits: LlmTraitView[];
+  actions: LlmActionProfileView[];
+  runtime: LlmRuntimeView;
   label: string;
 }
 
@@ -43,16 +279,18 @@ export interface LlmGridView {
 }
 
 export interface LlmBattleObservation {
-  schemaVersion: 'd20bench.llm_observation.v1';
+  schemaVersion: 'd20bench.llm_observation.v2';
   objective: string;
   actionSpace: 'primitive' | 'battlecast-full-turn';
   round: number;
   turnIndex: number;
+  teamTactics: BattleState['teamTactics'];
   activeCreatureId: string;
   activeCreatureName: string;
   activeTeam: 'red' | 'blue';
   activeCreature: LlmCreatureView;
   creatures: LlmCreatureView[];
+  tacticReference: LlmTacticView[];
   grid: LlmGridView;
   legalActions: LlmActionView[];
   recentLogs: string[];
@@ -64,7 +302,7 @@ export function buildLlmBattleObservation(
   catalogue: LegalActionCatalogue,
 ): LlmBattleObservation {
   const creatures = state.creatures
-    .map((creature) => creatureView(creature, activeCreature))
+    .map((creature) => creatureView(state, creature, activeCreature))
     .sort((left, right) =>
       relationOrder(left.relation) - relationOrder(right.relation) ||
       left.team.localeCompare(right.team) ||
@@ -75,18 +313,21 @@ export function buildLlmBattleObservation(
   const actionSpace = catalogue.actions.some((action) => action.type === 'battlecast_tactic')
     ? 'battlecast-full-turn'
     : 'primitive';
+  const activeCreatureView = creatureById.get(activeCreature.id) ?? creatureView(state, activeCreature, activeCreature);
 
   return {
-    schemaVersion: 'd20bench.llm_observation.v1',
-    objective: 'Choose exactly one legal action id for the active creature. Full-turn Battlecast delegate actions execute movement, spells, healing, buffs, AoE, and attacks through the copied Battlecast rules.',
+    schemaVersion: 'd20bench.llm_observation.v2',
+    objective: 'Choose exactly one legal action id for the active creature. Full-turn Battlecast delegate actions execute movement, spells, healing, buffs, AoE, and attacks through the copied Battlecast rules. Use creature actions, defenses, resources, recharges, buffs, and condition timers to choose the best delegate.',
     actionSpace,
     round: state.round,
     turnIndex: state.turnIndex,
+    teamTactics: state.teamTactics,
     activeCreatureId: activeCreature.id,
     activeCreatureName: activeCreature.displayName,
     activeTeam: activeCreature.team,
-    activeCreature: creatureView(activeCreature, activeCreature),
+    activeCreature: activeCreatureView,
     creatures,
+    tacticReference: tacticReference(),
     grid: {
       size: state.gridSize,
       movementBlocked: sortedCells(state.terrainBlocked),
@@ -99,10 +340,14 @@ export function buildLlmBattleObservation(
   };
 }
 
-function creatureView(creature: Creature, activeCreature: Creature): LlmCreatureView {
+function creatureView(state: BattleState, creature: Creature, activeCreature: Creature): LlmCreatureView {
   const relation = creature.id === activeCreature.id
     ? 'self'
     : creature.team === activeCreature.team ? 'ally' : 'enemy';
+  const data = creature.monsterData;
+  const activeActions = getActiveActions(creature)
+    .filter((action) => action.legendaryOnly !== true)
+    .map((action) => actionProfileView(creature, action));
   return {
     id: creature.id,
     name: creature.displayName,
@@ -111,18 +356,33 @@ function creatureView(creature: Creature, activeCreature: Creature): LlmCreature
     hp: creature.currentHp,
     maxHp: creature.maxHp,
     temporaryHp: creature.temporaryHp ?? 0,
-    ac: creature.monsterData.ac,
+    ac: creature.wildShape?.ac ?? data.ac,
+    size: getActiveSize(creature),
+    creatureType: data.type,
     position: creature.position,
+    speed: getActiveSpeed(creature),
     speedRemaining: creature.movementRemaining,
+    initiative: creature.initiative,
     alive: creature.isAlive,
     dying: creature.dying ?? false,
     conditions: [...creature.conditions].sort(),
+    conditionImmunities: sortedStrings(data.conditionImmunities),
+    abilities: abilityView(creature),
+    saves: sortNumberRecord(creature.wildShape?.saves ?? data.saves),
+    defenses: defenseView(data),
     resources: Object.fromEntries(
       Object.entries(creature.resources ?? {})
         .filter(([, value]) => typeof value === 'number')
         .sort(([left], [right]) => left.localeCompare(right))
     ),
-    role: creature.monsterData.heroClass ?? creature.monsterData.type,
+    role: data.heroClass ?? data.type,
+    heroClass: data.heroClass,
+    heroLevel: data.heroLevel,
+    proficiencyBonus: data.proficiencyBonus,
+    senses: data.senses,
+    traits: traitViews(creature.wildShape?.traits ?? data.traits),
+    actions: activeActions,
+    runtime: runtimeView(state, creature),
     label: `${relation === 'self' ? 'self' : relation} ${creature.displayName} (${creature.team})`,
   };
 }
@@ -165,7 +425,7 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       label: `Full Battlecast turn using ${tactic.name} tactic`,
       tactic: action.tactic,
       fullTurnDelegate: true,
-      description: `${tactic.description}. The copied Battlecast engine may move, cast spells, heal, buff, use AoE, attack, and spend resources for this creature.`,
+      description: `${tactic.description}. See tacticReference and the active creature action metadata. The copied Battlecast engine may move, cast spells, heal, buff, use AoE, attack, and spend resources for this creature.`,
     };
   }
 
@@ -174,6 +434,324 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
     type: action.type,
     label: 'End turn',
   };
+}
+
+function abilityView(creature: Creature): Record<AbilityKey, LlmAbilityView> {
+  const base = creature.monsterData.abilities;
+  const physical = creature.wildShape?.abilities;
+  const effective: Abilities = {
+    ...base,
+    ...physical,
+  };
+  return Object.fromEntries(
+    (['str', 'dex', 'con', 'int', 'wis', 'cha'] as const).map((ability) => [
+      ability,
+      {
+        score: effective[ability] - (creature.abilityScoreDamage?.[ability] ?? 0),
+        modifier: abilityModifier(effective[ability] - (creature.abilityScoreDamage?.[ability] ?? 0)),
+      },
+    ])
+  ) as Record<AbilityKey, LlmAbilityView>;
+}
+
+function defenseView(data: Creature['monsterData']): LlmDefenseView {
+  return {
+    resistances: sortedStrings(data.resistances),
+    immunities: sortedStrings(data.immunities),
+    vulnerabilities: sortedStrings(data.vulnerabilities),
+    nonmagicalResistances: sortedStrings(data.nonmagicalResistances),
+    nonmagicalImmunities: sortedStrings(data.nonmagicalImmunities),
+    conditionImmunities: sortedStrings(data.conditionImmunities),
+  };
+}
+
+function runtimeView(state: BattleState, creature: Creature): LlmRuntimeView {
+  const view: LlmRuntimeView = {
+    hasActed: creature.hasActed,
+    hasMovedThisTurn: creature.hasMovedThisTurn,
+    bonusActionUsed: creature.bonusActionUsed ?? false,
+    reactionUsed: creature.reactionUsed ?? false,
+    airborne: creature.airborne ?? false,
+    recharges: sortBooleanRecord(creature.recharges),
+    activeBuffs: creature.activeBuffs.map((buff) => activeBuffView(state, buff)),
+    conditionTimers: creature.conditionTimers.map((timer) => ({
+      condition: timer.condition,
+      duration: timer.duration,
+      appliedRound: timer.appliedRound,
+      sourceId: timer.sourceId,
+      sourceLabel: creatureLabelById(state, timer.sourceId),
+      saveDC: timer.saveDC,
+      saveAbility: timer.saveAbility,
+      stage: timer.stageInfo ? {
+        stages: [...timer.stageInfo.stages],
+        currentIndex: timer.stageInfo.currentIndex,
+        finalDuration: timer.stageInfo.finalDuration,
+      } : undefined,
+    })),
+  };
+
+  if (creature.concentratingOn) view.concentratingOn = creature.concentratingOn;
+  if (creature.concentrationAura) view.concentrationAura = creature.concentrationAura;
+  if (creature.wildShape) {
+    view.wildShape = {
+      beastName: creature.wildShape.beastName,
+      tempHp: creature.wildShape.tempHp,
+      maxTempHp: creature.wildShape.maxTempHp,
+      formHp: creature.wildShape.formHp,
+      ac: creature.wildShape.ac,
+      speed: creature.wildShape.speed,
+      actions: creature.wildShape.actions
+        .filter((action) => action.legendaryOnly !== true)
+        .map((action) => actionProfileView(creature, action)),
+    };
+  }
+  if (creature.deathSaves) view.deathSaves = creature.deathSaves;
+  if (creature.ongoingEffects?.length) {
+    view.ongoingEffects = creature.ongoingEffects.map((effect) => ongoingEffectView(state, effect));
+  }
+  if (creature.containedBy) view.containedBy = containerView(state, creature.containedBy);
+  if (creature.swallowedBy) view.swallowedBy = creature.swallowedBy;
+  if (creature.abilityScoreDamage) view.abilityScoreDamage = creature.abilityScoreDamage;
+  if (creature.hpMaxReduction) view.hpMaxReduction = creature.hpMaxReduction;
+
+  return view;
+}
+
+function actionProfileView(creature: Creature, action: MonsterAction): LlmActionProfileView {
+  const resourceCost = action.resourceCost ?? spellSlotCost(action);
+  const view: LlmActionProfileView = {
+    name: action.name,
+    type: action.type,
+    attackBonus: action.attackBonus,
+    damage: action.damage,
+    averageDamage: averageDamageOrUndefined(action.damage),
+    damageType: action.damageType,
+    additionalDamage: action.additionalDamage,
+    reach: action.reach,
+    range: action.range,
+    savingThrow: action.savingThrow,
+    conditionOnHit: action.conditionOnHit,
+    recharge: action.recharge,
+    rechargeReady: action.recharge ? creature.recharges[action.name] !== false : undefined,
+    isBonusAction: action.isBonusAction,
+    magical: action.magical,
+    weaponMastery: action.weaponMastery,
+    loading: action.loading,
+    spellLevel: action.spellLevel,
+    spellSchool: action.spellSchool,
+    atWill: action.atWill,
+    concentration: action.concentration,
+    durationRounds: action.durationRounds,
+    targetScope: action.targetScope,
+    targetTypeRestriction: action.targetTypeRestriction,
+    resourceCost,
+    resourceAvailable: resourceCost ? creature.resources[resourceCost.key] ?? 0 : undefined,
+    heal: action.heal,
+    temporaryHp: action.temporaryHp,
+    buff: action.buff ? buffTemplateView(action.buff) : undefined,
+    buffOnHit: action.buffOnHit ? buffTemplateView(action.buffOnHit) : undefined,
+    buffOnFailedSave: action.buffOnFailedSave ? buffTemplateView(action.buffOnFailedSave) : undefined,
+    smiteOnHit: action.smiteOnHit,
+    autoDarts: action.autoDarts,
+    autoDartDamage: action.autoDartDamage,
+    autoDartDamageType: action.autoDartDamageType,
+    effects: action.effects?.map(actionEffectView),
+    mechanicsStatus: mechanicsStatusText(action.mechanicsStatus),
+  };
+
+  return stripUndefined(view);
+}
+
+function spellSlotCost(action: MonsterAction): MonsterAction['resourceCost'] | undefined {
+  if (action.atWill || action.spellLevel === undefined || action.spellLevel <= 0) return undefined;
+  return { key: `slot-${action.spellLevel}`, amount: 1 };
+}
+
+function activeBuffView(state: BattleState, buff: ActiveBuff): LlmBuffView {
+  return stripUndefined({
+    name: buff.name,
+    key: buff.key,
+    casterId: buff.casterId,
+    casterLabel: creatureLabelById(state, buff.casterId),
+    appliedRound: buff.appliedRound,
+    endRound: Number.isFinite(buff.endRound) ? buff.endRound : 'infinite' as const,
+    requiresConcentration: buff.requiresConcentration,
+    attackBonusDice: buff.attackBonusDice,
+    attackBonus: buff.attackBonus,
+    saveBonusDice: buff.saveBonusDice,
+    acBonus: buff.acBonus,
+    damageRider: buff.damageRider,
+    reactiveDamage: buff.reactiveDamage,
+    resistPhysical: buff.resistPhysical,
+    resistDamageTypes: sortedStrings(buff.resistDamageTypes),
+    resistAllDamageExcept: sortedStrings(buff.resistAllDamageExcept),
+    rageDamageBonus: buff.rageDamageBonus,
+    speedPenalty: buff.speedPenalty,
+    attackDisadvantage: buff.attackDisadvantage,
+    saveDisadvantage: buff.saveDisadvantage,
+    preventsOpportunityAttacks: buff.preventsOpportunityAttacks,
+    advantageForAttackerId: buff.advantageForAttackerId,
+    advantageForAllAttackers: buff.advantageForAllAttackers,
+    spellAttackAdvantage: buff.spellAttackAdvantage,
+    spellSaveDcBonus: buff.spellSaveDcBonus,
+  });
+}
+
+function buffTemplateView(buff: BuffTemplate): LlmBuffTemplateView {
+  return stripUndefined({
+    name: buff.name,
+    key: buff.key,
+    requiresConcentration: buff.requiresConcentration,
+    attackBonus: buff.attackBonus,
+    attackBonusDice: buff.attackBonusDice,
+    saveBonusDice: buff.saveBonusDice,
+    acBonus: buff.acBonus,
+    damageRider: buff.damageRider,
+    resistPhysical: buff.resistPhysical,
+    resistDamageTypes: sortedStrings(buff.resistDamageTypes),
+    resistAllDamageExcept: sortedStrings(buff.resistAllDamageExcept),
+    rageDamageBonus: buff.rageDamageBonus,
+    reactiveDamage: buff.reactiveDamage,
+    preventDeath: buff.preventDeath,
+    attackDisadvantage: buff.attackDisadvantage,
+    saveDisadvantage: buff.saveDisadvantage,
+    speedPenalty: buff.speedPenalty,
+    spellAttackAdvantage: buff.spellAttackAdvantage,
+    spellSaveDcBonus: buff.spellSaveDcBonus,
+  });
+}
+
+function traitViews(traits: MonsterTrait[] | undefined): LlmTraitView[] {
+  return (traits ?? [])
+    .map((trait) => stripUndefined({
+      name: trait.name,
+      effects: trait.effects?.map(traitEffectView),
+      mechanicsStatus: mechanicsStatusText(trait.mechanicsStatus),
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function actionEffectView(effect: RuntimeActionEffect): LlmActionEffectView {
+  return {
+    kind: effect.kind,
+    summary: stripUndefined({ ...effect }),
+  };
+}
+
+function traitEffectView(effect: RuntimeTraitEffect): LlmTraitEffectView {
+  return {
+    kind: effect.kind,
+    summary: stripUndefined({ ...effect }),
+  };
+}
+
+function ongoingEffectView(state: BattleState, effect: RuntimeOngoingEffect): LlmOngoingEffectView {
+  return stripUndefined({
+    key: effect.key,
+    sourceId: effect.sourceId,
+    sourceLabel: creatureLabelById(state, effect.sourceId),
+    condition: effect.condition,
+    damage: effect.damage,
+    damageType: effect.damageType,
+    tick: effect.tick,
+    noHealing: effect.noHealing,
+    saveEnds: effect.saveEnds,
+    appliedRound: effect.appliedRound,
+    expiresRound: effect.expiresRound,
+  });
+}
+
+function containerView(state: BattleState, container: RuntimeContainerState): LlmContainerView {
+  return stripUndefined({
+    key: container.key,
+    sourceId: container.sourceId,
+    sourceLabel: creatureLabelById(state, container.sourceId),
+    conditions: [...container.conditions].sort(),
+    sourceTurnDamage: container.sourceTurnDamage,
+    sourceTurnDamageType: container.sourceTurnDamageType,
+    targetTurnDamage: container.targetTurnDamage,
+    targetTurnDamageType: container.targetTurnDamageType,
+    totalCover: container.totalCover,
+    movesWithSource: container.movesWithSource,
+    escapeDc: container.escapeDc,
+  });
+}
+
+function tacticReference(): LlmTacticView[] {
+  return [
+    {
+      id: 'battlecast_tactic:aggressive',
+      label: TACTIC_LABELS.aggressive.name,
+      targetPriority: 'Nearest enemy.',
+      movement: 'Always closes distance toward the target; overrides ranged preference and tries to reach melee when possible.',
+      retreat: 'Never retreats.',
+      spellAndSpecialPriority: 'Before weapon attacks, the copied engine can heal, apply concentration buffs, cast damage/control spells, and use good AoE/special actions when resources and geometry allow.',
+    },
+    {
+      id: 'battlecast_tactic:smart',
+      label: TACTIC_LABELS.smart.name,
+      targetPriority: 'High-intelligence creatures focus lowest HP percentage targets unless another enemy is much closer; average-intelligence creatures mix nearest and weakest; low-intelligence creatures attack nearest.',
+      movement: 'Advances when needed, but ranged-favoring creatures stop in ranged range and may reposition for better firing lines.',
+      retreat: 'Can retreat when intelligent and very low HP; retreats only if it has ranged actions and may disengage to avoid dangerous opportunity attacks.',
+      spellAndSpecialPriority: 'Before weapon attacks, the copied engine can heal, apply concentration buffs, cast damage/control spells, and use good AoE/special actions when resources and geometry allow.',
+    },
+    {
+      id: 'battlecast_tactic:kiting',
+      label: TACTIC_LABELS.kiting.name,
+      targetPriority: 'Weakest enemy.',
+      movement: 'Ranged creatures try to keep distance: back away if too close, advance only to normal ranged range, otherwise hold and shoot.',
+      retreat: 'Retreats earlier at 50% HP or lower when it can still contribute with ranged attacks.',
+      spellAndSpecialPriority: 'Before weapon attacks, the copied engine can heal, apply concentration buffs, cast damage/control spells, and use good AoE/special actions when resources and geometry allow.',
+    },
+    {
+      id: 'battlecast_tactic:defensive',
+      label: TACTIC_LABELS.defensive.name,
+      targetPriority: 'Nearest enemy.',
+      movement: 'Holds position and does not advance; attacks only what is reachable after any spell/special handling.',
+      retreat: 'Never retreats.',
+      spellAndSpecialPriority: 'Before weapon attacks, the copied engine can heal, apply concentration buffs, cast damage/control spells, and use good AoE/special actions when resources and geometry allow.',
+    },
+  ];
+}
+
+function mechanicsStatusText(status: MonsterAction['mechanicsStatus']): string | undefined {
+  if (!status) return undefined;
+  return status.status === 'implemented'
+    ? `implemented${status.note ? `: ${status.note}` : ''}`
+    : `deferred: ${status.reason}`;
+}
+
+function averageDamageOrUndefined(expression: string | undefined): number | undefined {
+  return expression ? Number(averageDamage(expression).toFixed(2)) : undefined;
+}
+
+function creatureLabelById(state: BattleState, id: string): string | undefined {
+  const creature = state.creatures.find((candidate) => candidate.id === id);
+  return creature ? `${creature.displayName} (${creature.team})` : undefined;
+}
+
+function sortedStrings(values: string[] | undefined): string[] {
+  return [...(values ?? [])].sort((left, right) => left.localeCompare(right));
+}
+
+function sortNumberRecord<T extends string>(record: Partial<Record<T, number>> | undefined): Partial<Record<T, number>> {
+  return Object.fromEntries(
+    Object.entries(record ?? {})
+      .sort(([left], [right]) => left.localeCompare(right))
+  ) as Partial<Record<T, number>>;
+}
+
+function sortBooleanRecord(record: Record<string, boolean> | undefined): Record<string, boolean> {
+  return Object.fromEntries(
+    Object.entries(record ?? {})
+      .sort(([left], [right]) => left.localeCompare(right))
+  );
+}
+
+function stripUndefined<T extends object>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== undefined)
+  ) as T;
 }
 
 function relationOrder(relation: LlmCreatureView['relation']): number {

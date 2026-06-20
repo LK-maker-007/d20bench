@@ -26,10 +26,13 @@ For each active creature:
 
 1. The deterministic Battlecast-derived engine creates the current battle state.
 2. D20bench generates a legal-action catalogue for the active creature.
-3. D20bench builds a compact LLM observation:
+3. D20bench builds a structured LLM observation:
    - round and turn index
    - active creature
-   - allies and enemies with HP, AC, position, conditions, and resources
+   - allies and enemies with HP, AC, position, speed, initiative, conditions, resources, ability scores, saves, defenses, traits, and active action profiles
+   - runtime status such as recharge readiness, active buffs, condition timers, concentration aura, wild shape, death saves, ongoing effects, and containment
+   - current Battlecast team tactic flags
+   - tactic reference notes for the copied Battlecast full-turn delegates
    - recent combat logs
    - exact legal action ids
 4. The LLM receives the observation and must return structured JSON:
@@ -114,6 +117,7 @@ The first implementation is deliberately narrow:
 - LLM agents choose from the existing D20bench legal-action catalogue.
 - The historical primitive action space contains `attack`, `move_toward`, and `end_turn`.
 - The full-turn action space also exposes copied Battlecast delegates: `battlecast_tactic:aggressive`, `battlecast_tactic:smart`, `battlecast_tactic:kiting`, and `battlecast_tactic:defensive`.
+- The current observation schema is `d20bench.llm_observation.v2`, which includes Battlecast-relevant tactical metadata: action/spell profiles, defenses, resources, recharges, buffs, condition timers, concentration/wild-shape state, team tactic flags, and tactic reference notes.
 - Battlecast tactic agents still delegate to copied Battlecast `executeTurn`.
 - LLM replay verification checks structure but skips model reruns.
 - `llm-smoke-v0` uses OpenRouter models for Kimi K2.7 Code, GLM 5.2, DeepSeek v4 Pro, DeepSeek v4 Flash, Qwen 3.5 Flash, Ministral 8B, and Llama 3.1 8B, plus `baseline.focus-fire`.
