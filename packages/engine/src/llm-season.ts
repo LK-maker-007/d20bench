@@ -243,14 +243,12 @@ export const llmFrontierFullTurnSeason: LlmSeasonConfig = {
 
 export const llmFrontierSmartSeason: LlmSeasonConfig = {
   id: 'llm-frontier-smart-v1',
-  description: 'Public LLM ladder against only Battlecast Smart, using Battlecast full-turn delegate actions across the 6v6 goblin control and three level-5 4v4 hero-party mirrors, with two seeds for 16 matches per model.',
+  description: 'Public LLM ladder against only Battlecast Smart, using Battlecast full-turn delegate actions across the chokepoint and status-pressure level-5 4v4 hero-party mirrors, with two seeds for 8 matches per model.',
   agents: [
     ...llmFrontierModelAgents,
     ...llmSmartOpponentAgents,
   ],
   scenarios: [
-    goblinWarbandMirrorScenario,
-    balancedHeroMirrorScenario,
     chokeControlHeroMirrorScenario,
     statusPressureHeroMirrorScenario,
   ],

@@ -6,14 +6,17 @@ import {
 } from '../src/index.js';
 
 describe('LLM seasons', () => {
-  it('defines the frontier benchmark as smart-only with 16 matches per model', () => {
+  it('defines the frontier benchmark as smart-only with 8 matches per model', () => {
     const pairings = llmFrontierSmartSeason.pairings ?? [];
     const modelAgents = new Set(llmFrontierModelAgents);
     const matchesByModel = new Map(llmFrontierModelAgents.map((agent) => [agent, 0]));
 
     expect(llmFrontierSmartSeason.llmActionSpace).toBe('battlecast-full-turn');
     expect(llmFrontierSmartSeason.seeds).toEqual([1, 2]);
-    expect(llmFrontierSmartSeason.scenarios).toHaveLength(4);
+    expect(llmFrontierSmartSeason.scenarios.map((scenario) => scenario.battleType)).toEqual([
+      'hero-party-chokepoint',
+      'hero-party-status',
+    ]);
     expect(llmFrontierSmartSeason.agents).toContain('battlecast.smart');
     expect(llmFrontierSmartSeason.agents).not.toContain('baseline.random-legal');
     expect(llmFrontierSmartSeason.agents).not.toContain('battlecast.aggressive');
@@ -32,6 +35,6 @@ describe('LLM seasons', () => {
     }
 
     expect(pairings).toHaveLength(llmFrontierModelAgents.length * 2);
-    expect([...matchesByModel.values()]).toEqual(llmFrontierModelAgents.map(() => 16));
+    expect([...matchesByModel.values()]).toEqual(llmFrontierModelAgents.map(() => 8));
   });
 });

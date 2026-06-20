@@ -305,7 +305,7 @@ Commands:
   d20bench scenario verify <replay.jsonl>
   d20bench match run --scenario <id> --red <agent> --blue <agent> --seed 1 [--max-rounds 10] [--out dir]
   d20bench ladder run [--season public-baseline-v0] [--out results/seasons/public-baseline-v0]
-  d20bench llm ladder run [--season llm-frontier-smart-v1] [--out results/seasons/<id>] [--concurrency 6] [--match-limit 16] [--max-cost 50] [--resume]
+  d20bench llm ladder run [--season llm-frontier-smart-v1] [--out results/seasons/<id>] [--concurrency 6] [--match-limit 8] [--max-cost 50] [--resume]
 
 Seasons:
   ${seasons.map((season) => season.id).join('\n  ')}
