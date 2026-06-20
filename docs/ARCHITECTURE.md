@@ -226,8 +226,14 @@ Baseline agents currently available:
 - `baseline.nearest`
 - `baseline.focus-fire`
 - `baseline.expected-damage`
+- `battlecast.aggressive`
+- `battlecast.smart`
+- `battlecast.kiting`
+- `battlecast.defensive`
 
 `runAgentMatch` is the first D20bench-owned match loop. It uses Battlecast creature state and attack/movement resolution, but D20bench owns the active legal-action catalogue, agent selection, replay events, and final hash.
+
+The `baseline.*` agents choose from the D20bench legal-action catalogue. The `battlecast.*` agents expose copied Battlecast tactic options as benchmark agents; their turns delegate to Battlecast `executeTurn`, so they can use the richer copied Battlecast AI for spells, AoE, healing, status, retreating, and special abilities. Replays mark those turns with a `battlecast_tactic:<tactic>` accepted action while preserving the resulting Battlecast logs and animation events.
 
 ### 5. Eval And Rating Layer
 
@@ -257,7 +263,7 @@ Elo seasons maintain two rating views:
 
 The first smoke season is `smoke-v0`: a visible public smoke ladder for baseline agents on `public.goblin-duel.v1`.
 
-The first non-duel public baseline season is `public-baseline-v0`: baseline agents across `goblin-warband`, `hero-party-balanced`, `hero-party-chokepoint`, and `hero-party-status`.
+The first non-duel public baseline season is `public-baseline-v0`: D20bench simple baselines and Battlecast tactic agents across `goblin-warband`, `hero-party-balanced`, `hero-party-chokepoint`, and `hero-party-status`.
 
 First generated output:
 

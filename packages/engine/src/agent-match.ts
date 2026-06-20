@@ -9,16 +9,22 @@ import {
 } from './battlecast/engine/combat.js';
 import type { Creature } from './battlecast/types/monster.js';
 import { moveToward } from './battlecast/engine/ai-movement.js';
+import { executeTurn } from './battlecast/engine/ai-turn.js';
 import { getActiveActions } from './battlecast/engine/ai-targeting.js';
 import { withBattlecastRng } from './battlecast/engine/dice.js';
 import { maps } from './battlecast/data/maps.js';
 import { buildMovementBlockedSet, buildSightBlockedSet } from './battlecast/types/terrain.js';
 import { createBattlecastCreatures, summarizeBattlecastBattle, type BattlecastBattleSummary } from './battlecast-runner.js';
-import { getAgent, type Agent, type AgentId } from './agents.js';
-import { findLegalAction, generateLegalActions, type LegalAction } from './legal-actions.js';
+import { getAgent, type Agent, type AgentId, type BattlecastTacticAgent } from './agents.js';
+import {
+  createBattlecastTacticAction,
+  findLegalAction,
+  generateLegalActions,
+  type LegalAction,
+} from './legal-actions.js';
 import { createRng, type RandomSeed } from './random.js';
 import { hashBattlecastState, type D20benchScenario } from './scenario.js';
-import type { ReplayEvent } from './replay.js';
+import type { ReplayEvent, ReplayEventController } from './replay.js';
 
 export interface AgentMatchSpec {
   scenario: D20benchScenario;
@@ -52,6 +58,7 @@ export function runAgentMatch(spec: AgentMatchSpec): AgentMatchResult {
 
   return withBattlecastRng(spec.seed, () => {
     const state = initAgentBattleState(spec.scenario);
+    configureBattlecastTacticsForAgents(state, red, blue);
     const replay: ReplayEvent[] = [];
     replay.push({
       type: 'match_started',
@@ -74,10 +81,19 @@ export function runAgentMatch(spec: AgentMatchSpec): AgentMatchResult {
         if (state.isComplete) break;
         state.turnIndex = i;
         const active = state.creatures.find((creature) => creature.id === state.initiativeOrder[i]);
-        if (!active || !active.isAlive || active.dying) continue;
-        resetSimpleTurn(active);
+        if (!active || !active.isAlive) continue;
 
-        const catalogue = generateLegalActions(state, active);
+        const agent = active.team === 'red' ? red : blue;
+        if (active.dying && agent.kind !== 'battlecast-tactic') continue;
+        if (agent.kind === 'legal-action') resetSimpleTurn(active);
+
+        const catalogue = agent.kind === 'battlecast-tactic'
+          ? {
+              activeCreatureId: active.id,
+              activeCreatureName: active.displayName,
+              actions: [createBattlecastTacticAction(agent.tactic)],
+            }
+          : generateLegalActions(state, active);
         replay.push({
           type: 'turn_started',
           matchId,
@@ -85,16 +101,20 @@ export function runAgentMatch(spec: AgentMatchSpec): AgentMatchResult {
           turnIndex: state.turnIndex,
           activeCreatureId: active.id,
           activeCreatureName: active.displayName,
+          controller: describeAgentController(agent),
           legalActions: catalogue.actions,
           stateHash: hashBattlecastState(state),
         });
 
-        const agent = active.team === 'red' ? red : blue;
-        const requested = agent.chooseAction({ state, activeCreature: active, catalogue, rng: agentRng });
-        const accepted = findLegalAction(catalogue, requested.id) ?? ({ id: 'end_turn', type: 'end_turn' } satisfies LegalAction);
         const logsBefore = state.logs.length;
         const eventsBefore = state.events.length;
-        applyLegalAction(state, active, accepted, agent);
+        const { requested, accepted } = applyAgentTurn({
+          state,
+          active,
+          agent,
+          catalogue,
+          agentRng,
+        });
         checkBattleComplete(state);
 
         replay.push({
@@ -156,6 +176,69 @@ function initAgentBattleState(scenario: D20benchScenario): BattleState {
   state.terrainBlocked = buildMovementBlockedSet(map?.terrain);
   state.terrainSightBlocked = buildSightBlockedSet(map?.terrain);
   return state;
+}
+
+function configureBattlecastTacticsForAgents(state: BattleState, red: Agent, blue: Agent): void {
+  state.teamTactics = {
+    ...state.teamTactics,
+    red: red.kind === 'battlecast-tactic' ? red.tactic : state.teamTactics.red,
+    blue: blue.kind === 'battlecast-tactic' ? blue.tactic : state.teamTactics.blue,
+  };
+}
+
+function describeAgentController(agent: Agent): ReplayEventController {
+  if (agent.kind === 'battlecast-tactic') {
+    return {
+      mode: 'battlecast-tactic',
+      agentId: agent.id,
+      tactic: agent.tactic,
+    };
+  }
+
+  return {
+    mode: 'legal-action',
+    agentId: agent.id,
+  };
+}
+
+interface AgentTurnInput {
+  state: BattleState;
+  active: Creature;
+  agent: Agent;
+  catalogue: ReturnType<typeof generateLegalActions>;
+  agentRng: ReturnType<typeof createRng>;
+}
+
+interface AgentTurnResult {
+  requested: LegalAction;
+  accepted: LegalAction;
+}
+
+function applyAgentTurn(input: AgentTurnInput): AgentTurnResult {
+  if (input.agent.kind === 'battlecast-tactic') {
+    const accepted = createBattlecastTacticAction(input.agent.tactic);
+    applyBattlecastTacticTurn(input.state, input.active, input.agent);
+    return { requested: accepted, accepted };
+  }
+
+  const requested = input.agent.chooseAction({
+    state: input.state,
+    activeCreature: input.active,
+    catalogue: input.catalogue,
+    rng: input.agentRng,
+  });
+  const accepted = findLegalAction(input.catalogue, requested.id) ?? ({ id: 'end_turn', type: 'end_turn' } satisfies LegalAction);
+  applyLegalAction(input.state, input.active, accepted, input.agent);
+  return { requested, accepted };
+}
+
+function applyBattlecastTacticTurn(state: BattleState, active: Creature, agent: BattlecastTacticAgent): void {
+  state.teamTactics = {
+    ...state.teamTactics,
+    [active.team]: agent.tactic,
+  };
+  active.stats.roundsSurvived = state.round;
+  executeTurn(state, active);
 }
 
 function resetSimpleTurn(active: Creature): void {

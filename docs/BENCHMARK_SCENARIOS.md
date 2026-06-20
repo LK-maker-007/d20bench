@@ -123,7 +123,14 @@ Notable options:
 
 ## Important Caveat
 
-The copied Battlecast autonomous runner can already exercise many AoE/status/support options in these scenarios. The current D20bench baseline-agent loop has a narrower legal-action catalogue: attack, move-toward, and end-turn.
+The copied Battlecast autonomous runner can already exercise many AoE/status/support options in these scenarios. D20bench exposes those Battlecast tactic options as agents:
+
+- `battlecast.aggressive`
+- `battlecast.smart`
+- `battlecast.kiting`
+- `battlecast.defensive`
+
+The simple `baseline.*` agents still use the narrower D20bench legal-action catalogue: attack, move-toward, and end-turn.
 
 Before these hero mirrors become the primary Elo suite for LLM agents, the legal-action layer should expand to include:
 
@@ -135,4 +142,4 @@ Before these hero mirrors become the primary Elo suite for LLM agents, the legal
 - Dash, dodge, disengage, help.
 - Bonus actions and reactions.
 
-Until then, the hero mirrors are correct scenario fixtures and Battlecast-runner benchmarks. `smoke-v0` remains the fast duel-only baseline-agent smoke season, while `public-baseline-v0` is the first non-duel public baseline season used to exercise blended and per-battle-type Elo output.
+Until then, the hero mirrors are correct scenario fixtures and Battlecast-runner benchmarks. `smoke-v0` remains the fast duel-only simple-agent smoke season, while `public-baseline-v0` is the first non-duel public baseline season used to exercise blended and per-battle-type Elo output with both simple D20bench baselines and copied Battlecast tactic agents.

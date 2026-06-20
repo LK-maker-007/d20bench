@@ -25,7 +25,7 @@ npm run d20bench -- ladder run --season smoke-v0
 
 The first package is `@d20bench/engine`, which contains deterministic rules primitives such as seeded randomness and Battlecast-compatible dice helpers.
 
-The default ladder season is `public-baseline-v0`, which computes one blended overall Elo table plus independent Elo tables per scenario battle type. `smoke-v0` remains available as the fast duel-only deterministic smoke ladder.
+The default ladder season is `public-baseline-v0`, which computes one blended overall Elo table plus independent Elo tables per scenario battle type. It includes the simple `baseline.*` agents and copied Battlecast tactic agents: `battlecast.aggressive`, `battlecast.smart`, `battlecast.kiting`, and `battlecast.defensive`. `smoke-v0` remains available as the fast duel-only deterministic smoke ladder.
 
 ## Planning Docs
 

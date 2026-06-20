@@ -2,10 +2,22 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 import type { BattleState, BattleLog } from './battlecast/engine/combat.js';
+import type { TacticType } from './battlecast/engine/combat.js';
 import type { AnimationEvent } from './battlecast/types/animation.js';
 import type { AgentId } from './agents.js';
 import type { LegalActionCatalogue, LegalAction } from './legal-actions.js';
 import type { D20benchScenario } from './scenario.js';
+
+export type ReplayEventController =
+  | {
+      mode: 'legal-action';
+      agentId: AgentId;
+    }
+  | {
+      mode: 'battlecast-tactic';
+      agentId: AgentId;
+      tactic: TacticType;
+    };
 
 export type ReplayEvent =
   | {
@@ -30,6 +42,7 @@ export type ReplayEvent =
       turnIndex: number;
       activeCreatureId: string;
       activeCreatureName: string;
+      controller?: ReplayEventController;
       legalActions: LegalActionCatalogue['actions'];
       stateHash: string;
     }

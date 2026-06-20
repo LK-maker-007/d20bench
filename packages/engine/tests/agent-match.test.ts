@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   goblinDuelScenario,
+  listAgentIds,
   runAgentMatch,
   verifyReplayStructure,
 } from '../src/index.js';
@@ -39,5 +40,44 @@ describe('agent matches', () => {
     expect(firstTurn?.type).toBe('turn_started');
     expect(firstTurn?.legalActions.some((action) => action.type === 'attack')).toBe(true);
     expect(firstTurn?.legalActions.some((action) => action.type === 'end_turn')).toBe(true);
+  });
+
+  it('runs copied Battlecast tactic options as agents', () => {
+    expect(listAgentIds()).toEqual(expect.arrayContaining([
+      'battlecast.aggressive',
+      'battlecast.smart',
+      'battlecast.kiting',
+      'battlecast.defensive',
+    ]));
+
+    const first = runAgentMatch({
+      scenario: goblinDuelScenario,
+      seed: 1,
+      redAgent: 'battlecast.smart',
+      blueAgent: 'battlecast.aggressive',
+    });
+    const second = runAgentMatch({
+      scenario: goblinDuelScenario,
+      seed: 1,
+      redAgent: 'battlecast.smart',
+      blueAgent: 'battlecast.aggressive',
+    });
+    const tacticResolution = first.replay.find((event) =>
+      event.type === 'action_resolved' && event.acceptedAction.type === 'battlecast_tactic'
+    );
+    const tacticTurn = first.replay.find((event) =>
+      event.type === 'turn_started' && event.controller?.mode === 'battlecast-tactic'
+    );
+
+    expect(second.finalStateHash).toBe(first.finalStateHash);
+    expect(second.replay).toEqual(first.replay);
+    expect(verifyReplayStructure(first.replay).ok).toBe(true);
+    expect(tacticResolution?.type).toBe('action_resolved');
+    expect(tacticTurn?.type).toBe('turn_started');
+    expect(tacticTurn?.legalActions).toHaveLength(1);
+    const tacticAction = tacticTurn?.legalActions[0];
+    expect(tacticAction?.type).toBe('battlecast_tactic');
+    if (tacticAction?.type !== 'battlecast_tactic') throw new Error('expected a Battlecast tactic action');
+    expect(['smart', 'aggressive']).toContain(tacticAction.tactic);
   });
 });

@@ -1,14 +1,16 @@
-import type { BattleState } from './battlecast/engine/combat.js';
+import { TACTIC_LABELS, type BattleState, type TacticType } from './battlecast/engine/combat.js';
 import { creatureDistance } from './battlecast/engine/combat.js';
 import type { Creature } from './battlecast/types/monster.js';
 import type { LegalAction, LegalActionCatalogue } from './legal-actions.js';
 import type { RandomSource } from './random.js';
 
-export type AgentId =
+export type BaselineAgentId =
   | 'baseline.random-legal'
   | 'baseline.nearest'
   | 'baseline.focus-fire'
   | 'baseline.expected-damage';
+export type BattlecastTacticAgentId = `battlecast.${TacticType}`;
+export type AgentId = BaselineAgentId | BattlecastTacticAgentId;
 
 export interface AgentDecisionContext {
   state: BattleState;
@@ -17,31 +19,46 @@ export interface AgentDecisionContext {
   rng: RandomSource;
 }
 
-export interface Agent {
+export interface LegalActionAgent {
+  kind: 'legal-action';
   id: AgentId;
   chooseAction(context: AgentDecisionContext): LegalAction;
 }
 
-export const baselineAgents: Record<AgentId, Agent> = {
+export interface BattlecastTacticAgent {
+  kind: 'battlecast-tactic';
+  id: BattlecastTacticAgentId;
+  tactic: TacticType;
+  name: string;
+  description: string;
+}
+
+export type Agent = LegalActionAgent | BattlecastTacticAgent;
+
+export const baselineAgents: Record<BaselineAgentId, LegalActionAgent> = {
   'baseline.random-legal': {
+    kind: 'legal-action',
     id: 'baseline.random-legal',
     chooseAction({ catalogue, rng }) {
       return catalogue.actions[Math.floor(rng.next() * catalogue.actions.length)] ?? { id: 'end_turn', type: 'end_turn' };
     },
   },
   'baseline.nearest': {
+    kind: 'legal-action',
     id: 'baseline.nearest',
     chooseAction(context) {
       return pickNearestAction(context) ?? endTurn();
     },
   },
   'baseline.focus-fire': {
+    kind: 'legal-action',
     id: 'baseline.focus-fire',
     chooseAction(context) {
       return pickFocusFireAction(context) ?? pickNearestAction(context) ?? endTurn();
     },
   },
   'baseline.expected-damage': {
+    kind: 'legal-action',
     id: 'baseline.expected-damage',
     chooseAction(context) {
       return pickExpectedDamageAction(context) ?? pickFocusFireAction(context) ?? pickNearestAction(context) ?? endTurn();
@@ -49,8 +66,20 @@ export const baselineAgents: Record<AgentId, Agent> = {
   },
 };
 
+export const battlecastTacticAgents: Record<BattlecastTacticAgentId, BattlecastTacticAgent> = {
+  'battlecast.aggressive': createBattlecastTacticAgent('aggressive'),
+  'battlecast.smart': createBattlecastTacticAgent('smart'),
+  'battlecast.kiting': createBattlecastTacticAgent('kiting'),
+  'battlecast.defensive': createBattlecastTacticAgent('defensive'),
+};
+
+export const agents: Record<AgentId, Agent> = {
+  ...baselineAgents,
+  ...battlecastTacticAgents,
+};
+
 export function getAgent(agentId: AgentId): Agent {
-  const agent = baselineAgents[agentId];
+  const agent = agents[agentId];
   if (!agent) {
     throw new Error(`unknown agent: ${agentId}`);
   }
@@ -58,11 +87,26 @@ export function getAgent(agentId: AgentId): Agent {
 }
 
 export function isAgentId(value: string): value is AgentId {
-  return value in baselineAgents;
+  return value in agents;
 }
 
 export function listAgentIds(): AgentId[] {
-  return Object.keys(baselineAgents) as AgentId[];
+  return Object.keys(agents) as AgentId[];
+}
+
+export function listBattlecastTacticAgentIds(): BattlecastTacticAgentId[] {
+  return Object.keys(battlecastTacticAgents) as BattlecastTacticAgentId[];
+}
+
+function createBattlecastTacticAgent(tactic: TacticType): BattlecastTacticAgent {
+  const label = TACTIC_LABELS[tactic];
+  return {
+    kind: 'battlecast-tactic',
+    id: `battlecast.${tactic}` as BattlecastTacticAgentId,
+    tactic,
+    name: label.name,
+    description: label.description,
+  };
 }
 
 function pickNearestAction({ state, activeCreature, catalogue }: AgentDecisionContext): LegalAction | undefined {

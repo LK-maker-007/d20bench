@@ -1,4 +1,5 @@
 import {
+  type TacticType,
   type BattleState,
   creatureDistance,
 } from './battlecast/engine/combat.js';
@@ -23,6 +24,11 @@ export type LegalAction =
   | {
       id: 'end_turn';
       type: 'end_turn';
+    }
+  | {
+      id: string;
+      type: 'battlecast_tactic';
+      tactic: TacticType;
     };
 
 export interface LegalActionCatalogue {
@@ -85,6 +91,18 @@ export function attackActionId(actionName: string, targetId: string): string {
 
 export function moveTowardActionId(targetId: string): string {
   return `move_toward:${targetId}`;
+}
+
+export function battlecastTacticActionId(tactic: TacticType): string {
+  return `battlecast_tactic:${tactic}`;
+}
+
+export function createBattlecastTacticAction(tactic: TacticType): LegalAction {
+  return {
+    id: battlecastTacticActionId(tactic),
+    type: 'battlecast_tactic',
+    tactic,
+  };
 }
 
 function isTargetInRange(active: Creature, target: Creature, action: MonsterAction): boolean {

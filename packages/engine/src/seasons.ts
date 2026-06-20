@@ -1,3 +1,4 @@
+import { listBattlecastTacticAgentIds, type AgentId } from './agents.js';
 import type { EloSeasonConfig } from './ratings.js';
 import { goblinDuelScenario } from './scenarios/public/goblin-duel.js';
 import { goblinWarbandMirrorScenario } from './scenarios/public/goblin-squad.js';
@@ -22,15 +23,18 @@ export const smokeSeason: EloSeasonConfig = {
   kFactor: 32,
 };
 
+const publicBaselineAgents: AgentId[] = [
+  'baseline.random-legal',
+  'baseline.nearest',
+  'baseline.focus-fire',
+  'baseline.expected-damage',
+  ...listBattlecastTacticAgentIds(),
+];
+
 export const publicBaselineSeason: EloSeasonConfig = {
   id: 'public-baseline-v0',
-  description: 'Baseline Elo season across non-duel public D20bench battle types, reporting both blended overall and per-battle-type ratings.',
-  agents: [
-    'baseline.random-legal',
-    'baseline.nearest',
-    'baseline.focus-fire',
-    'baseline.expected-damage',
-  ],
+  description: 'Baseline Elo season across non-duel public D20bench battle types, including D20bench simple baselines and copied Battlecast tactic agents.',
+  agents: publicBaselineAgents,
   scenarios: [
     goblinWarbandMirrorScenario,
     balancedHeroMirrorScenario,
