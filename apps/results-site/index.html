@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>D20bench Results</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="site-header">
+        <a class="brand" href="#overview" aria-label="D20bench results">
+          <span class="brand-mark" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+          <span>
+            <span class="eyebrow">D20bench</span>
+            <span class="brand-title">Results</span>
+          </span>
+        </a>
+
+        <nav class="section-nav" aria-label="Sections">
+          <a href="#ladder">Ladder</a>
+          <a href="#progress">Progress</a>
+          <a href="#battles">Battles</a>
+          <a href="#matrix">Matrix</a>
+          <a href="#matches">Matches</a>
+        </nav>
+
+        <label class="season-picker">
+          <span>Season</span>
+          <select id="seasonSelect"></select>
+        </label>
+      </header>
+
+      <main>
+        <section class="overview-band" id="overview">
+          <div class="overview-copy">
+            <p class="eyebrow" id="seasonGenerated">Generated</p>
+            <h1 id="seasonTitle">Benchmark Results</h1>
+            <p id="seasonDescription"></p>
+          </div>
+
+          <div class="rating-visual" aria-label="Rating spread">
+            <div class="visual-topline">
+              <span>Rating Spread</span>
+              <strong id="ratingSpread">0 Elo</strong>
+            </div>
+            <div id="ratingChart" class="rating-chart"></div>
+          </div>
+        </section>
+
+        <section class="metric-grid" id="metricGrid" aria-label="Season summary"></section>
+
+        <section class="content-grid">
+          <section class="panel panel-large" id="ladder">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Overall</p>
+                <h2>Elo Ladder</h2>
+              </div>
+              <div class="panel-control">
+                <label>
+                  <span>Agent</span>
+                  <select id="agentFilter"></select>
+                </label>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="standings-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Agent</th>
+                    <th>Elo</th>
+                    <th>Record</th>
+                    <th>Win Rate</th>
+                    <th>Score</th>
+                  </tr>
+                </thead>
+                <tbody id="standingsBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <aside class="panel agent-panel" id="agentPanel" aria-live="polite"></aside>
+        </section>
+
+        <section class="panel progress-panel" id="progress" aria-live="polite">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Live Runner</p>
+              <h2>Season Progress</h2>
+            </div>
+            <span class="status-pill" id="progressStatus">Idle</span>
+          </div>
+          <div id="progressPanel"></div>
+        </section>
+
+        <section class="panel" id="battles">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Scenarios</p>
+              <h2>Battle-Type Boards</h2>
+            </div>
+          </div>
+          <div class="battle-grid" id="battleTypeGrid"></div>
+        </section>
+
+        <section class="panel" id="matrix">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Pairings</p>
+              <h2>Head-to-Head Matrix</h2>
+            </div>
+          </div>
+          <div class="table-wrap matrix-wrap" id="matrixWrap"></div>
+        </section>
+
+        <section class="panel" id="matches">
+          <div class="panel-heading match-heading">
+            <div>
+              <p class="eyebrow">Evidence</p>
+              <h2>Match Log</h2>
+            </div>
+            <div class="match-controls">
+              <label>
+                <span>Battle</span>
+                <select id="battleFilter"></select>
+              </label>
+              <label class="search-label">
+                <span>Search</span>
+                <input id="matchSearch" type="search" autocomplete="off" />
+              </label>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="match-table">
+              <thead>
+                <tr>
+                  <th>Battle</th>
+                  <th>Seed</th>
+                  <th>Red</th>
+                  <th>Blue</th>
+                  <th>Winner</th>
+                  <th>Delta</th>
+                  <th>Hash</th>
+                </tr>
+              </thead>
+              <tbody id="matchBody"></tbody>
+            </table>
+          </div>
+          <div class="match-footer">
+            <span id="matchCount"></span>
+            <button id="showMoreButton" type="button">Show More</button>
+          </div>
+        </section>
+
+        <section class="panel report-panel" id="reports">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Runs</p>
+              <h2>Standalone Match Reports</h2>
+            </div>
+          </div>
+          <div id="reportList" class="report-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

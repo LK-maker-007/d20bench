@@ -74,6 +74,27 @@ The API key is loaded from `.env.local`:
 OPENROUTER_API_KEY=...
 ```
 
+## Parallel Season Runner
+
+LLM seasons can run matches concurrently because the slow part is waiting on model responses. `runLlmSeason` builds the full fixture list first, runs a bounded worker pool, and stores each completed match by fixture index.
+
+Ratings are still deterministic: Elo is applied only after all workers finish, in the original fixture order, not in API completion order. Parallelism changes wall-clock time, not the season math.
+
+The CLI writes live progress to:
+
+```text
+results/seasons/<season-id>/progress.json
+```
+
+That file contains status, concurrency, completed/failed/running counts, active matches, recent matches, token usage, and estimated OpenRouter cost. Failed matches are recorded and the remaining fixtures continue, so one model/provider failure does not erase the whole run.
+
+Run the current smoke ladder with:
+
+```bash
+npm run build
+npm run d20bench -- llm ladder run --concurrency 3
+```
+
 ## Current Scope
 
 The first implementation is deliberately narrow:
@@ -82,6 +103,7 @@ The first implementation is deliberately narrow:
 - Current legal actions are `attack`, `move_toward`, and `end_turn`.
 - Battlecast tactic agents still delegate to copied Battlecast `executeTurn`.
 - LLM replay verification checks structure but skips model reruns.
+- The first LLM season roster uses OpenRouter models for Kimi K2.7 Code, GLM 5.2, DeepSeek v4 Pro, DeepSeek v4 Flash, Qwen 3.5 Flash, Ministral 8B, and Llama 3.1 8B, plus `baseline.focus-fire`.
 
 This gives us a safe, auditable harness before we spend significant model budget.
 

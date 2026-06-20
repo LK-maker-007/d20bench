@@ -53,7 +53,7 @@ export async function chooseOpenRouterAction(
     observation,
     structuredOutput: true,
   });
-  const response = first.ok ? first : await sendOpenRouterRequest({
+  let response = first.ok ? first : await sendOpenRouterRequest({
     apiKey,
     model: agent.model,
     observation,
@@ -64,8 +64,26 @@ export async function chooseOpenRouterAction(
     throw new Error(`OpenRouter request failed (${response.status}): ${response.bodyText.slice(0, 500)}`);
   }
 
-  const content = response.body?.choices?.[0]?.message?.content;
-  const decision = parseDecisionJson(content);
+  let decision: OpenRouterDecisionJson;
+  try {
+    decision = parseDecisionJson(extractDecisionContent(response.body?.choices?.[0]?.message));
+  } catch (error) {
+    if (!response.structuredOutput) throw error;
+    response = await sendOpenRouterRequest({
+      apiKey,
+      model: agent.model,
+      observation,
+      structuredOutput: false,
+    });
+    if (!response.ok) {
+      throw new Error(`OpenRouter fallback request failed (${response.status}): ${response.bodyText.slice(0, 500)}`);
+    }
+    try {
+      decision = parseDecisionJson(extractDecisionContent(response.body?.choices?.[0]?.message));
+    } catch (fallbackError) {
+      throw new Error(`OpenRouter response for ${agent.model} did not include parseable action JSON. Message: ${JSON.stringify(response.body?.choices?.[0]?.message).slice(0, 700)}. Error: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+    }
+  }
   const requestedActionId = decision.actionId;
   const acceptedAction = findLegalAction(context.catalogue, requestedActionId) ?? { id: 'end_turn', type: 'end_turn' };
 
@@ -105,7 +123,7 @@ async function sendOpenRouterRequest(input: {
   const body = {
     model: input.model,
     temperature: 0,
-    max_completion_tokens: 220,
+    max_completion_tokens: 800,
     messages: [
       {
         role: 'system',
@@ -176,6 +194,29 @@ async function sendOpenRouterRequest(input: {
 }
 
 function parseDecisionJson(content: unknown): OpenRouterDecisionJson {
+  if (content && typeof content === 'object' && !Array.isArray(content)) {
+    const parsed = content as Partial<OpenRouterDecisionJson>;
+    if (typeof parsed.actionId === 'string' && parsed.actionId.length > 0) {
+      return {
+        actionId: parsed.actionId,
+        rationale: typeof parsed.rationale === 'string' ? parsed.rationale : undefined,
+      };
+    }
+  }
+
+  if (Array.isArray(content)) {
+    const text = content
+      .map((part) => {
+        if (typeof part === 'string') return part;
+        if (part && typeof part === 'object' && 'text' in part && typeof part.text === 'string') return part.text;
+        if (part && typeof part === 'object' && 'content' in part && typeof part.content === 'string') return part.content;
+        return '';
+      })
+      .join('\n')
+      .trim();
+    if (text.length > 0) return parseDecisionJson(text);
+  }
+
   if (typeof content !== 'string') {
     throw new Error('OpenRouter response did not include string content.');
   }
@@ -201,6 +242,11 @@ function parseDecisionJson(content: unknown): OpenRouterDecisionJson {
   }
 
   throw new Error(`OpenRouter response was not valid action JSON: ${content.slice(0, 500)}`);
+}
+
+function extractDecisionContent(message: any): unknown {
+  if (!message || typeof message !== 'object') return undefined;
+  return message.content ?? message.parsed ?? message.reasoning ?? message;
 }
 
 function normalizeUsage(usage: any): OpenRouterUsage | undefined {

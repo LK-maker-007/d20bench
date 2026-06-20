@@ -256,6 +256,7 @@ packages/engine/src/replay.ts
 packages/engine/src/report.ts
 packages/engine/src/ratings.ts
 packages/engine/src/seasons.ts
+packages/engine/src/llm-season.ts
 ```
 
 Elo seasons maintain two rating views:
@@ -266,6 +267,16 @@ Elo seasons maintain two rating views:
 The first smoke season is `smoke-v0`: a visible public smoke ladder for baseline agents on `public.goblin-duel.v1`.
 
 The first non-duel public baseline season is `public-baseline-v0`: D20bench simple baselines and Battlecast tactic agents across `goblin-warband`, `hero-party-balanced`, `hero-party-chokepoint`, and `hero-party-status`.
+
+The first LLM smoke season is `llm-smoke-v0`: latest Kimi, GLM 5.2, latest DeepSeek, and several cheaper smaller OpenRouter models against each other and `baseline.focus-fire`. LLM seasons use a bounded parallel worker pool because model latency is the bottleneck. Completed matches are stored by fixture index, then Elo is applied in deterministic fixture order so rating results do not depend on API response timing.
+
+Live LLM run progress is written to:
+
+```text
+results/seasons/<season-id>/progress.json
+```
+
+The progress artifact includes status, concurrency, active matches, recent matches, failures, token usage, and estimated cost.
 
 First generated output:
 
@@ -287,9 +298,10 @@ Responsibilities:
 - Head-to-head model matchup pages.
 - Model profile pages.
 - Season archive pages.
+- Live local progress panel that polls `progress.json` while a private runner is active.
 - Replay viewer backed by replay logs and compact replay indexes.
 
-The website should be built in the Battlecast ecosystem: TypeScript, React, Vite, Vitest, and Playwright where useful.
+The current results site is a lightweight static app under `apps/results-site`, served locally with Vite from the repo root so it can poll `results/seasons/<season-id>/progress.json`. It can publish archived `standings.json` outputs without exposing hidden eval details.
 
 ## Determinism Model
 

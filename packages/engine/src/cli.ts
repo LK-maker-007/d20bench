@@ -10,6 +10,7 @@ import { buildMatchReport, renderMatchReportMarkdown } from './report.js';
 import { readReplayJsonl, verifyReplayStructure, writeReplayJsonl } from './replay.js';
 import { renderEloSeasonMarkdown, runEloSeason } from './ratings.js';
 import { getSeasonById, publicBaselineSeason, seasons } from './seasons.js';
+import { llmSmokeSeason, renderLlmSeasonMarkdown, runLlmSeason } from './llm-season.js';
 
 interface ParsedArgs {
   positional: string[];
@@ -43,6 +44,11 @@ async function main(): Promise<void> {
 
     if (domain === 'ladder' && command === 'run') {
       await commandLadderRun(args.options);
+      return;
+    }
+
+    if (domain === 'llm' && command === 'ladder' && maybeTarget === 'run') {
+      await commandLlmLadderRun(args.options);
       return;
     }
 
@@ -171,6 +177,45 @@ async function commandLadderRun(options: ParsedArgs['options']): Promise<void> {
   }, null, 2));
 }
 
+async function commandLlmLadderRun(options: ParsedArgs['options']): Promise<void> {
+  const outDir = typeof options.out === 'string' ? options.out : join('results/seasons', llmSmokeSeason.id);
+  const concurrency = parseOptionalPositiveInteger(options.concurrency, '--concurrency');
+  const result = await runLlmSeason(llmSmokeSeason, {
+    outDir,
+    concurrency,
+    logProgress: true,
+  });
+  await mkdir(outDir, { recursive: true });
+  await writeJson(join(outDir, 'standings.json'), result);
+  await writeFile(join(outDir, 'standings.md'), renderLlmSeasonMarkdown(result), 'utf8');
+  console.log(JSON.stringify({
+    seasonId: result.seasonId,
+    outDir,
+    standings: result.standings.map((standing) => ({
+      agentId: standing.agentId,
+      rating: Number(standing.rating.toFixed(1)),
+      matches: standing.matches,
+      wins: standing.wins,
+      losses: standing.losses,
+      draws: standing.draws,
+    })),
+    costSummary: {
+      totalDecisions: result.costSummary.totalDecisions,
+      totalTokens: result.costSummary.totalTokens,
+      promptTokens: result.costSummary.promptTokens,
+      completionTokens: result.costSummary.completionTokens,
+      estimatedCostUsd: Number(result.costSummary.estimatedCostUsd.toFixed(6)),
+      byModel: result.costSummary.byModel.map((entry) => ({
+        agentId: entry.agentId,
+        decisions: entry.decisions,
+        totalTokens: entry.totalTokens,
+        estimatedCostUsd: Number(entry.estimatedCostUsd.toFixed(6)),
+      })),
+    },
+    failedMatches: result.failedMatches,
+  }, null, 2));
+}
+
 function parseArgs(raw: string[]): ParsedArgs {
   const positional: string[] = [];
   const options: ParsedArgs['options'] = {};
@@ -242,9 +287,11 @@ Commands:
   d20bench scenario verify <replay.jsonl>
   d20bench match run --scenario <id> --red <agent> --blue <agent> --seed 1 [--max-rounds 10] [--out dir]
   d20bench ladder run [--season public-baseline-v0] [--out results/seasons/public-baseline-v0]
+  d20bench llm ladder run [--out results/seasons/llm-smoke-v0] [--concurrency 3]
 
 Seasons:
   ${seasons.map((season) => season.id).join('\n  ')}
+  ${llmSmokeSeason.id}
 
 Agents:
   ${listAgentIds().join('\n  ')}

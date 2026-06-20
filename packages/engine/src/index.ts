@@ -4,6 +4,7 @@ export * from './battlecast-runner.js';
 export * from './dice.js';
 export * from './env.js';
 export * from './legal-actions.js';
+export * from './llm-season.js';
 export * from './llm-observation.js';
 export * from './openrouter-agent.js';
 export * from './random.js';
