@@ -124,6 +124,15 @@ It defines:
 
 The first public scenario fixture is `public.goblin-duel.v1`.
 
+The first intentionally complex public scenario suite adds mirrored level-5 hero parties and a 6v6 goblin warband:
+
+- `public.hero-mirror-balanced-l5.v1`
+- `public.hero-mirror-chokepoint-l5.v1`
+- `public.hero-mirror-status-l5.v1`
+- `public.goblin-warband-6v6.v1`
+
+Detailed encounter design notes live in `docs/BENCHMARK_SCENARIOS.md`.
+
 The first CLI entrypoint is:
 
 ```text

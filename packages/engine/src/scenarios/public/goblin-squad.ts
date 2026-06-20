@@ -1,0 +1,40 @@
+import type { D20benchScenario } from '../../scenario.js';
+
+export const goblinWarbandMirrorScenario: D20benchScenario = {
+  id: 'public.goblin-warband-6v6.v1',
+  name: 'Goblin Warband 6v6',
+  description: 'A simple mirrored 6v6 Goblin Warrior scrum for testing swarm focus-fire, initiative variance, and basic target selection.',
+  visibility: 'public',
+  rulesetId: 'battlecast-srd-2026-06-20',
+  dataPackId: 'battlecast-srd-snapshot-3b5cfc7',
+  scenarioVersion: '1.0.0',
+  gridSize: 20,
+  mapId: 'blank-20',
+  tacticalTags: [
+    '6v6',
+    'mirror',
+    'monster-squad',
+    'simple',
+    'focus-fire',
+    'swarm',
+  ],
+  designNotes: [
+    'All combatants are identical Goblin Warriors, so rating signal comes from target selection and action timing rather than unit composition.',
+    'Two-line deployment creates early ranged choices before melee contact.',
+    'This should remain a simpler control scenario beside the more complex hero-party mirrors.',
+  ],
+  combatants: [
+    { monster: 'Goblin Warrior', team: 'red', position: { x: 4, y: 6 } },
+    { monster: 'Goblin Warrior', team: 'red', position: { x: 4, y: 8 } },
+    { monster: 'Goblin Warrior', team: 'red', position: { x: 4, y: 10 } },
+    { monster: 'Goblin Warrior', team: 'red', position: { x: 5, y: 7 } },
+    { monster: 'Goblin Warrior', team: 'red', position: { x: 5, y: 9 } },
+    { monster: 'Goblin Warrior', team: 'red', position: { x: 5, y: 11 } },
+    { monster: 'Goblin Warrior', team: 'blue', position: { x: 15, y: 6 } },
+    { monster: 'Goblin Warrior', team: 'blue', position: { x: 15, y: 8 } },
+    { monster: 'Goblin Warrior', team: 'blue', position: { x: 15, y: 10 } },
+    { monster: 'Goblin Warrior', team: 'blue', position: { x: 14, y: 7 } },
+    { monster: 'Goblin Warrior', team: 'blue', position: { x: 14, y: 9 } },
+    { monster: 'Goblin Warrior', team: 'blue', position: { x: 14, y: 11 } },
+  ],
+};

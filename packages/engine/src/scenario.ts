@@ -22,6 +22,8 @@ export interface D20benchScenario {
   gridSize: number;
   mapId?: string;
   teamTactics?: TeamTactics;
+  tacticalTags?: string[];
+  designNotes?: string[];
   combatants: BattlecastCombatantSpec[];
 }
 

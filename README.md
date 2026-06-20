@@ -28,6 +28,7 @@ The first package is `@d20bench/engine`, which contains deterministic rules prim
 
 - [Project plan](docs/PROJECT_PLAN.md)
 - [Architecture and design](docs/ARCHITECTURE.md)
+- [Benchmark scenario design](docs/BENCHMARK_SCENARIOS.md)
 - [Implementation roadmap](docs/ROADMAP.md)
 - [Battlecast extraction plan](docs/BATTLECAST_EXTRACTION.md)
 - [Legal and attribution notes](docs/legal-and-attribution.md)
