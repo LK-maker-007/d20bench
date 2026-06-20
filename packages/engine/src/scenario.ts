@@ -10,11 +10,13 @@ import type { BattleState, TeamTactics } from './battlecast/engine/combat.js';
 import type { RandomSeed } from './random.js';
 
 export type ScenarioVisibility = 'public' | 'hidden' | 'private_arena';
+export type BattleType = string;
 
 export interface D20benchScenario {
   id: string;
   name: string;
   description: string;
+  battleType: BattleType;
   visibility: ScenarioVisibility;
   rulesetId: string;
   dataPackId: string;

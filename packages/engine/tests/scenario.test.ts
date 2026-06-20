@@ -34,6 +34,7 @@ describe('D20bench scenarios', () => {
       'public.hero-mirror-chokepoint-l5.v1',
       'public.hero-mirror-status-l5.v1',
     ]));
+    expect(publicScenarios.every((scenario) => scenario.battleType.length > 0)).toBe(true);
 
     for (const scenario of publicScenarios.filter((candidate) => candidate.id.includes('mirror') || candidate.id.includes('warband'))) {
       const redCount = scenario.combatants.filter((combatant) => combatant.team === 'red').length;

@@ -4,6 +4,7 @@ export const goblinDuelScenario: D20benchScenario = {
   id: 'public.goblin-duel.v1',
   name: 'Goblin Duel',
   description: 'A tiny adjacent mirror duel for deterministic engine smoke tests.',
+  battleType: 'duel-smoke',
   visibility: 'public',
   rulesetId: 'battlecast-srd-2026-06-20',
   dataPackId: 'battlecast-srd-snapshot-3b5cfc7',

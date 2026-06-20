@@ -4,6 +4,7 @@ export const goblinWarbandMirrorScenario: D20benchScenario = {
   id: 'public.goblin-warband-6v6.v1',
   name: 'Goblin Warband 6v6',
   description: 'A simple mirrored 6v6 Goblin Warrior scrum for testing swarm focus-fire, initiative variance, and basic target selection.',
+  battleType: 'goblin-warband',
   visibility: 'public',
   rulesetId: 'battlecast-srd-2026-06-20',
   dataPackId: 'battlecast-srd-snapshot-3b5cfc7',

@@ -15,6 +15,7 @@ The benchmark engine is the source of truth. The website renders generated artif
 
 - Battle outcomes come from deterministic CLI runs.
 - Every match has a scenario id, ruleset id, data pack id, agent ids, model metadata, seed, replay log, and final state hash.
+- Every scenario has a stable battle type so results can be reported as both blended overall Elo and per-type Elo.
 - Published seasons are immutable once archived.
 - Hidden eval suites and private arena scenario details can remain unpublished, while archived summary results can still be published.
 - Agents choose from engine-generated legal actions; they never directly mutate game state.
@@ -117,19 +118,22 @@ packages/engine/src/scenarios/
 It defines:
 
 - `D20benchScenario`
+- `BattleType`
 - `runD20benchScenario(scenario, seed)`
 - `snapshotBattlecastState(state)`
 - `hashBattlecastState(state)`
 - `hashStableJson(value)`
 
-The first public scenario fixture is `public.goblin-duel.v1`.
+Scenario metadata includes a stable `battleType` aggregation key. Tactical tags can be many-valued and descriptive; battle type is the single rating bucket used for per-type Elo tables and season archives.
+
+The first public scenario fixture is `public.goblin-duel.v1`, with battle type `duel-smoke`.
 
 The first intentionally complex public scenario suite adds mirrored level-5 hero parties and a 6v6 goblin warband:
 
-- `public.hero-mirror-balanced-l5.v1`
-- `public.hero-mirror-chokepoint-l5.v1`
-- `public.hero-mirror-status-l5.v1`
-- `public.goblin-warband-6v6.v1`
+- `public.hero-mirror-balanced-l5.v1` (`hero-party-balanced`)
+- `public.hero-mirror-chokepoint-l5.v1` (`hero-party-chokepoint`)
+- `public.hero-mirror-status-l5.v1` (`hero-party-status`)
+- `public.goblin-warband-6v6.v1` (`goblin-warband`)
 
 Detailed encounter design notes live in `docs/BENCHMARK_SCENARIOS.md`.
 
@@ -246,13 +250,22 @@ packages/engine/src/ratings.ts
 packages/engine/src/seasons.ts
 ```
 
-The first season is `smoke-v0`: a visible public smoke ladder for baseline agents on `public.goblin-duel.v1`.
+Elo seasons maintain two rating views:
+
+- **Blended overall Elo**: one rating pool updated by every match in the season.
+- **Per-battle-type Elo**: independent rating pools keyed by scenario `battleType`.
+
+The first smoke season is `smoke-v0`: a visible public smoke ladder for baseline agents on `public.goblin-duel.v1`.
+
+The first non-duel public baseline season is `public-baseline-v0`: baseline agents across `goblin-warband`, `hero-party-balanced`, `hero-party-chokepoint`, and `hero-party-status`.
 
 First generated output:
 
 ```text
 results/seasons/smoke-v0/standings.json
 results/seasons/smoke-v0/standings.md
+results/seasons/public-baseline-v0/standings.json
+results/seasons/public-baseline-v0/standings.md
 ```
 
 ### 6. Public Website Layer
@@ -262,6 +275,7 @@ Purpose: publish results without changing them.
 Responsibilities:
 
 - Static leaderboard from generated season artifacts.
+- Blended overall and per-battle-type Elo tables.
 - Head-to-head model matchup pages.
 - Model profile pages.
 - Season archive pages.

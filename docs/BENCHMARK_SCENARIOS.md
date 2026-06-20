@@ -13,13 +13,26 @@ The main benchmark direction is mirrored squad combat:
 
 This controls for team-composition bias while still testing target priority, positioning, focus fire, support timing, resource use, AoE discipline, and status pressure.
 
+## Rating Aggregation
+
+Each scenario has a single stable battle type used for rating aggregation. Seasons report:
+
+- Blended overall Elo across every scenario in the season.
+- Independent Elo standings for each battle type.
+
+This lets the public leaderboard show one general signal while still revealing whether a model is only strong in one kind of battle.
+
 ## Current Public Scenario Suite
 
 ### `public.goblin-duel.v1`
 
+Battle type: `duel-smoke`.
+
 Tiny adjacent duel. Keep this only as a deterministic engine smoke test.
 
 ### `public.goblin-warband-6v6.v1`
+
+Battle type: `goblin-warband`.
 
 Simple mirrored 6v6 Goblin Warrior battle.
 
@@ -33,6 +46,8 @@ Purpose:
 This is deliberately simpler than the hero mirrors so the benchmark has one readable “many small units” control case.
 
 ### `public.hero-mirror-balanced-l5.v1`
+
+Battle type: `hero-party-balanced`.
 
 Mirrored 4v4 level-5 party on Grass Plain:
 
@@ -57,6 +72,8 @@ Notable options:
 
 ### `public.hero-mirror-chokepoint-l5.v1`
 
+Battle type: `hero-party-chokepoint`.
+
 Mirrored 4v4 level-5 party on Stone Bridge:
 
 - Paladin
@@ -79,6 +96,8 @@ Notable options:
 - Ranger: Longbow pressure, Hunter’s Mark, Entangle.
 
 ### `public.hero-mirror-status-l5.v1`
+
+Battle type: `hero-party-status`.
 
 Mirrored 4v4 level-5 party on Forest Clearing:
 
@@ -116,4 +135,4 @@ Before these hero mirrors become the primary Elo suite for LLM agents, the legal
 - Dash, dodge, disengage, help.
 - Bonus actions and reactions.
 
-Until then, the hero mirrors are correct scenario fixtures and Battlecast-runner benchmarks, while `smoke-v0` remains the first baseline-agent Elo smoke season.
+Until then, the hero mirrors are correct scenario fixtures and Battlecast-runner benchmarks. `smoke-v0` remains the fast duel-only baseline-agent smoke season, while `public-baseline-v0` is the first non-duel public baseline season used to exercise blended and per-battle-type Elo output.

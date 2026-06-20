@@ -9,7 +9,7 @@ import { getScenarioById, listScenarios } from './scenarios/index.js';
 import { buildMatchReport, renderMatchReportMarkdown } from './report.js';
 import { readReplayJsonl, verifyReplayStructure, writeReplayJsonl } from './replay.js';
 import { renderEloSeasonMarkdown, runEloSeason } from './ratings.js';
-import { smokeSeason } from './seasons.js';
+import { getSeasonById, publicBaselineSeason, seasons } from './seasons.js';
 
 interface ParsedArgs {
   positional: string[];
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
 
 function commandScenarioList(): void {
   for (const scenario of listScenarios()) {
-    console.log(`${scenario.id}\t${scenario.visibility}\t${scenario.name}`);
+    console.log(`${scenario.id}\t${scenario.visibility}\t${scenario.battleType}\t${scenario.name}`);
   }
 }
 
@@ -135,8 +135,9 @@ async function commandMatchRun(options: ParsedArgs['options']): Promise<void> {
 }
 
 async function commandLadderRun(options: ParsedArgs['options']): Promise<void> {
-  const outDir = typeof options.out === 'string' ? options.out : 'results/seasons/smoke-v0';
-  const result = runEloSeason(smokeSeason);
+  const season = typeof options.season === 'string' ? getSeasonById(options.season) : publicBaselineSeason;
+  const outDir = typeof options.out === 'string' ? options.out : join('results/seasons', season.id);
+  const result = runEloSeason(season);
   await mkdir(outDir, { recursive: true });
   await writeJson(join(outDir, 'standings.json'), result);
   await writeFile(join(outDir, 'standings.md'), renderEloSeasonMarkdown(result), 'utf8');
@@ -150,6 +151,17 @@ async function commandLadderRun(options: ParsedArgs['options']): Promise<void> {
       wins: standing.wins,
       losses: standing.losses,
       draws: standing.draws,
+    })),
+    battleTypeStandings: result.battleTypeStandings.map((entry) => ({
+      battleType: entry.battleType,
+      standings: entry.standings.map((standing) => ({
+        agentId: standing.agentId,
+        rating: Number(standing.rating.toFixed(1)),
+        matches: standing.matches,
+        wins: standing.wins,
+        losses: standing.losses,
+        draws: standing.draws,
+      })),
     })),
   }, null, 2));
 }
@@ -214,7 +226,10 @@ Commands:
   d20bench scenario run <scenario-id> --seed 1 [--out result.json]
   d20bench scenario verify <replay.jsonl>
   d20bench match run --scenario <id> --red <agent> --blue <agent> --seed 1 [--out dir]
-  d20bench ladder run [--out results/seasons/smoke-v0]
+  d20bench ladder run [--season public-baseline-v0] [--out results/seasons/public-baseline-v0]
+
+Seasons:
+  ${seasons.map((season) => season.id).join('\n  ')}
 
 Agents:
   ${listAgentIds().join('\n  ')}
