@@ -10,7 +10,7 @@ import { buildMatchReport, renderMatchReportMarkdown } from './report.js';
 import { readReplayJsonl, verifyReplayStructure, writeReplayJsonl } from './replay.js';
 import { renderEloSeasonMarkdown, runEloSeason } from './ratings.js';
 import { getSeasonById, publicBaselineSeason, seasons } from './seasons.js';
-import { getLlmSeasonById, llmFrontierPublicSeason, llmSeasons, renderLlmSeasonMarkdown, runLlmSeason } from './llm-season.js';
+import { getLlmSeasonById, llmFrontierFullTurnSeason, llmSeasons, renderLlmSeasonMarkdown, runLlmSeason } from './llm-season.js';
 
 interface ParsedArgs {
   positional: string[];
@@ -178,7 +178,7 @@ async function commandLadderRun(options: ParsedArgs['options']): Promise<void> {
 }
 
 async function commandLlmLadderRun(options: ParsedArgs['options']): Promise<void> {
-  const season = typeof options.season === 'string' ? getLlmSeasonById(options.season) : llmFrontierPublicSeason;
+  const season = typeof options.season === 'string' ? getLlmSeasonById(options.season) : llmFrontierFullTurnSeason;
   const outDir = typeof options.out === 'string' ? options.out : join('results/seasons', season.id);
   const concurrency = parseOptionalPositiveInteger(options.concurrency, '--concurrency');
   const matchLimit = parseOptionalPositiveInteger(options['match-limit'], '--match-limit');
@@ -305,7 +305,7 @@ Commands:
   d20bench scenario verify <replay.jsonl>
   d20bench match run --scenario <id> --red <agent> --blue <agent> --seed 1 [--max-rounds 10] [--out dir]
   d20bench ladder run [--season public-baseline-v0] [--out results/seasons/public-baseline-v0]
-  d20bench llm ladder run [--season llm-frontier-public-v1] [--out results/seasons/<id>] [--concurrency 6] [--match-limit 16] [--max-cost 50] [--resume]
+  d20bench llm ladder run [--season llm-frontier-fullturn-v1] [--out results/seasons/<id>] [--concurrency 6] [--match-limit 16] [--max-cost 50] [--resume]
 
 Seasons:
   ${seasons.map((season) => season.id).join('\n  ')}

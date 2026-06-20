@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildLlmBattleObservation,
+  battlecastFullTurnTactics,
   generateLegalActions,
   goblinDuelScenario,
   isAgentId,
@@ -87,11 +88,57 @@ describe('agent matches', () => {
     const observation = buildLlmBattleObservation(match.state, active, catalogue);
 
     expect(observation.schemaVersion).toBe('d20bench.llm_observation.v1');
+    expect(observation.actionSpace).toBe('primitive');
     expect(observation.activeCreatureId).toBe(active.id);
+    expect(observation.grid.movementBlocked).toEqual(expect.any(Array));
     expect(observation.creatures.some((creature) => creature.relation === 'enemy')).toBe(true);
     expect(observation.legalActions.map((action) => action.id)).toEqual(
       catalogue.actions.map((action) => action.id),
     );
+  });
+
+  it('can expose copied Battlecast full-turn delegates to LLM observations', () => {
+    const match = runAgentMatch({
+      scenario: goblinDuelScenario,
+      seed: 1,
+      redAgent: 'baseline.focus-fire',
+      blueAgent: 'baseline.random-legal',
+      maxRounds: 1,
+    });
+    const active = match.state.creatures.find((creature) => creature.isAlive);
+    if (!active) throw new Error('expected an active creature');
+
+    const catalogue = generateLegalActions(match.state, active, {
+      includeBattlecastFullTurnActions: true,
+    });
+    const observation = buildLlmBattleObservation(match.state, active, catalogue);
+    const tacticActions = observation.legalActions.filter((action) => action.type === 'battlecast_tactic');
+
+    expect(observation.actionSpace).toBe('battlecast-full-turn');
+    expect(tacticActions.map((action) => action.id).sort()).toEqual(
+      battlecastFullTurnTactics.map((tactic) => `battlecast_tactic:${tactic}`).sort(),
+    );
+    expect(tacticActions.every((action) => action.fullTurnDelegate)).toBe(true);
+    expect(tacticActions.every((action) => action.description?.includes('copied Battlecast engine'))).toBe(true);
+  });
+
+  it('uses distinct match ids for full-turn LLM action-space matches', () => {
+    const primitive = runAgentMatch({
+      scenario: goblinDuelScenario,
+      seed: 1,
+      redAgent: 'baseline.focus-fire',
+      blueAgent: 'baseline.random-legal',
+    });
+    const fullTurn = runAgentMatch({
+      scenario: goblinDuelScenario,
+      seed: 1,
+      redAgent: 'baseline.focus-fire',
+      blueAgent: 'baseline.random-legal',
+      llmActionSpace: 'battlecast-full-turn',
+    });
+
+    expect(fullTurn.matchId).not.toBe(primitive.matchId);
+    expect(fullTurn.matchId).toContain('battlecast-full-turn');
   });
 
   it('runs copied Battlecast tactic options as agents', () => {

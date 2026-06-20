@@ -1,7 +1,7 @@
 import { appendFile, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-import { runAgentMatchAsync, type AgentMatchResult } from './agent-match.js';
+import { runAgentMatchAsync, type AgentMatchResult, type LlmActionSpace } from './agent-match.js';
 import {
   createOpenRouterAgentId,
   listBattlecastTacticAgentIds,
@@ -27,6 +27,7 @@ export interface LlmSeasonConfig {
   seeds: Array<string | number>;
   maxRounds: number;
   pairings?: LlmSeasonPairing[];
+  llmActionSpace?: LlmActionSpace;
   initialRating?: number;
   kFactor?: number;
   concurrency?: number;
@@ -109,6 +110,7 @@ export interface LlmSeasonProgress {
   seasonId: string;
   description: string;
   status: LlmSeasonProgressStatus;
+  llmActionSpace?: LlmActionSpace;
   startedAt: string;
   updatedAt: string;
   concurrency: number;
@@ -130,6 +132,7 @@ export interface LlmSeasonResult {
   generatedAt: string;
   startedAt: string;
   completedAt: string;
+  llmActionSpace?: LlmActionSpace;
   initialRating: number;
   kFactor: number;
   maxRounds: number;
@@ -227,7 +230,15 @@ export const llmFrontierPublicSeason: LlmSeasonConfig = {
   concurrency: 8,
 };
 
+export const llmFrontierFullTurnSeason: LlmSeasonConfig = {
+  ...llmFrontierPublicSeason,
+  id: 'llm-frontier-fullturn-v1',
+  description: 'Public LLM ladder with Battlecast full-turn delegate actions exposed to LLMs, across the 6v6 goblin control and three level-5 4v4 hero-party mirrors.',
+  llmActionSpace: 'battlecast-full-turn',
+};
+
 export const llmSeasons = [
+  llmFrontierFullTurnSeason,
   llmFrontierPublicSeason,
   llmSmokeSeason,
 ];
@@ -354,6 +365,7 @@ export async function runLlmSeason(
           redAgent: fixture.redAgent,
           blueAgent: fixture.blueAgent,
           maxRounds: config.maxRounds,
+          llmActionSpace: config.llmActionSpace,
         });
         const matchCost = summarizeMatchCost(match, pricing, costAccumulators);
         const completedAt = new Date();
@@ -499,6 +511,7 @@ export async function runLlmSeason(
     generatedAt,
     startedAt,
     completedAt: new Date().toISOString(),
+    llmActionSpace: config.llmActionSpace,
     initialRating,
     kFactor,
     maxRounds: config.maxRounds,
@@ -529,6 +542,7 @@ export function renderLlmSeasonMarkdown(result: LlmSeasonResult): string {
     '',
     `Generated: ${result.generatedAt}`,
     `Completed: ${result.completedAt}`,
+    ...(result.llmActionSpace ? [`LLM action space: ${result.llmActionSpace}`] : []),
     `Concurrency: ${result.concurrency}`,
     `Max rounds: ${result.maxRounds}`,
     `Initial rating: ${result.initialRating}`,
@@ -807,6 +821,7 @@ function buildProgress(input: {
     seasonId: input.config.id,
     description: input.config.description,
     status: input.status,
+    llmActionSpace: input.config.llmActionSpace,
     startedAt: input.startedAt,
     updatedAt: new Date().toISOString(),
     concurrency: input.concurrency,

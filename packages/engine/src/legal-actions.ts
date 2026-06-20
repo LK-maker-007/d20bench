@@ -4,7 +4,14 @@ import {
   creatureDistance,
 } from './battlecast/engine/combat.js';
 import type { Creature, MonsterAction } from './battlecast/types/monster.js';
-import { getActiveActions } from './battlecast/engine/ai-targeting.js';
+import { canSee, getActiveActions } from './battlecast/engine/ai-targeting.js';
+
+export const battlecastFullTurnTactics = [
+  'aggressive',
+  'smart',
+  'kiting',
+  'defensive',
+] as const satisfies readonly TacticType[];
 
 export type LegalAction =
   | {
@@ -37,7 +44,15 @@ export interface LegalActionCatalogue {
   actions: LegalAction[];
 }
 
-export function generateLegalActions(state: BattleState, active: Creature): LegalActionCatalogue {
+export interface GenerateLegalActionsOptions {
+  includeBattlecastFullTurnActions?: boolean;
+}
+
+export function generateLegalActions(
+  state: BattleState,
+  active: Creature,
+  options: GenerateLegalActionsOptions = {},
+): LegalActionCatalogue {
   const actions: LegalAction[] = [];
   const enemies = state.creatures.filter((creature) =>
     creature.team !== active.team && creature.isAlive && !creature.dying
@@ -52,6 +67,7 @@ export function generateLegalActions(state: BattleState, active: Creature): Lega
   for (const action of activeActions) {
     for (const target of enemies) {
       if (!isTargetInRange(active, target, action)) continue;
+      if (action.type === 'ranged' && !canSee(state, active, target)) continue;
       actions.push({
         id: attackActionId(action.name, target.id),
         type: 'attack',
@@ -70,6 +86,12 @@ export function generateLegalActions(state: BattleState, active: Creature): Lega
       targetId: target.id,
       targetName: target.displayName,
     });
+  }
+
+  if (options.includeBattlecastFullTurnActions) {
+    for (const tactic of battlecastFullTurnTactics) {
+      actions.push(createBattlecastTacticAction(tactic));
+    }
   }
 
   actions.push({ id: 'end_turn', type: 'end_turn' });

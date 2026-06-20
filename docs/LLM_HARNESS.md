@@ -112,20 +112,22 @@ npm run d20bench -- llm ladder run --season llm-frontier-public-v1 --match-limit
 The first implementation is deliberately narrow:
 
 - LLM agents choose from the existing D20bench legal-action catalogue.
-- Current legal actions are `attack`, `move_toward`, and `end_turn`.
+- The historical primitive action space contains `attack`, `move_toward`, and `end_turn`.
+- The full-turn action space also exposes copied Battlecast delegates: `battlecast_tactic:aggressive`, `battlecast_tactic:smart`, `battlecast_tactic:kiting`, and `battlecast_tactic:defensive`.
 - Battlecast tactic agents still delegate to copied Battlecast `executeTurn`.
 - LLM replay verification checks structure but skips model reruns.
 - `llm-smoke-v0` uses OpenRouter models for Kimi K2.7 Code, GLM 5.2, DeepSeek v4 Pro, DeepSeek v4 Flash, Qwen 3.5 Flash, Ministral 8B, and Llama 3.1 8B, plus `baseline.focus-fire`.
 - `llm-frontier-public-v1` adds `anthropic/claude-opus-4.8`, `google/gemini-3.1-pro-preview`, `openai/gpt-5.5`, `baseline.random-legal`, and all copied Battlecast tactic agents.
 - `llm-frontier-public-v1` does not run model-vs-model pairings. It matches each OpenRouter model against random and each copied Battlecast tactic agent in both side assignments.
 - `llm-frontier-public-v1` runs the 6v6 goblin control plus the three 4v4 level-5 hero-party mirrors, capped at 3 rounds, with concurrency 8 by default.
+- `llm-frontier-fullturn-v1` uses the same schedule but sets `llmActionSpace: battlecast-full-turn`, so LLMs can select the same full-turn Battlecast executor modes as the fixed tactic agents.
 - LLM ladder runs write `completed-matches.jsonl` checkpoints as matches finish; `--resume` reloads completed fixtures and continues with failed or unstarted fixtures.
 
 This gives us a safe, auditable harness before we spend significant model budget.
 
 ## Next Work
 
-The important next step is expanding the legal-action catalogue:
+The full-turn delegate action space gives LLMs access to the same Battlecast executor used by the fixed tactic agents without hand-reimplementing every rule. A later, more inspectable option generator can expand those delegates into explicit legal options:
 
 - spell casts
 - AoE centers and lines/cones
@@ -135,4 +137,4 @@ The important next step is expanding the legal-action catalogue:
 - dash, dodge, disengage, help
 - bonus actions and reactions
 
-Once these are engine-generated legal actions, LLM agents can use them through the same harness without changing the model-control contract.
+Once these are engine-generated legal actions, LLM agents can choose exact whole-turn plans instead of choosing a Battlecast tactic delegate. The current full-turn delegate mode is the fairness bridge until that richer planner exists.
