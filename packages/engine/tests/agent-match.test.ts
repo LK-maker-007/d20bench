@@ -221,6 +221,25 @@ describe('agent matches', () => {
     expect(spentActionCatalogue.actions.some((action) => action.type === 'dash')).toBe(false);
   });
 
+  it('exposes Eldritch Blast beams as stepwise attack actions', () => {
+    const state = initBattle(createBattlecastCreatures(warlockBeamScenario().combatants, true), 12);
+    const warlock = state.creatures.find((creature) => creature.team === 'red');
+    if (!warlock) throw new Error('expected red warlock');
+
+    const catalogue = generateLegalActions(state, warlock, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+
+    expect(catalogue.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'attack', actionName: 'Eldritch Blast' }),
+    ]));
+    expect(catalogue.actions.some((action) => action.type === 'spell' && action.actionName === 'Eldritch Blast')).toBe(false);
+  });
+
   it('asks an OpenRouter actual-action agent again after the first Extra Attack swing', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     globalThis.fetch = vi.fn(async (_url, init) => {
@@ -269,6 +288,51 @@ describe('agent matches', () => {
     expect(llmActions.filter((event) => event.acceptedAction.type === 'attack')).toHaveLength(2);
     expect(llmActions.filter((event) => event.acceptedAction.type === 'attack').map((event) => event.turnStep)).toEqual([0, 1]);
     expect(llmActions.some((event) => (event.turnStep ?? 0) > 1)).toBe(true);
+  });
+
+  it('asks an OpenRouter Warlock again after the first Eldritch Blast beam', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const actionId = actionIds.find((id) => id.startsWith('attack:eldritch-blast:')) ?? 'end_turn';
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Fire the next beam.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: warlockBeamScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const beamActions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'attack' &&
+      event.acceptedAction.actionName === 'Eldritch Blast'
+    );
+
+    expect(beamActions).toHaveLength(2);
+    expect(beamActions.map((event) => event.turnStep)).toEqual([0, 1]);
   });
 
   it('lets an actual-action LLM disengage before moving without provoking opportunity attacks', async () => {
@@ -426,6 +490,26 @@ function adjacentThreatWithFarTargetScenario(): D20benchScenario {
     combatants: [
       { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 8 } },
+    ],
+  };
+}
+
+function warlockBeamScenario(): D20benchScenario {
+  return {
+    id: 'test.warlock-beam.v1',
+    name: 'Warlock Beam Test',
+    description: 'A level-5 Warlock should fire Eldritch Blast as two stepwise beams.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 12,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Warlock', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 8 } },
     ],
   };

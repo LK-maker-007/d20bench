@@ -124,7 +124,7 @@ export function generateLegalActions(
   const hasBonusAction = active.bonusActionUsed !== true;
 
   for (const action of activeActions) {
-    if (isConcreteSpellAction(action) && options.includeActualActions) continue;
+    if (isConcreteSpellAction(action) && options.includeActualActions && !isAttackRollCantripAction(action)) continue;
     if (!hasAttackRoll || action.attackBonus === undefined) continue;
     for (const target of enemies) {
       if (!isTargetInRange(active, target, action)) continue;
@@ -406,7 +406,7 @@ function generateConcreteSpellActions(
   const actions: LegalAction[] = [];
   const candidates = getActiveActions(active)
     .filter((action) => action.type !== 'multiattack' && action.legendaryOnly !== true)
-    .filter(isConcreteSpellAction);
+    .filter((action) => isConcreteSpellAction(action) && !isAttackRollCantripAction(action));
 
   for (const action of candidates) {
     if (!canUseConcreteAction(active, action, economy)) continue;
@@ -450,6 +450,10 @@ function isConcreteSpellAction(action: MonsterAction): boolean {
     action.buff !== undefined ||
     action.autoDarts !== undefined ||
     action.powerWord !== undefined;
+}
+
+function isAttackRollCantripAction(action: MonsterAction): boolean {
+  return action.attackBonus !== undefined && action.spellLevel === 0;
 }
 
 function canUseConcreteAction(
