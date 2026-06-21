@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isFatalSeasonError,
   llmFrontierModelAgents,
   llmFrontierSmartGlmTenXSeason,
   llmFrontierSmartSeason,
   llmFrontierSmartTop3TenXSeason,
   llmSmartGlmModelAgents,
   llmSmartTop3ModelAgents,
+  sanitizeBenchmarkErrorForArtifacts,
 } from '../src/index.js';
 
 describe('LLM seasons', () => {
@@ -113,5 +115,17 @@ describe('LLM seasons', () => {
 
     expect(pairings).toHaveLength(llmSmartGlmModelAgents.length * 2);
     expect([...matchesByModel.values()]).toEqual(llmSmartGlmModelAgents.map(() => 80));
+  });
+
+  it('treats OpenRouter monthly key limits as fatal season errors', () => {
+    expect(isFatalSeasonError(
+      'OpenRouter request failed (403): {"error":{"message":"Key limit exceeded (monthly limit)."}}',
+    )).toBe(true);
+  });
+
+  it('redacts OpenRouter key-management URLs from benchmark artifacts', () => {
+    expect(sanitizeBenchmarkErrorForArtifacts(
+      'Manage it using https://openrouter.ai/workspaces/default/keys/example-key-id-123',
+    )).toBe('Manage it using https://openrouter.ai/workspaces/<workspace>/keys/<key>');
   });
 });

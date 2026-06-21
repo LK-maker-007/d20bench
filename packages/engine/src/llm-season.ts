@@ -1111,17 +1111,26 @@ function formatMatchProgressLine(
 
 function stringifyError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  return message.length > 1200 ? `${message.slice(0, 1197)}...` : message;
+  const sanitized = sanitizeBenchmarkErrorForArtifacts(message);
+  return sanitized.length > 1200 ? `${sanitized.slice(0, 1197)}...` : sanitized;
 }
 
-function isFatalSeasonError(errorMessage: string): boolean {
+export function isFatalSeasonError(errorMessage: string): boolean {
   return /OpenRouter (fallback )?request failed \(402\)/.test(errorMessage)
+    || /OpenRouter (fallback )?request failed \(403\).*key limit exceeded/i.test(errorMessage)
     || /Insufficient credits/i.test(errorMessage)
+    || /monthly limit/i.test(errorMessage)
     || /requires more credits/i.test(errorMessage);
 }
 
 function formatFatalSeasonStopReason(errorMessage: string): string {
   return `OpenRouter billing or credit limit reached: ${errorMessage}`;
+}
+
+export function sanitizeBenchmarkErrorForArtifacts(message: string): string {
+  return message
+    .replace(/https:\/\/openrouter\.ai\/workspaces\/[^/\s"']+\/keys\/[A-Za-z0-9_-]+/g, 'https://openrouter.ai/workspaces/<workspace>/keys/<key>')
+    .replace(/sk-or-v1-[A-Za-z0-9_-]+/g, 'sk-or-v1-<redacted>');
 }
 
 function numberOrUndefined(value: string | undefined): number | undefined {
