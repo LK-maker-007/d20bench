@@ -359,6 +359,50 @@ describe('agent matches', () => {
     )).toBe(false);
   });
 
+  it('exposes Barbarian Frenzy as a concrete class feature action while raging', () => {
+    const state = initBattle(createBattlecastCreatures(barbarianFrenzyScenario().combatants, true), 8);
+    const barbarian = state.creatures.find((creature) => creature.team === 'red');
+    if (!barbarian) throw new Error('expected red barbarian');
+    barbarian.activeBuffs.push({
+      name: 'Rage',
+      key: 'rage',
+      casterId: barbarian.id,
+      appliedRound: state.round,
+      endRound: state.round + 10,
+      rageDamageBonus: 2,
+      resistPhysical: true,
+    });
+
+    const catalogue = generateLegalActions(state, barbarian, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+
+    expect(catalogue.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'class_feature',
+        feature: 'frenzy',
+        isBonusAction: true,
+        targetId: expect.stringContaining('fighter-l5-blue'),
+      }),
+    ]));
+
+    barbarian.bonusActionUsed = true;
+    const spentBonusCatalogue = generateLegalActions(state, barbarian, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    expect(spentBonusCatalogue.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'frenzy'
+    )).toBe(false);
+  });
+
   it('exposes Monk Martial Arts and Flurry as post-attack concrete class feature actions', () => {
     const state = initBattle(createBattlecastCreatures(monkFlurryScenario().combatants, true), 8);
     const monk = state.creatures.find((creature) => creature.team === 'red');
@@ -667,6 +711,57 @@ describe('agent matches', () => {
     expect(wildShapeResolution?.events.some((event) => event.kind === 'wildShape' && event.beastName)).toBe(true);
   });
 
+  it('applies Instinctive Pounce after an actual-action Barbarian enters Rage', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let callIndex = 0;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const preferred = callIndex === 0
+        ? actionIds.find((id) => id.startsWith('spell:rage'))
+        : 'end_turn';
+      callIndex += 1;
+      const actionId = preferred && actionIds.includes(preferred) ? preferred : 'end_turn';
+      return jsonResponse({
+        id: `gen-${callIndex}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Enter Rage and use its concrete movement rider.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: barbarianPounceScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const rageResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'spell' &&
+      event.acceptedAction.actionName === 'Rage'
+    );
+
+    expect(rageResolution?.type).toBe('action_resolved');
+    expect(rageResolution?.logs.some((log) => log.action === 'Instinctive Pounce')).toBe(true);
+    expect(rageResolution?.events.some((event) => event.kind === 'move')).toBe(true);
+  });
+
   it('lets an actual-action Monk choose each Flurry of Blows strike after seeing the previous result', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     let callIndex = 0;
@@ -896,7 +991,7 @@ function warlockBeamScenario(): D20benchScenario {
     rulesetId: 'test-rules',
     dataPackId: 'test-data',
     scenarioVersion: '1.0.0',
-    gridSize: 12,
+    gridSize: 20,
     tacticalTags: ['test'],
     designNotes: ['test fixture'],
     combatants: [
@@ -963,6 +1058,46 @@ function druidWildShapeScenario(): D20benchScenario {
     combatants: [
       { monster: buildHero('Druid', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+    ],
+  };
+}
+
+function barbarianFrenzyScenario(): D20benchScenario {
+  return {
+    id: 'test.barbarian-frenzy.v1',
+    name: 'Barbarian Frenzy Test',
+    description: 'A raging level-5 Barbarian can spend a bonus action on a concrete Frenzy attack.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Barbarian', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+    ],
+  };
+}
+
+function barbarianPounceScenario(): D20benchScenario {
+  return {
+    id: 'test.barbarian-pounce.v1',
+    name: 'Barbarian Instinctive Pounce Test',
+    description: 'A level-7 Barbarian moves up to half speed as part of entering Rage.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 12,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Barbarian', 7), team: 'red', position: { x: 1, y: 1 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 18, y: 1 } },
     ],
   };
 }

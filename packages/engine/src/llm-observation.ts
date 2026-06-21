@@ -551,6 +551,9 @@ function classFeatureDescription(action: Extract<LegalAction, { type: 'class_fea
   if (action.feature === 'wild_shape') {
     return 'Spend a Wild Shape use and the bonus action to transform into the listed beast form. The Druid keeps real HP and gains the listed temporary HP; beast AC, speed, physical abilities, traits, and actions replace the humanoid form.';
   }
+  if (action.feature === 'frenzy') {
+    return 'Spend the bonus action while raging to make one melee weapon attack against the selected target.';
+  }
   return 'Spend the bonus action to make one Martial Arts unarmed strike after attacking.';
 }
 

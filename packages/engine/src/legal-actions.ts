@@ -63,7 +63,7 @@ export type LegalAction =
   | {
       id: string;
       type: 'class_feature';
-      feature: 'steady_aim' | 'martial_arts_strike' | 'flurry_of_blows' | 'wild_shape';
+      feature: 'steady_aim' | 'martial_arts_strike' | 'flurry_of_blows' | 'wild_shape' | 'frenzy';
       label: string;
       isBonusAction: boolean;
       targetId?: string;
@@ -296,6 +296,7 @@ function coreActualActions(
   }
   actions.push(...wildShapeActions(state, active, economy));
   actions.push(...monkBonusAttackActions(state, active, economy));
+  actions.push(...frenzyActions(state, active, economy));
 
   const threatened = opportunityThreats(state, active).length > 0;
   if (!threatened) return actions;
@@ -385,6 +386,46 @@ function wildShapeActions(
         .filter((action) => action.legendaryOnly !== true)
         .map((action) => action.name),
     }));
+}
+
+function frenzyActions(
+  state: BattleState,
+  active: Creature,
+  economy: { hasBonusAction: boolean },
+): LegalAction[] {
+  if (active.monsterData.heroClass !== 'Barbarian' || (active.monsterData.heroLevel ?? 0) < 3) return [];
+  if (!economy.hasBonusAction || !hasActiveBuff(active, 'rage')) return [];
+  if (active.conditions.includes('incapacitated') || active.conditions.includes('unconscious')) return [];
+  const meleeActions = getActiveActions(active)
+    .filter((action) => action.type === 'melee' && action.attackBonus !== undefined && action.legendaryOnly !== true);
+  if (meleeActions.length === 0) return [];
+  const bestAction = (): MonsterAction =>
+    meleeActions.reduce((best, action) =>
+      estimateActionDamage(action) > estimateActionDamage(best) ? action : best
+    );
+
+  return state.creatures
+    .filter((target) =>
+      target.team !== active.team &&
+      target.isAlive &&
+      !target.dying
+    )
+    .map((target) => ({ target, action: bestAction() }))
+    .filter(({ target, action }) => isTargetInRange(active, target, action))
+    .map(({ target, action }) => ({
+      id: classFeatureTargetActionId('frenzy', target.id),
+      type: 'class_feature' as const,
+      feature: 'frenzy' as const,
+      label: `Frenzy attack against ${target.displayName}`,
+      isBonusAction: true,
+      targetId: target.id,
+      targetName: target.displayName,
+      expectedDamage: estimateActionDamage(action),
+    }));
+}
+
+function hasActiveBuff(active: Creature, key: string): boolean {
+  return active.activeBuffs?.some((buff) => buff.key === key) ?? false;
 }
 
 function monkBonusAttackActions(

@@ -3,6 +3,7 @@ import {
   checkBattleComplete,
   consumeResource,
   creatureDistance,
+  distance,
   executeSpell,
   getFootprintSize,
   getEffectiveMoveSpeed,
@@ -24,7 +25,7 @@ import type { Creature } from './battlecast/types/monster.js';
 import { BASE_DURATIONS } from './battlecast/types/animation.js';
 import { moveToDestination, moveToward } from './battlecast/engine/ai-movement.js';
 import { beginBattlecastControlledTurn, executeTurn, runOpportunityAttacks } from './battlecast/engine/ai-turn.js';
-import { getActiveActions } from './battlecast/engine/ai-targeting.js';
+import { estimateActionDamage, getActiveActions } from './battlecast/engine/ai-targeting.js';
 import { abilityModifier, withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
 import { getEligibleWildShapeBeasts } from './battlecast/data/heroes.js';
 import { maps } from './battlecast/data/maps.js';
@@ -814,11 +815,46 @@ function applySpellAction(
     return;
   }
 
+  applyInstinctivePounce(state, active, battlecastAction);
+
   if (battlecastAction.isBonusAction) {
     active.bonusActionUsed = true;
   } else {
     active.hasActed = true;
     actualTurn.attackRollsRemaining = 0;
+  }
+}
+
+function applyInstinctivePounce(
+  state: BattleState,
+  active: Creature,
+  action: { name: string },
+): void {
+  if (action.name !== 'Rage') return;
+  if (active.monsterData.heroClass !== 'Barbarian' || (active.monsterData.heroLevel ?? 0) < 7) return;
+  const target = state.creatures
+    .filter((creature) => creature.team !== active.team && creature.isAlive)
+    .sort((left, right) =>
+      creatureDistance(active, left) - creatureDistance(active, right) ||
+      left.id.localeCompare(right.id)
+    )[0];
+  if (!target) return;
+
+  const oldRemaining = active.movementRemaining;
+  const from = { ...active.position };
+  active.movementRemaining = Math.floor(getEffectiveMoveSpeed(active, state) / 2);
+  active.position = moveToward(active, target.position, state);
+  active.movementRemaining = oldRemaining;
+  const moved = distance(from, active.position);
+  if (moved > 0) {
+    pushLog(state, {
+      round: state.round,
+      turn: state.turnIndex,
+      actor: active.displayName,
+      action: 'Instinctive Pounce',
+      details: `${active.displayName} surges ${moved} ft as part of entering Rage.`,
+      type: 'move',
+    });
   }
 }
 
@@ -912,6 +948,11 @@ function applyClassFeatureAction(
     return;
   }
 
+  if (action.feature === 'frenzy') {
+    applyFrenzyAction(state, active, action, agent);
+    return;
+  }
+
   if (action.feature === 'martial_arts_strike') {
     applyMonkBonusStrike(state, active, action, agent, actualTurn, 'martial_arts_strike');
     return;
@@ -989,6 +1030,49 @@ function applyWildShapeAction(
   state.events.push({ kind: 'wildShape', creatureId: active.id, beastName: beast.name, durationMs: 0 });
 }
 
+function applyFrenzyAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'class_feature' }>,
+  agent: Agent,
+): void {
+  const target = action.targetId
+    ? state.creatures.find((creature) => creature.id === action.targetId)
+    : undefined;
+  const meleeActions = getActiveActions(active)
+    .filter((candidate) => candidate.type === 'melee' && candidate.attackBonus !== undefined && candidate.legendaryOnly !== true);
+  const best = target && meleeActions.length > 0
+    ? meleeActions.reduce((left, right) =>
+      estimateActionDamage(right, target) > estimateActionDamage(left, target) ? right : left
+    )
+    : undefined;
+  if (
+    active.monsterData.heroClass !== 'Barbarian' ||
+    (active.monsterData.heroLevel ?? 0) < 3 ||
+    active.bonusActionUsed ||
+    !hasActiveBuff(active, 'rage') ||
+    !target ||
+    !target.isAlive ||
+    !best ||
+    creatureDistance(active, target) > (best.reach ?? 5)
+  ) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  active.bonusActionUsed = true;
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Frenzy',
+    details: `${active.displayName} makes a frenzied bonus attack!`,
+    type: 'special',
+  });
+  active.stats.actionUsage['Frenzy'] = (active.stats.actionUsage['Frenzy'] || 0) + 1;
+  resolveAttack(state, active, target, best);
+}
+
 function canWildShapeFit(
   state: BattleState,
   active: Creature,
@@ -998,6 +1082,10 @@ function canWildShapeFit(
   const footprint = getFootprintSize(size);
   if (active.position.x + footprint > gridSize || active.position.y + footprint > gridSize) return false;
   return !isPositionBlocked(active.position, size, state.creatures, active.id, state.terrainBlocked);
+}
+
+function hasActiveBuff(active: Creature, key: string): boolean {
+  return active.activeBuffs?.some((buff) => buff.key === key) ?? false;
 }
 
 function applyMonkBonusStrike(
