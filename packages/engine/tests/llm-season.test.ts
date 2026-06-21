@@ -6,6 +6,9 @@ import {
   llmActualCheapVerifySeason,
   llmActualCheapVerifyV2Season,
   llmActualCheapVerifyV3Season,
+  llmActualCheapVerifyV4Season,
+  llmActualCheapVerifyV5Season,
+  llmActualCheapVerifyV6Season,
   llmFrontierModelAgents,
   llmFrontierSmartGlmTenXSeason,
   llmFrontierSmartSeason,
@@ -211,6 +214,15 @@ describe('LLM seasons', () => {
     expect(llmActualCheapVerifyV3Season.id).toBe('llm-actual-cheap-verify-v3');
     expect(llmActualCheapVerifyV3Season.llmActionSpace).toBe('actual-actions-v1');
     expect(llmActualCheapVerifyV3Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
+    expect(llmActualCheapVerifyV4Season.id).toBe('llm-actual-cheap-verify-v4');
+    expect(llmActualCheapVerifyV4Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapVerifyV4Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
+    expect(llmActualCheapVerifyV5Season.id).toBe('llm-actual-cheap-verify-v5');
+    expect(llmActualCheapVerifyV5Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapVerifyV5Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
+    expect(llmActualCheapVerifyV6Season.id).toBe('llm-actual-cheap-verify-v6');
+    expect(llmActualCheapVerifyV6Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapVerifyV6Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
   });
 
   it('defines a twenty-match GLM post-toolcall verification season', () => {

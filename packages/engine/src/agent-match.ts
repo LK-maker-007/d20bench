@@ -25,8 +25,8 @@ import type { Creature } from './battlecast/types/monster.js';
 import { BASE_DURATIONS } from './battlecast/types/animation.js';
 import { moveToDestination, moveToward } from './battlecast/engine/ai-movement.js';
 import { beginBattlecastControlledTurn, executeTurn, runOpportunityAttacks } from './battlecast/engine/ai-turn.js';
-import { estimateActionDamage, getActiveActions } from './battlecast/engine/ai-targeting.js';
-import { abilityModifier, withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
+import { canSee, estimateActionDamage, getActiveActions } from './battlecast/engine/ai-targeting.js';
+import { abilityModifier, battlecastRandom, withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
 import { getEligibleWildShapeBeasts } from './battlecast/data/heroes.js';
 import { maps } from './battlecast/data/maps.js';
 import { buildMovementBlockedSet, buildSightBlockedSet } from './battlecast/types/terrain.js';
@@ -720,6 +720,11 @@ function applyActualLegalAction(
     return { ended: shouldEndActualTurn(active, actualTurn) };
   }
 
+  if (action.type === 'random_ray') {
+    applyRandomRayAction(state, active, action, agent, actualTurn);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
   if (action.type === 'spell') {
     applySpellAction(state, active, action, agent, actualTurn);
     return { ended: shouldEndActualTurn(active, actualTurn) };
@@ -745,6 +750,49 @@ function applyAttackAction(
   }
 
   resolveAttack(state, active, target, battlecastAction);
+  actualTurn.attackActionStarted = true;
+  actualTurn.attackRollsRemaining = Math.max(0, actualTurn.attackRollsRemaining - 1);
+  if (actualTurn.attackRollsRemaining === 0) {
+    active.hasActed = true;
+  }
+}
+
+function applyRandomRayAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'random_ray' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  const target = state.creatures.find((creature) => creature.id === action.targetId);
+  const rays = getActiveActions(active).filter((candidate) =>
+    active.monsterData.name === 'Beholder' &&
+    candidate.name.includes('Ray') &&
+    candidate.name !== 'Eye Rays' &&
+    candidate.legendaryOnly !== true
+  );
+  if (!target || !target.isAlive || target.team === active.team || rays.length === 0 || !canSee(state, active, target)) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  const reachableRays = rays.filter((ray) =>
+    creatureDistance(active, target) <= (ray.range?.long ?? ray.reach ?? 5)
+  );
+  if (reachableRays.length === 0) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  const selectedRay = reachableRays[Math.floor(battlecastRandom() * reachableRays.length)];
+  if (selectedRay.savingThrow?.area) {
+    resolveAoE(state, active, selectedRay, [target]);
+  } else if (selectedRay.savingThrow) {
+    resolveSingleTargetSave(state, active, target, selectedRay);
+  } else {
+    resolveAttack(state, active, target, selectedRay);
+  }
+
   actualTurn.attackActionStarted = true;
   actualTurn.attackRollsRemaining = Math.max(0, actualTurn.attackRollsRemaining - 1);
   if (actualTurn.attackRollsRemaining === 0) {

@@ -77,6 +77,7 @@ Malformed model output is fail-closed:
 
 - Missing tool call: record `rejected`, retry with a repair instruction.
 - Non-legal `actionId`: record `rejected`, retry with a repair instruction.
+- Repair retries list only the current exact legal action ids, because generic valid-id shapes can mislead models after action economy changes within a stepwise turn.
 - Legal JSON content fallback: if a provider ignores the tool-call contract but returns parseable JSON containing a legal `actionId`, D20bench accepts it, records `toolCall: false` and `repairedJson: true`, and preserves the raw response. This keeps providers with partial tool support usable without letting models invent actions.
 - Repeated malformed output: fail that match rather than inventing an action.
 - Network error: record `network_error` and fail the match.
@@ -144,7 +145,7 @@ The first implementation is deliberately narrow:
 - LLM agents choose from the existing D20bench legal-action catalogue.
 - The historical primitive action space contains `attack`, `move_toward`, and `end_turn`.
 - The historical full-turn action space also exposes copied Battlecast delegates: `battlecast_tactic:aggressive`, `battlecast_tactic:smart`, `battlecast_tactic:kiting`, and `battlecast_tactic:defensive`. These seasons verify tool calls and the copied Battlecast executor, but they are not the final fair action-space target.
-- `actual-actions-v1` is the current fair-action-space target. It forbids Battlecast tactic delegates for OpenRouter agents and exposes concrete target-directed movement, exact `move_to:x,y` destination movement, Dash, Disengage, class features such as Rogue Steady Aim, Druid Wild Shape beast forms, Barbarian Rage/Instinctive Pounce and Frenzy, and Monk Martial Arts/Flurry strikes, attack, spell, save, point-origin AoE centers, line/cone AoE directions, healing, buff, auto-dart, and end-turn actions. The async harness calls the model repeatedly within one creature turn when action economy remains.
+- `actual-actions-v1` is the current fair-action-space target. It forbids Battlecast tactic delegates for OpenRouter agents and exposes concrete target-directed movement, exact `move_to:x,y` destination movement, Dash, Disengage, class features such as Rogue Steady Aim, Druid Wild Shape beast forms, Barbarian Rage/Instinctive Pounce and Frenzy, and Monk Martial Arts/Flurry strikes, attack, spell, save, point-origin AoE centers, line/cone AoE directions, healing, buff, auto-dart, target-level random monster rays, and end-turn actions. The async harness calls the model repeatedly within one creature turn when action economy remains.
 - The current observation schema is `d20bench.llm_observation.v2`, which includes Battlecast-relevant tactical metadata: action/spell profiles, defenses, resources, recharges, buffs, condition timers, concentration/wild-shape state, team tactic flags, and tactic reference notes.
 - Non-Battlecast agents now share Battlecast turn-start processing with the fixed tactic agents, including death saves, start-of-turn condition effects, movement reset, and skip-turn conditions.
 - Battlecast tactic agents still delegate to copied Battlecast `executeTurn`.
@@ -163,6 +164,9 @@ The first implementation is deliberately narrow:
 - `llm-actual-cheap-verify-v1` verifies the delegate-free actual-action harness with DeepSeek Flash, Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash against `battlecast.smart`, capped to one seed across the chokepoint and status-pressure public hero-party mirrors. It should be run with `--max-cost 20` during harness validation.
 - `llm-actual-cheap-verify-v2` repeats that scope after adding the legal JSON content fallback for providers that ignore `tool_calls`.
 - `llm-actual-cheap-verify-v3` repeats that scope after tightening repair instructions so models must copy exact action ids rather than action labels such as `Longbow`.
+- `llm-actual-cheap-verify-v4` repeats that scope after adding Rogue Steady Aim as a concrete class-feature action.
+- `llm-actual-cheap-verify-v5` repeats that scope after widening `actual-actions-v1` with stepwise class features, line/cone AoE directions, and target-level random monster rays.
+- `llm-actual-cheap-verify-v6` repeats that scope after tightening repair retries to show only exact currently legal action ids.
 - LLM ladder runs write `completed-matches.jsonl` checkpoints as matches finish; `--resume` reloads completed fixtures and continues with failed or unstarted fixtures.
 - LLM ladder runs also write local `raw-decisions.jsonl` audit logs for every OpenRouter decision attempt. These are intentionally not published by default.
 - Published benchmark results are append-only by season id: new experiments get new ids and new `results/seasons/<id>/` directories rather than overwriting previous runs.
@@ -174,7 +178,6 @@ This gives us a safe, auditable harness before we spend significant model budget
 `actual-actions-v1` now replaces full-turn delegates as the fairness bridge. The remaining work is to keep widening the concrete catalogue until it matches every relevant Battlecast decision point:
 
 - dodge and help
-- monster-specific random ray actions
 - reactions and optional smite/slot choices
 
 Until those are covered, `actual-actions-v1` results should be treated as harness-validation results, not final leaderboard claims.

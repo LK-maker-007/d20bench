@@ -117,10 +117,12 @@ describe('OpenRouter action selection', () => {
 
   it('repairs a missing tool call without converting it to end_turn', async () => {
     const { context, firstActionId } = createDecisionContext();
+    const requests: any[] = [];
     const rawTraces: OpenRouterRawDecisionTrace[] = [];
     let calls = 0;
-    globalThis.fetch = vi.fn(async () => {
+    globalThis.fetch = vi.fn(async (_url, init) => {
       calls += 1;
+      requests.push(JSON.parse(String(init?.body)));
       if (calls === 1) {
         return jsonResponse({
           id: 'gen-no-tool',
@@ -151,6 +153,12 @@ describe('OpenRouter action selection', () => {
     expect(selection.trace.attempts).toBe(2);
     expect(rawTraces.map((trace) => trace.parseStatus)).toEqual(['rejected', 'accepted']);
     expect(rawTraces[0].parseError).toContain('non-legal actionId');
+    expect(requests[1].messages.some((message: any) =>
+      message.role === 'system' &&
+      message.content.includes('The only legal actionId values for this retry are:') &&
+      message.content.includes(`\`${firstActionId}\``) &&
+      !message.content.includes('Examples of valid shapes')
+    )).toBe(true);
   });
 
   it('accepts a legal JSON content action when a provider ignores the tool call contract', async () => {
@@ -250,7 +258,7 @@ describe('OpenRouter action selection', () => {
       { ...context, traceSink: (trace) => rawTraces.push(trace) },
     )).rejects.toThrow(/did not produce a legal action/);
 
-    expect(rawTraces).toHaveLength(2);
+    expect(rawTraces).toHaveLength(3);
     expect(rawTraces.every((trace) => trace.parseStatus === 'rejected')).toBe(true);
     expect(rawTraces.every((trace) => trace.acceptedActionId === undefined)).toBe(true);
   });

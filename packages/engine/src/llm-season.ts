@@ -424,7 +424,21 @@ export const llmActualCheapVerifyV4Season: LlmSeasonConfig = {
   description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after exposing Rogue Steady Aim as a concrete class-feature action.',
 };
 
+export const llmActualCheapVerifyV5Season: LlmSeasonConfig = {
+  ...llmActualCheapVerifySeason,
+  id: 'llm-actual-cheap-verify-v5',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after widening actual-actions-v1 with stepwise class features, directional AoE, and target-level random monster rays.',
+};
+
+export const llmActualCheapVerifyV6Season: LlmSeasonConfig = {
+  ...llmActualCheapVerifySeason,
+  id: 'llm-actual-cheap-verify-v6',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after stricter repair prompts list only the current exact legal action ids.',
+};
+
 export const llmSeasons = [
+  llmActualCheapVerifyV6Season,
+  llmActualCheapVerifyV5Season,
   llmActualCheapVerifyV4Season,
   llmActualCheapVerifyV3Season,
   llmActualCheapVerifyV2Season,

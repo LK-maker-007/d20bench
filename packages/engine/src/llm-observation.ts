@@ -278,6 +278,7 @@ export interface LlmActionView {
   expectedHealing?: number;
   extraMovement?: number;
   isBonusAction?: boolean;
+  possibleEffects?: string[];
   spellLevel?: number;
   resourceCost?: { key: string; amount: number };
   beastName?: string;
@@ -447,6 +448,23 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       label: `Move to (${action.destination.x},${action.destination.y})`,
       destination: action.destination,
       distanceFt: action.distanceFt,
+    };
+  }
+
+  if (action.type === 'random_ray') {
+    const target = creatureById.get(action.targetId);
+    return {
+      id: action.id,
+      type: action.type,
+      label: `${action.actionName} against ${target?.label ?? action.targetName} (random effect)`,
+      targetId: action.targetId,
+      targetName: action.targetName,
+      targetLabel: target?.label,
+      targetRelation: target?.relation,
+      targetTeam: target?.team,
+      possibleEffects: action.possibleEffects,
+      expectedDamage: action.expectedDamage === undefined ? undefined : Number(action.expectedDamage.toFixed(2)),
+      description: 'Choose the target for one random eye ray. The rules engine randomly selects and resolves one of the listed possible effects, then the next action is chosen from a refreshed state.',
     };
   }
 

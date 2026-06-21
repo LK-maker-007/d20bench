@@ -42,6 +42,15 @@ export type LegalAction =
     }
   | {
       id: string;
+      type: 'random_ray';
+      actionName: string;
+      targetId: string;
+      targetName: string;
+      possibleEffects: string[];
+      expectedDamage?: number;
+    }
+  | {
+      id: string;
       type: 'move_toward';
       targetId: string;
       targetName: string;
@@ -151,6 +160,7 @@ export function generateLegalActions(
 
   for (const action of activeActions) {
     if (isConcreteSpellAction(action) && options.includeActualActions && !isAttackRollCantripAction(action)) continue;
+    if (options.includeActualActions && isBeholderIndividualEyeRayAction(active, action)) continue;
     if (!hasAttackRoll || action.attackBonus === undefined) continue;
     for (const target of enemies) {
       if (!isTargetInRange(active, target, action)) continue;
@@ -167,6 +177,7 @@ export function generateLegalActions(
   }
 
   if (options.includeActualActions) {
+    actions.push(...randomRayActions(state, active, { hasAttackRoll }));
     actions.push(...coreActualActions(state, active, {
       hasMainAction,
       attackActionStarted,
@@ -230,6 +241,10 @@ export function spellActionId(
 
 export function directionalSpellActionId(actionName: string, direction: { x: number; y: number }): string {
   return `spell:${slugActionName(actionName)}:direction:${direction.x},${direction.y}`;
+}
+
+export function randomRayActionId(actionName: string, targetId: string): string {
+  return `random_ray:${slugActionName(actionName)}:${targetId}`;
 }
 
 export function autoDartActionId(actionName: string, targetIds: string[]): string {
@@ -635,6 +650,52 @@ function isTargetInRange(active: Creature, target: Creature, action: MonsterActi
   return distance <= (action.reach ?? 5);
 }
 
+function randomRayActions(
+  state: BattleState,
+  active: Creature,
+  economy: { hasAttackRoll: boolean },
+): LegalAction[] {
+  if (!economy.hasAttackRoll || !hasBeholderEyeRayMultiattack(active)) return [];
+  const rays = beholderEyeRayActions(active);
+  if (rays.length === 0) return [];
+
+  const enemies = state.creatures.filter((creature) =>
+    creature.team !== active.team &&
+    creature.isAlive &&
+    !creature.dying &&
+    canSee(state, active, creature) &&
+    rays.some((ray) => isTargetInRange(active, creature, ray))
+  );
+  const possibleEffects = rays.map((ray) => ray.name);
+
+  return enemies.map((target) => ({
+    id: randomRayActionId('Eye Ray', target.id),
+    type: 'random_ray' as const,
+    actionName: 'Eye Ray',
+    targetId: target.id,
+    targetName: target.displayName,
+    possibleEffects,
+    expectedDamage: rays.reduce((sum, ray) => sum + estimateBattlecastActionDamage(ray, target), 0) / rays.length,
+  }));
+}
+
+function hasBeholderEyeRayMultiattack(active: Creature): boolean {
+  if (active.monsterData.name !== 'Beholder') return false;
+  return getMultiattack(active)?.description.toLowerCase().includes('eye ray') ?? false;
+}
+
+function isBeholderIndividualEyeRayAction(active: Creature, action: MonsterAction): boolean {
+  return hasBeholderEyeRayMultiattack(active) &&
+    action.name.includes('Ray') &&
+    action.name !== 'Eye Rays';
+}
+
+function beholderEyeRayActions(active: Creature): MonsterAction[] {
+  return getActiveActions(active).filter((action) =>
+    isBeholderIndividualEyeRayAction(active, action)
+  );
+}
+
 function generateConcreteSpellActions(
   state: BattleState,
   active: Creature,
@@ -647,6 +708,7 @@ function generateConcreteSpellActions(
   const actions: LegalAction[] = [];
   const candidates = getActiveActions(active)
     .filter((action) => action.type !== 'multiattack' && action.legendaryOnly !== true)
+    .filter((action) => !isBeholderIndividualEyeRayAction(active, action))
     .filter((action) => isConcreteSpellAction(action) && !isAttackRollCantripAction(action));
 
   for (const action of candidates) {

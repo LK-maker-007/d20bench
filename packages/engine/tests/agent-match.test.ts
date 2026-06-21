@@ -311,6 +311,52 @@ describe('agent matches', () => {
     ]));
   });
 
+  it('exposes Beholder Eye Rays as target-level random ray actions', () => {
+    const state = initBattle(createBattlecastCreatures(beholderRandomRayScenario().combatants, true), 20);
+    const beholder = state.creatures.find((creature) => creature.monsterData.name === 'Beholder');
+    if (!beholder) throw new Error('expected Beholder');
+
+    const catalogue = generateLegalActions(state, beholder, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 3,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, beholder, catalogue);
+    const randomRayActions = catalogue.actions.filter((action) => action.type === 'random_ray');
+    const individualRayNames = new Set([
+      'Charm Ray',
+      'Paralyzing Ray',
+      'Fear Ray',
+      'Enervation Ray',
+      'Disintegration Ray',
+      'Death Ray',
+      'Sleep Ray',
+    ]);
+
+    expect(randomRayActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: expect.stringMatching(/^random_ray:eye-ray:/),
+        actionName: 'Eye Ray',
+        targetId: expect.stringContaining('storm-giant-blue'),
+        possibleEffects: expect.arrayContaining(['Death Ray', 'Disintegration Ray', 'Sleep Ray']),
+      }),
+    ]));
+    expect(catalogue.actions.some((action) =>
+      (action.type === 'attack' || action.type === 'spell') &&
+      individualRayNames.has(action.actionName)
+    )).toBe(false);
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: expect.stringMatching(/^random_ray:eye-ray:/),
+        type: 'random_ray',
+        possibleEffects: expect.arrayContaining(['Death Ray', 'Disintegration Ray']),
+        description: expect.stringContaining('randomly selects'),
+      }),
+    ]));
+  });
+
   it('exposes Rogue Steady Aim as a concrete class feature action', () => {
     const state = initBattle(createBattlecastCreatures(rogueSteadyAimScenario().combatants, true), 12);
     const rogue = state.creatures.find((creature) => creature.team === 'red');
@@ -709,6 +755,56 @@ describe('agent matches', () => {
         direction: chosenDirection,
       }),
     ]));
+  });
+
+  it('lets an actual-action Beholder choose random Eye Ray targets stepwise', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const actionId = actionIds.find((id) => id.startsWith('random_ray:eye-ray:')) ?? 'end_turn';
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Choose a legal target for the next random eye ray.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: beholderRandomRayScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const rayResolutions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'random_ray'
+    );
+    const possibleEffects = rayResolutions[0]?.acceptedAction.type === 'random_ray'
+      ? rayResolutions[0].acceptedAction.possibleEffects
+      : [];
+
+    expect(rayResolutions).toHaveLength(3);
+    expect(rayResolutions.map((event) => event.turnStep)).toEqual([0, 1, 2]);
+    expect(rayResolutions.every((event) =>
+      event.logs.some((log) => possibleEffects.includes(log.action))
+    )).toBe(true);
   });
 
   it('lets an actual-action Rogue use Steady Aim before choosing an attack', async () => {
@@ -1145,6 +1241,26 @@ function lightningBoltDirectionScenario(): D20benchScenario {
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 6, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 10, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 8 } },
+    ],
+  };
+}
+
+function beholderRandomRayScenario(): D20benchScenario {
+  return {
+    id: 'test.beholder-random-ray.v1',
+    name: 'Beholder Random Ray Test',
+    description: 'A Beholder chooses targets for random eye rays without choosing individual ray effects.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 20,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: 'Beholder', team: 'red', position: { x: 2, y: 2 } },
+      { monster: 'Storm Giant', team: 'blue', position: { x: 10, y: 2 } },
     ],
   };
 }

@@ -50,7 +50,7 @@ const openRouterRequestTimeoutMs = 90_000;
 const toolName = 'choose_d20bench_action';
 const defaultMaxCompletionTokens = 2048;
 const glmMaxCompletionTokens = 8192;
-const defaultDecisionAttempts = 2;
+const defaultDecisionAttempts = 3;
 const modelsWithoutForcedToolChoice = new Set<string>();
 
 export interface OpenRouterDecisionTraceMeta {
@@ -387,6 +387,7 @@ function buildOpenRouterToolRequest(input: {
         `You must call the ${toolName} tool exactly once.`,
         'Choose exactly one actionId from the tool enum. Do not answer in text.',
         'The actionId must match one enum value exactly. Do not use action names, spell names, weapon names, labels, target names, or partial ids.',
+        'Never infer action ids from action profiles or creature names; legalActions is authoritative for what can be done right now.',
         'The engine handles all rules, dice, movement, spells, healing, buffs, AoE, and damage.',
         'Use the observation metadata: action profiles, defenses, resources, recharges, active buffs, condition timers, legal actions, recent logs, and tacticReference when present.',
         'When the action space is actual-actions-v1, choose one concrete action now; the harness will ask again after the result if this creature still has action economy remaining.',
@@ -397,8 +398,10 @@ function buildOpenRouterToolRequest(input: {
       content: [
         `Your previous response was rejected: ${input.repairError}.`,
         `Call ${toolName} with one exact actionId copied from the enum.`,
-        'Examples of invalid actionId values: Longbow, Fireball, Move, attack, Paladin.',
-        'Examples of valid shapes: attack:longbow:<target-id>, spell:fireball:center:<x>,<y>, move_toward:<target-id>, end_turn.',
+        'The only legal actionId values for this retry are:',
+        formatLegalActionIds(input.legalActionIds),
+        'Action names such as Longbow, Rapier, Fireball, Move, attack, or target names are invalid unless that exact full string appears above.',
+        'If a creature action appears in activeCreature.actions but no matching id appears above, that action is not currently usable because of action economy, range, resources, or state.',
       ].join(' '),
     }] : []),
     {
@@ -444,6 +447,10 @@ function buildOpenRouterToolRequest(input: {
       function: { name: toolName },
     } } : {}),
   };
+}
+
+function formatLegalActionIds(legalActionIds: string[]): string {
+  return legalActionIds.map((id) => `\`${id}\``).join(', ');
 }
 
 function parseModelDecision(message: any): OpenRouterToolDecision {
