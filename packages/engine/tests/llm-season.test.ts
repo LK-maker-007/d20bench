@@ -9,6 +9,8 @@ import {
   llmSmartGlmModelAgents,
   llmSmartTop3ModelAgents,
   llmToolcallCheapVerifySeason,
+  llmToolcallFrontierSmartSixteenSeason,
+  llmToolcallFrontierVerifyModelAgents,
   llmToolcallGlmSmartTwentySeason,
   llmToolcallVerifyModelAgents,
   sanitizeBenchmarkErrorForArtifacts,
@@ -198,5 +200,38 @@ describe('LLM seasons', () => {
 
     expect(pairings).toHaveLength(llmSmartGlmModelAgents.length * 2);
     expect([...matchesByModel.values()]).toEqual(llmSmartGlmModelAgents.map(() => 20));
+  });
+
+  it('defines a sixteen-match-per-model frontier tool-call verification season', () => {
+    const pairings = llmToolcallFrontierSmartSixteenSeason.pairings ?? [];
+    const modelAgents = new Set(llmToolcallFrontierVerifyModelAgents);
+    const matchesByModel = new Map(llmToolcallFrontierVerifyModelAgents.map((agent) => [agent, 0]));
+
+    expect(llmToolcallFrontierSmartSixteenSeason.id).toBe('llm-toolcall-frontier-smart-16-v2');
+    expect(llmToolcallFrontierSmartSixteenSeason.llmActionSpace).toBe('battlecast-full-turn');
+    expect(llmToolcallFrontierSmartSixteenSeason.seeds).toEqual([1, 2, 3, 4]);
+    expect(llmToolcallFrontierSmartSixteenSeason.scenarios.map((scenario) => scenario.battleType)).toEqual([
+      'hero-party-chokepoint',
+      'hero-party-status',
+    ]);
+    expect(llmToolcallFrontierSmartSixteenSeason.agents).toEqual(expect.arrayContaining([
+      'openrouter:anthropic/claude-opus-4.8',
+      'openrouter:openai/gpt-5.5',
+      'battlecast.smart',
+    ]));
+
+    for (const pairing of pairings) {
+      const agents = [pairing.redAgent, pairing.blueAgent];
+      expect(agents).toContain('battlecast.smart');
+      const model = agents.find((agent) => modelAgents.has(agent));
+      expect(model).toBeDefined();
+      matchesByModel.set(
+        model!,
+        matchesByModel.get(model!)! + llmToolcallFrontierSmartSixteenSeason.scenarios.length * llmToolcallFrontierSmartSixteenSeason.seeds.length,
+      );
+    }
+
+    expect(pairings).toHaveLength(llmToolcallFrontierVerifyModelAgents.length * 2);
+    expect([...matchesByModel.values()]).toEqual(llmToolcallFrontierVerifyModelAgents.map(() => 16));
   });
 });

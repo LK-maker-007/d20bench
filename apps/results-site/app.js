@@ -779,6 +779,7 @@
     ids.add("llm-frontier-smart-glm-10x-v1");
     ids.add("llm-toolcall-cheap-verify-v3");
     ids.add("llm-toolcall-glm-smart-20-v2");
+    ids.add("llm-toolcall-frontier-smart-16-v2");
     ids.add("llm-frontier-fullturn-v1");
     ids.add("llm-frontier-public-v1");
     ids.add("llm-smoke-v0");

@@ -399,7 +399,6 @@ function buildOpenRouterToolRequest(input: {
 
   return {
     model: input.model,
-    temperature: 0,
     max_tokens: openRouterMaxCompletionTokens(input.model),
     provider: {
       require_parameters: true,

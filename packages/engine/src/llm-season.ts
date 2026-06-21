@@ -209,6 +209,11 @@ export const llmSmartGlmModelAgents: OpenRouterAgentId[] = [
   createOpenRouterAgentId('z-ai/glm-5.2'),
 ];
 
+export const llmToolcallFrontierVerifyModelAgents: OpenRouterAgentId[] = [
+  createOpenRouterAgentId('anthropic/claude-opus-4.8'),
+  createOpenRouterAgentId('openai/gpt-5.5'),
+];
+
 export const llmToolcallVerifyModelAgents: OpenRouterAgentId[] = [
   ...llmSmartTop3ModelAgents,
 ];
@@ -356,12 +361,33 @@ export const llmToolcallGlmSmartTwentySeason: LlmSeasonConfig = {
   concurrency: 10,
 };
 
+export const llmToolcallFrontierSmartSixteenSeason: LlmSeasonConfig = {
+  id: 'llm-toolcall-frontier-smart-16-v2',
+  description: 'Post-toolcall-fix frontier verification season for GPT-5.5 and Claude Opus 4.8 against Battlecast Smart, with sixteen matches per model.',
+  agents: [
+    ...llmToolcallFrontierVerifyModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: [1, 2, 3, 4],
+  maxRounds: 3,
+  pairings: createModelOpponentPairings(llmToolcallFrontierVerifyModelAgents, llmSmartOpponentAgents),
+  llmActionSpace: 'battlecast-full-turn',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 8,
+};
+
 export const llmSeasons = [
   llmFrontierSmartSeason,
   llmFrontierSmartTop3TenXSeason,
   llmFrontierSmartGlmTenXSeason,
   llmToolcallCheapVerifySeason,
   llmToolcallGlmSmartTwentySeason,
+  llmToolcallFrontierSmartSixteenSeason,
   llmFrontierFullTurnSeason,
   llmFrontierPublicSeason,
   llmSmokeSeason,
