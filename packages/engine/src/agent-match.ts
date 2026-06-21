@@ -1,10 +1,12 @@
 import {
   DEFAULT_TACTICS,
   checkBattleComplete,
+  consumeResource,
   creatureDistance,
   executeSpell,
   getEffectiveMoveSpeed,
   getAoETargets,
+  hasResource,
   initBattle,
   processHydraEndOfTurn,
   processTargetTurnEndOngoingEffects,
@@ -388,6 +390,7 @@ interface ManualTurnStartResult {
 interface ActualTurnContext {
   attackRollsRemaining: number;
   attackActionStarted: boolean;
+  flurryStrikesRemaining: number;
   disengaged: boolean;
   ended: boolean;
 }
@@ -515,6 +518,7 @@ async function runStepwiseOpenRouterTurn(input: {
   const actualTurn: ActualTurnContext = {
     attackRollsRemaining: estimateAttackRollBudget(input.active),
     attackActionStarted: false,
+    flurryStrikesRemaining: 0,
     disengaged: false,
     ended: false,
   };
@@ -703,7 +707,7 @@ function applyActualLegalAction(
   }
 
   if (action.type === 'class_feature') {
-    applyClassFeatureAction(state, active, action);
+    applyClassFeatureAction(state, active, action, agent, actualTurn);
     return { ended: shouldEndActualTurn(active, actualTurn) };
   }
 
@@ -871,6 +875,8 @@ function applyClassFeatureAction(
   state: BattleState,
   active: Creature,
   action: Extract<LegalAction, { type: 'class_feature' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
 ): void {
   if (action.feature === 'steady_aim') {
     active.turnFlags = {
@@ -895,11 +901,112 @@ function applyClassFeatureAction(
       tone: 'success',
       durationMs: BASE_DURATIONS.effect,
     });
+    return;
+  }
+
+  if (action.feature === 'martial_arts_strike') {
+    applyMonkBonusStrike(state, active, action, agent, actualTurn, 'martial_arts_strike');
+    return;
+  }
+
+  if (action.feature === 'flurry_of_blows') {
+    applyMonkBonusStrike(state, active, action, agent, actualTurn, 'flurry_of_blows');
+  }
+}
+
+function applyMonkBonusStrike(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'class_feature' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+  feature: 'martial_arts_strike' | 'flurry_of_blows',
+): void {
+  const target = action.targetId
+    ? state.creatures.find((creature) => creature.id === action.targetId)
+    : undefined;
+  const unarmed = monkUnarmedAction(active);
+  if (!target || !target.isAlive || !unarmed || creatureDistance(active, target) > (unarmed.reach ?? 5)) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  if (feature === 'martial_arts_strike') {
+    if (active.bonusActionUsed) {
+      pushInvalidActionLog(state, active, agent, action.id);
+      return;
+    }
+    active.bonusActionUsed = true;
+    actualTurn.flurryStrikesRemaining = 0;
+    pushLog(state, {
+      round: state.round,
+      turn: state.turnIndex,
+      actor: active.displayName,
+      action: 'Martial Arts',
+      details: `${active.displayName} follows up with a bonus unarmed strike.`,
+      type: 'special',
+    });
+    active.stats.actionUsage['Martial Arts'] = (active.stats.actionUsage['Martial Arts'] || 0) + 1;
+    resolveAttack(state, active, target, unarmed);
+    return;
+  }
+
+  if (actualTurn.flurryStrikesRemaining <= 0) {
+    if (active.bonusActionUsed || !hasResource(active, 'ki')) {
+      pushInvalidActionLog(state, active, agent, action.id);
+      return;
+    }
+    active.bonusActionUsed = true;
+    consumeResource(active, 'ki');
+    actualTurn.flurryStrikesRemaining = Math.max(0, flurryStrikeCount(active) - 1);
+    pushLog(state, {
+      round: state.round,
+      turn: state.turnIndex,
+      actor: active.displayName,
+      action: 'Flurry of Blows',
+      details: `${active.displayName} spends 1 ki for Flurry of Blows!`,
+      type: 'special',
+    });
+    active.stats.actionUsage['Flurry of Blows'] = (active.stats.actionUsage['Flurry of Blows'] || 0) + 1;
+  } else {
+    actualTurn.flurryStrikesRemaining = Math.max(0, actualTurn.flurryStrikesRemaining - 1);
+  }
+
+  withOpenHandFlurryFlag(active, () => {
+    resolveAttack(state, active, target, unarmed);
+  });
+}
+
+function flurryStrikeCount(active: Creature): number {
+  return (active.monsterData.heroLevel ?? 0) >= 10 ? 3 : 2;
+}
+
+function monkUnarmedAction(active: Creature) {
+  const meleeActions = getActiveActions(active)
+    .filter((candidate) => candidate.type === 'melee' && candidate.attackBonus !== undefined && candidate.legendaryOnly !== true);
+  return meleeActions.find((candidate) => candidate.name === 'Martial Arts (Unarmed)') ?? meleeActions[0];
+}
+
+function withOpenHandFlurryFlag(active: Creature, fn: () => void): void {
+  const hadOpenHandFlag = active.turnFlags?.openHandFlurryStrike;
+  active.turnFlags = {
+    ...active.turnFlags,
+    openHandFlurryStrike: true,
+  };
+  try {
+    fn();
+  } finally {
+    if (hadOpenHandFlag) {
+      active.turnFlags.openHandFlurryStrike = true;
+    } else {
+      delete active.turnFlags.openHandFlurryStrike;
+    }
   }
 }
 
 function shouldEndActualTurn(active: Creature, actualTurn: ActualTurnContext): boolean {
   if (actualTurn.ended) return true;
+  if (actualTurn.flurryStrikesRemaining > 0) return false;
   const hasMainAction = !active.hasActed || (actualTurn.attackActionStarted && actualTurn.attackRollsRemaining > 0);
   const hasBonusAction = active.bonusActionUsed !== true;
   const hasMovement = active.movementRemaining > 0;

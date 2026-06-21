@@ -490,13 +490,21 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
   }
 
   if (action.type === 'class_feature') {
+    const target = action.targetId ? creatureById.get(action.targetId) : undefined;
     return {
       id: action.id,
       type: action.type,
       label: action.label,
       feature: action.feature,
       isBonusAction: action.isBonusAction,
-      description: 'Spend a bonus action without moving to gain Advantage on the next weapon attack this turn.',
+      targetId: action.targetId,
+      targetName: action.targetName,
+      targetLabel: target?.label,
+      targetRelation: target?.relation,
+      targetTeam: target?.team,
+      expectedDamage: action.expectedDamage === undefined ? undefined : Number(action.expectedDamage.toFixed(2)),
+      resourceCost: action.resourceCost,
+      description: classFeatureDescription(action),
     };
   }
 
@@ -517,6 +525,18 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
     type: action.type,
     label: 'End turn',
   };
+}
+
+function classFeatureDescription(action: Extract<LegalAction, { type: 'class_feature' }>): string {
+  if (action.feature === 'steady_aim') {
+    return 'Spend a bonus action without moving to gain Advantage on the next weapon attack this turn.';
+  }
+  if (action.feature === 'flurry_of_blows') {
+    return action.resourceCost
+      ? 'Spend 1 ki and the bonus action to make the first Flurry of Blows unarmed strike. Remaining Flurry strikes are chosen as later concrete actions after seeing results.'
+      : 'Make a remaining Flurry of Blows unarmed strike after seeing the previous strike result.';
+  }
+  return 'Spend the bonus action to make one Martial Arts unarmed strike after attacking.';
 }
 
 function objectiveForActionSpace(actionSpace: LegalActionSpace): string {

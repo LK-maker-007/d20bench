@@ -58,11 +58,15 @@ export type LegalAction =
       isBonusAction: boolean;
     }
   | {
-      id: 'class_feature:steady-aim';
+      id: string;
       type: 'class_feature';
-      feature: 'steady_aim';
-      label: 'Steady Aim';
+      feature: 'steady_aim' | 'martial_arts_strike' | 'flurry_of_blows';
+      label: string;
       isBonusAction: boolean;
+      targetId?: string;
+      targetName?: string;
+      expectedDamage?: number;
+      resourceCost?: { key: string; amount: number };
     }
   | {
       id: string;
@@ -103,6 +107,7 @@ export interface GenerateLegalActionsOptions {
   actualTurnContext?: {
     attackRollsRemaining?: number;
     attackActionStarted?: boolean;
+    flurryStrikesRemaining?: number;
   };
 }
 
@@ -130,6 +135,7 @@ export function generateLegalActions(
     ? hasMainAction && attackRollsRemaining > 0
     : hasMainAction;
   const hasBonusAction = active.bonusActionUsed !== true;
+  const flurryStrikesRemaining = options.actualTurnContext?.flurryStrikesRemaining ?? 0;
 
   for (const action of activeActions) {
     if (isConcreteSpellAction(action) && options.includeActualActions && !isAttackRollCantripAction(action)) continue;
@@ -153,6 +159,7 @@ export function generateLegalActions(
       hasMainAction,
       attackActionStarted,
       hasBonusAction,
+      flurryStrikesRemaining,
     }));
     actions.push(...generateConcreteSpellActions(state, active, {
       hasMainAction,
@@ -225,6 +232,10 @@ export function battlecastTacticActionId(tactic: TacticType): string {
   return `battlecast_tactic:${tactic}`;
 }
 
+export function classFeatureTargetActionId(feature: string, targetId: string): string {
+  return `class_feature:${slugActionName(feature)}:${targetId}`;
+}
+
 export function createBattlecastTacticAction(tactic: TacticType): LegalAction {
   return {
     id: battlecastTacticActionId(tactic),
@@ -252,6 +263,7 @@ function coreActualActions(
     hasMainAction: boolean;
     attackActionStarted: boolean;
     hasBonusAction: boolean;
+    flurryStrikesRemaining: number;
   },
 ): LegalAction[] {
   const actions: LegalAction[] = [];
@@ -269,6 +281,7 @@ function coreActualActions(
       isBonusAction: true,
     });
   }
+  actions.push(...monkBonusAttackActions(state, active, economy));
 
   const threatened = opportunityThreats(state, active).length > 0;
   if (!threatened) return actions;
@@ -314,6 +327,87 @@ function canUseSteadyAim(
       (action.type !== 'ranged' || canSee(state, active, target))
     );
   });
+}
+
+function monkBonusAttackActions(
+  state: BattleState,
+  active: Creature,
+  economy: {
+    attackActionStarted: boolean;
+    hasBonusAction: boolean;
+    flurryStrikesRemaining: number;
+  },
+): LegalAction[] {
+  if (active.monsterData.heroClass !== 'Monk') return [];
+  const level = active.monsterData.heroLevel ?? 0;
+  const unarmed = monkUnarmedAction(active);
+  if (!unarmed) return [];
+  const targets = classFeatureAttackTargets(state, active, unarmed);
+  if (targets.length === 0) return [];
+
+  if (economy.flurryStrikesRemaining > 0) {
+    return targets.map((target) => ({
+      id: classFeatureTargetActionId('flurry-of-blows', target.id),
+      type: 'class_feature' as const,
+      feature: 'flurry_of_blows' as const,
+      label: `Flurry of Blows strike against ${target.displayName}`,
+      isBonusAction: true,
+      targetId: target.id,
+      targetName: target.displayName,
+      expectedDamage: estimateActionDamage(unarmed),
+    }));
+  }
+
+  if (!economy.attackActionStarted || !economy.hasBonusAction) return [];
+  const actions: LegalAction[] = [];
+  if (level >= 2 && hasResource(active, 'ki')) {
+    actions.push(...targets.map((target) => ({
+      id: classFeatureTargetActionId('flurry-of-blows', target.id),
+      type: 'class_feature' as const,
+      feature: 'flurry_of_blows' as const,
+      label: `Flurry of Blows against ${target.displayName}`,
+      isBonusAction: true,
+      targetId: target.id,
+      targetName: target.displayName,
+      expectedDamage: estimateActionDamage(unarmed),
+      resourceCost: { key: 'ki', amount: 1 },
+    })));
+  }
+  if (level >= 1) {
+    actions.push(...targets.map((target) => ({
+      id: classFeatureTargetActionId('martial-arts', target.id),
+      type: 'class_feature' as const,
+      feature: 'martial_arts_strike' as const,
+      label: `Martial Arts strike against ${target.displayName}`,
+      isBonusAction: true,
+      targetId: target.id,
+      targetName: target.displayName,
+      expectedDamage: estimateActionDamage(unarmed),
+    })));
+  }
+  return actions;
+}
+
+function classFeatureAttackTargets(state: BattleState, active: Creature, action: MonsterAction): Creature[] {
+  return state.creatures
+    .filter((target) =>
+      target.team !== active.team &&
+      target.isAlive &&
+      !target.dying &&
+      isTargetInRange(active, target, action)
+    )
+    .sort((left, right) =>
+      left.currentHp - right.currentHp ||
+      left.displayName.localeCompare(right.displayName) ||
+      left.id.localeCompare(right.id)
+    );
+}
+
+function monkUnarmedAction(active: Creature): MonsterAction | undefined {
+  return getActiveActions(active)
+    .filter((action) => action.type === 'melee' && action.attackBonus !== undefined && action.legendaryOnly !== true)
+    .find((action) => action.name === 'Martial Arts (Unarmed)') ??
+    getActiveActions(active).find((action) => action.type === 'melee' && action.attackBonus !== undefined && action.legendaryOnly !== true);
 }
 
 function hasTrait(active: Creature, name: string): boolean {

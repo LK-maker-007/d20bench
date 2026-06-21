@@ -308,6 +308,62 @@ describe('agent matches', () => {
     expect(movedCatalogue.actions.some((action) => action.id === 'class_feature:steady-aim')).toBe(false);
   });
 
+  it('exposes Monk Martial Arts and Flurry as post-attack concrete class feature actions', () => {
+    const state = initBattle(createBattlecastCreatures(monkFlurryScenario().combatants, true), 8);
+    const monk = state.creatures.find((creature) => creature.team === 'red');
+    if (!monk) throw new Error('expected red monk');
+
+    const beforeAttack = generateLegalActions(state, monk, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    expect(beforeAttack.actions.some((action) => action.type === 'class_feature' && action.feature === 'flurry_of_blows')).toBe(false);
+    expect(beforeAttack.actions.some((action) => action.type === 'class_feature' && action.feature === 'martial_arts_strike')).toBe(false);
+
+    const afterAttack = generateLegalActions(state, monk, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: true,
+      },
+    });
+    expect(afterAttack.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'class_feature',
+        feature: 'flurry_of_blows',
+        resourceCost: { key: 'ki', amount: 1 },
+      }),
+      expect.objectContaining({
+        type: 'class_feature',
+        feature: 'martial_arts_strike',
+      }),
+    ]));
+
+    monk.bonusActionUsed = true;
+    const continuingFlurry = generateLegalActions(state, monk, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: true,
+        flurryStrikesRemaining: 1,
+      },
+    });
+    const continuingFlurryAction = continuingFlurry.actions.find((action) =>
+      action.type === 'class_feature' && action.feature === 'flurry_of_blows'
+    );
+    expect(continuingFlurryAction).toEqual(expect.objectContaining({
+      type: 'class_feature',
+      feature: 'flurry_of_blows',
+    }));
+    expect(continuingFlurryAction).not.toHaveProperty('resourceCost');
+    expect(continuingFlurry.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'martial_arts_strike'
+    )).toBe(false);
+  });
+
   it('asks an OpenRouter actual-action agent again after the first Extra Attack swing', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     globalThis.fetch = vi.fn(async (_url, init) => {
@@ -508,6 +564,65 @@ describe('agent matches', () => {
     expect(steadyAimResolution?.logs.some((log) => log.action === 'Steady Aim')).toBe(true);
     expect(steadyAimResolution?.events.some((event) => event.kind === 'effect' && event.label === 'Steady Aim')).toBe(true);
     expect(attackResolution?.turnStep).toBe(1);
+  });
+
+  it('lets an actual-action Monk choose each Flurry of Blows strike after seeing the previous result', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let callIndex = 0;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const preferred = callIndex === 0
+        ? actionIds.find((id) => id.startsWith('attack:'))
+        : callIndex <= 2
+          ? actionIds.find((id) => id.startsWith('class_feature:flurry-of-blows:'))
+          : 'end_turn';
+      callIndex += 1;
+      const actionId = preferred && actionIds.includes(preferred) ? preferred : 'end_turn';
+      return jsonResponse({
+        id: `gen-${callIndex}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Attack, then choose each concrete Flurry strike.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: monkFlurryScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const llmActions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.llmTrace
+    );
+    const flurryResolutions = llmActions.filter((event) =>
+      event.acceptedAction.type === 'class_feature' &&
+      event.acceptedAction.feature === 'flurry_of_blows'
+    );
+
+    expect(flurryResolutions).toHaveLength(2);
+    expect(flurryResolutions.map((event) => event.turnStep)).toEqual([1, 2]);
+    expect(flurryResolutions[0].logs.some((log) => log.action === 'Flurry of Blows')).toBe(true);
+    expect(flurryResolutions.every((event) =>
+      event.logs.some((log) => log.action === 'Martial Arts (Unarmed)' || log.action === 'Attack')
+    )).toBe(true);
   });
 
   it('lets an actual-action LLM disengage before moving without provoking opportunity attacks', async () => {
@@ -727,6 +842,26 @@ function rogueSteadyAimScenario(): D20benchScenario {
     combatants: [
       { monster: buildHero('Rogue', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 8 } },
+    ],
+  };
+}
+
+function monkFlurryScenario(): D20benchScenario {
+  return {
+    id: 'test.monk-flurry.v1',
+    name: 'Monk Flurry Test',
+    description: 'A level-5 Monk can attack and then spend ki on stepwise Flurry of Blows strikes.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Monk', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
     ],
   };
 }
