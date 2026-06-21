@@ -18,7 +18,7 @@ import {
 } from './battlecast/engine/combat.js';
 import type { Creature } from './battlecast/types/monster.js';
 import { BASE_DURATIONS } from './battlecast/types/animation.js';
-import { moveToward } from './battlecast/engine/ai-movement.js';
+import { moveToDestination, moveToward } from './battlecast/engine/ai-movement.js';
 import { beginBattlecastControlledTurn, executeTurn, runOpportunityAttacks } from './battlecast/engine/ai-turn.js';
 import { getActiveActions } from './battlecast/engine/ai-targeting.js';
 import { withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
@@ -670,14 +670,25 @@ function applyActualLegalAction(
   if (action.type === 'move_toward') {
     const before = { ...active.position };
     applyLegalAction(state, active, action, agent, true);
+    processPostMoveEffects(state, active, before, actualTurn);
+    return { ended: false };
+  }
+
+  if (action.type === 'move_to') {
+    const before = { ...active.position };
+    moveToDestination(active, action.destination, state);
     if (before.x !== active.position.x || before.y !== active.position.y) {
-      if (!actualTurn.disengaged) {
-        runOpportunityAttacks(state, active, before);
-      }
-      if (active.isAlive && !state.isComplete) {
-        checkAuraEntry(state, active, before);
-      }
+      active.hasMovedThisTurn = true;
+      pushLog(state, {
+        round: state.round,
+        turn: state.turnIndex,
+        actor: active.displayName,
+        action: 'Move',
+        details: `${active.displayName} moves to (${active.position.x},${active.position.y}).`,
+        type: 'move',
+      });
     }
+    processPostMoveEffects(state, active, before, actualTurn);
     return { ended: false };
   }
 
@@ -725,6 +736,21 @@ function applyAttackAction(
   actualTurn.attackRollsRemaining = Math.max(0, actualTurn.attackRollsRemaining - 1);
   if (actualTurn.attackRollsRemaining === 0) {
     active.hasActed = true;
+  }
+}
+
+function processPostMoveEffects(
+  state: BattleState,
+  active: Creature,
+  before: { x: number; y: number },
+  actualTurn: ActualTurnContext,
+): void {
+  if (before.x === active.position.x && before.y === active.position.y) return;
+  if (!actualTurn.disengaged) {
+    runOpportunityAttacks(state, active, before);
+  }
+  if (active.isAlive && !state.isComplete) {
+    checkAuraEntry(state, active, before);
   }
 }
 

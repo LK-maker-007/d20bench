@@ -268,6 +268,8 @@ export interface LlmActionView {
   targetTeam?: LlmCreatureView['team'];
   targetIds?: string[];
   targetNames?: string[];
+  destination?: { x: number; y: number };
+  distanceFt?: number;
   center?: { x: number; y: number };
   effectKind?: Extract<LegalAction, { type: 'spell' }>['effectKind'];
   expectedDamage?: number;
@@ -427,6 +429,16 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       targetLabel: target?.label,
       targetRelation: target?.relation,
       targetTeam: target?.team,
+    };
+  }
+
+  if (action.type === 'move_to') {
+    return {
+      id: action.id,
+      type: action.type,
+      label: `Move to (${action.destination.x},${action.destination.y})`,
+      destination: action.destination,
+      distanceFt: action.distanceFt,
     };
   }
 

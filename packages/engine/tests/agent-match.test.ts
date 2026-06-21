@@ -190,9 +190,11 @@ describe('agent matches', () => {
     });
     const dash = catalogue.actions.find((action) => action.type === 'dash');
     const disengage = catalogue.actions.find((action) => action.type === 'disengage');
+    const moveTo = catalogue.actions.find((action) => action.type === 'move_to');
 
     expect(dash).toEqual(expect.objectContaining({ id: 'dash', type: 'dash', extraMovement: 30 }));
     expect(disengage).toEqual(expect.objectContaining({ id: 'disengage', type: 'disengage', isBonusAction: false }));
+    expect(moveTo).toEqual(expect.objectContaining({ type: 'move_to', destination: expect.any(Object), distanceFt: expect.any(Number) }));
 
     active.movementRemaining = 0;
     const exhaustedMovementCatalogue = generateLegalActions(state, active, {
@@ -203,6 +205,7 @@ describe('agent matches', () => {
       },
     });
     expect(exhaustedMovementCatalogue.actions.some((action) => action.type === 'move_toward')).toBe(false);
+    expect(exhaustedMovementCatalogue.actions.some((action) => action.type === 'move_to')).toBe(false);
     expect(exhaustedMovementCatalogue.actions.some((action) => action.type === 'dash')).toBe(true);
 
     active.hasActed = true;
@@ -264,13 +267,15 @@ describe('agent matches', () => {
 
     expect(llmTurnStarts.some((event) => event.legalActions.some((action) => action.type === 'battlecast_tactic'))).toBe(false);
     expect(llmActions.filter((event) => event.acceptedAction.type === 'attack')).toHaveLength(2);
-    expect(llmActions.map((event) => event.turnStep)).toEqual([0, 1]);
+    expect(llmActions.filter((event) => event.acceptedAction.type === 'attack').map((event) => event.turnStep)).toEqual([0, 1]);
+    expect(llmActions.some((event) => (event.turnStep ?? 0) > 1)).toBe(true);
   });
 
   it('lets an actual-action LLM disengage before moving without provoking opportunity attacks', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     let callIndex = 0;
     let secondStepActionIds: string[] = [];
+    let chosenMoveTo: string | undefined;
     globalThis.fetch = vi.fn(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
@@ -278,10 +283,11 @@ describe('agent matches', () => {
       const preferred = callIndex === 0
         ? 'disengage'
         : callIndex === 1
-          ? actionIds.find((id) => id.startsWith('move_toward:'))
+          ? actionIds.find((id) => id.startsWith('move_to:'))
           : 'end_turn';
       callIndex += 1;
       const actionId = preferred && actionIds.includes(preferred) ? preferred : 'end_turn';
+      if (actionId.startsWith('move_to:')) chosenMoveTo = actionId;
       return jsonResponse({
         id: `gen-${callIndex}-${actionId}`,
         model: 'test/tool-model',
@@ -319,7 +325,8 @@ describe('agent matches', () => {
 
     expect(disengageResolution?.acceptedAction).toEqual(expect.objectContaining({ id: 'disengage' }));
     expect(disengageResolution?.events.some((event) => event.kind === 'oaAvoided')).toBe(true);
-    expect(llmActions.some((event) => event.acceptedAction.type === 'move_toward')).toBe(true);
+    expect(chosenMoveTo).toEqual(expect.stringMatching(/^move_to:/));
+    expect(llmActions.some((event) => event.acceptedAction.type === 'move_to')).toBe(true);
     expect(secondStepActionIds.some((id) => id.startsWith('attack:'))).toBe(false);
     expect(match.state.logs.some((log) => log.action === 'Opportunity Attack')).toBe(false);
   });

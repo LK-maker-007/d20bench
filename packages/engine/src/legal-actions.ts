@@ -14,6 +14,7 @@ import {
   getActiveActions,
   getMultiattack,
 } from './battlecast/engine/ai-targeting.js';
+import { reachableMovementDestinations } from './battlecast/engine/ai-movement.js';
 
 export type LegalActionSpace = 'primitive' | 'battlecast-full-turn' | 'actual-actions-v1';
 
@@ -38,6 +39,12 @@ export type LegalAction =
       type: 'move_toward';
       targetId: string;
       targetName: string;
+    }
+  | {
+      id: string;
+      type: 'move_to';
+      destination: { x: number; y: number };
+      distanceFt: number;
     }
   | {
       id: 'dash';
@@ -147,6 +154,9 @@ export function generateLegalActions(
   }
 
   if (active.movementRemaining > 0) {
+    if (options.includeActualActions) {
+      actions.push(...generateMoveToActions(state, active));
+    }
     for (const target of enemies.filter((target) => creatureDistance(active, target) > 5)) {
       actions.push({
         id: moveTowardActionId(target.id),
@@ -193,6 +203,10 @@ export function spellActionId(
 
 export function moveTowardActionId(targetId: string): string {
   return `move_toward:${targetId}`;
+}
+
+export function moveToActionId(destination: { x: number; y: number }): string {
+  return `move_to:${destination.x},${destination.y}`;
 }
 
 export function battlecastTacticActionId(tactic: TacticType): string {
@@ -279,6 +293,92 @@ function opportunityThreats(state: BattleState, active: Creature): Creature[] {
       .reduce((max, action) => Math.max(max, action.reach ?? 5), 5);
     return creatureDistance(enemy, active) <= reach;
   });
+}
+
+function generateMoveToActions(state: BattleState, active: Creature): LegalAction[] {
+  return selectMovementDestinations(state, active, reachableMovementDestinations(active, state))
+    .map((destination) => ({
+      id: moveToActionId(destination),
+      type: 'move_to' as const,
+      destination: { x: destination.x, y: destination.y },
+      distanceFt: destination.distanceFt,
+    }));
+}
+
+function selectMovementDestinations(
+  state: BattleState,
+  active: Creature,
+  reachable: Array<{ x: number; y: number; distanceFt: number }>,
+): Array<{ x: number; y: number; distanceFt: number }> {
+  const byKey = new Map(reachable.map((destination) => [`${destination.x},${destination.y}`, destination]));
+  const selected = new Map<string, { x: number; y: number; distanceFt: number }>();
+  const add = (destination: { x: number; y: number; distanceFt: number } | undefined) => {
+    if (!destination) return;
+    selected.set(`${destination.x},${destination.y}`, destination);
+  };
+  const addByCoord = (coord: { x: number; y: number }) => add(byKey.get(`${coord.x},${coord.y}`));
+
+  const maxDestinations = 16;
+  const enemies = state.creatures.filter((creature) =>
+    creature.team !== active.team && creature.isAlive && !creature.dying
+  );
+  for (const enemy of enemies) {
+    for (const destination of reachable
+      .filter((candidate) => Math.max(Math.abs(candidate.x - enemy.position.x), Math.abs(candidate.y - enemy.position.y)) === 1)
+      .sort((left, right) =>
+        left.distanceFt - right.distanceFt ||
+        left.x - right.x ||
+        left.y - right.y
+      )
+      .slice(0, 2)) {
+      add(destination);
+    }
+  }
+
+  const maxSquares = Math.floor(active.movementRemaining / 5);
+  for (const dx of [-1, 0, 1]) {
+    for (const dy of [-1, 0, 1]) {
+      if (dx === 0 && dy === 0) continue;
+      addByCoord({
+        x: active.position.x + dx * maxSquares,
+        y: active.position.y + dy * maxSquares,
+      });
+    }
+  }
+
+  const nearestEnemy = enemies
+    .slice()
+    .sort((left, right) =>
+      creatureDistance(active, left) - creatureDistance(active, right) ||
+      left.id.localeCompare(right.id)
+    )[0];
+  if (nearestEnemy) {
+    for (const destination of reachable
+      .slice()
+      .sort((left, right) =>
+        creatureDistance({ ...active, position: right }, nearestEnemy) -
+        creatureDistance({ ...active, position: left }, nearestEnemy) ||
+        right.distanceFt - left.distanceFt ||
+        left.x - right.x ||
+        left.y - right.y
+      )
+      .slice(0, 4)) {
+      add(destination);
+    }
+  }
+
+  for (const destination of reachable) {
+    add(destination);
+    if (selected.size >= maxDestinations) break;
+  }
+
+  return [...selected.values()]
+    .sort((left, right) =>
+      right.distanceFt - left.distanceFt ||
+      left.x - right.x ||
+      left.y - right.y
+    )
+    .slice(0, maxDestinations);
 }
 
 function isTargetInRange(active: Creature, target: Creature, action: MonsterAction): boolean {
