@@ -218,6 +218,11 @@ export const llmToolcallVerifyModelAgents: OpenRouterAgentId[] = [
   ...llmSmartTop3ModelAgents,
 ];
 
+export const llmActualCheapVerifyModelAgents: OpenRouterAgentId[] = [
+  createOpenRouterAgentId('deepseek/deepseek-v4-flash'),
+  ...llmSmartTop3ModelAgents,
+];
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -381,7 +386,42 @@ export const llmToolcallFrontierSmartSixteenSeason: LlmSeasonConfig = {
   concurrency: 8,
 };
 
+export const llmActualCheapVerifySeason: LlmSeasonConfig = {
+  id: 'llm-actual-cheap-verify-v1',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart. LLMs choose concrete movement, attacks, spells, healing, buffs, AoE, and end-turn actions step by step; Battlecast tactic delegates are not exposed.',
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: [1],
+  maxRounds: 3,
+  pairings: createModelOpponentPairings(llmActualCheapVerifyModelAgents, llmSmartOpponentAgents),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
+export const llmActualCheapVerifyV2Season: LlmSeasonConfig = {
+  ...llmActualCheapVerifySeason,
+  id: 'llm-actual-cheap-verify-v2',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after accepting legal JSON content fallbacks from providers that ignore tool_calls while preserving raw traces.',
+};
+
+export const llmActualCheapVerifyV3Season: LlmSeasonConfig = {
+  ...llmActualCheapVerifySeason,
+  id: 'llm-actual-cheap-verify-v3',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after strict exact-action-id repair instructions and legal JSON content fallback.',
+};
+
 export const llmSeasons = [
+  llmActualCheapVerifyV3Season,
+  llmActualCheapVerifyV2Season,
+  llmActualCheapVerifySeason,
   llmFrontierSmartSeason,
   llmFrontierSmartTop3TenXSeason,
   llmFrontierSmartGlmTenXSeason,

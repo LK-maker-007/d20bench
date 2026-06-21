@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildLlmBattleObservation,
   battlecastFullTurnTactics,
+  balancedHeroMirrorScenario,
   generateLegalActions,
   goblinDuelScenario,
   isAgentId,
@@ -10,9 +11,26 @@ import {
   runAgentMatch,
   runAgentMatchAsync,
   verifyReplayStructure,
+  type D20benchScenario,
 } from '../src/index.js';
+import { buildHero } from '../src/battlecast/data/heroes.js';
+import { initBattle } from '../src/battlecast/engine/combat.js';
+import { createBattlecastCreatures } from '../src/battlecast-runner.js';
+
+const originalFetch = globalThis.fetch;
+const originalApiKey = process.env.OPENROUTER_API_KEY;
 
 describe('agent matches', () => {
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    if (originalApiKey === undefined) {
+      delete process.env.OPENROUTER_API_KEY;
+    } else {
+      process.env.OPENROUTER_API_KEY = originalApiKey;
+    }
+    vi.restoreAllMocks();
+  });
+
   it('runs deterministic baseline-vs-baseline matches with replay events', () => {
     const first = runAgentMatch({
       scenario: goblinDuelScenario,
@@ -93,12 +111,7 @@ describe('agent matches', () => {
     expect(observation.teamTactics.blue).toEqual(expect.any(String));
     expect(observation.activeCreatureId).toBe(active.id);
     expect(observation.grid.movementBlocked).toEqual(expect.any(Array));
-    expect(observation.tacticReference.map((tactic) => tactic.id)).toEqual([
-      'battlecast_tactic:aggressive',
-      'battlecast_tactic:smart',
-      'battlecast_tactic:kiting',
-      'battlecast_tactic:defensive',
-    ]);
+    expect(observation.tacticReference).toEqual([]);
     expect(observation.activeCreature.abilities.str).toEqual(expect.objectContaining({
       score: expect.any(Number),
       modifier: expect.any(Number),
@@ -139,6 +152,77 @@ describe('agent matches', () => {
     );
     expect(tacticActions.every((action) => action.fullTurnDelegate)).toBe(true);
     expect(tacticActions.every((action) => action.description?.includes('copied Battlecast engine'))).toBe(true);
+  });
+
+  it('exposes delegate-free concrete spell actions in the actual action space', () => {
+    const state = initBattle(createBattlecastCreatures(balancedHeroMirrorScenario.combatants, true), balancedHeroMirrorScenario.gridSize);
+    const wizard = state.creatures.find((creature) => creature.monsterData.heroClass === 'Wizard' && creature.team === 'red');
+    if (!wizard) throw new Error('expected red Wizard');
+
+    const catalogue = generateLegalActions(state, wizard, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, wizard, catalogue);
+
+    expect(catalogue.actionSpace).toBe('actual-actions-v1');
+    expect(catalogue.actions.some((action) => action.type === 'battlecast_tactic')).toBe(false);
+    expect(catalogue.actions.some((action) => action.type === 'spell')).toBe(true);
+    expect(observation.actionSpace).toBe('actual-actions-v1');
+    expect(observation.tacticReference).toEqual([]);
+    expect(observation.objective).toContain('Delegates and strategy labels are not available');
+  });
+
+  it('asks an OpenRouter actual-action agent again after the first Extra Attack swing', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const actionId = actionIds.find((id) => id.startsWith('attack:')) ?? 'end_turn';
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Take the concrete legal action.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: adjacentFighterDuelScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const llmActions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.llmTrace
+    );
+    const llmTurnStarts = match.replay.filter((event) =>
+      event.type === 'turn_started' &&
+      event.controller?.mode === 'openrouter-llm'
+    );
+
+    expect(llmTurnStarts.some((event) => event.legalActions.some((action) => action.type === 'battlecast_tactic'))).toBe(false);
+    expect(llmActions.filter((event) => event.acceptedAction.type === 'attack')).toHaveLength(2);
+    expect(llmActions.map((event) => event.turnStep)).toEqual([0, 1]);
   });
 
   it('uses distinct match ids for full-turn LLM action-space matches', () => {
@@ -199,3 +283,30 @@ describe('agent matches', () => {
     expect(['smart', 'aggressive']).toContain(tacticAction.tactic);
   });
 });
+
+function adjacentFighterDuelScenario(): D20benchScenario {
+  return {
+    id: 'test.adjacent-fighter-duel.v1',
+    name: 'Adjacent Fighter Duel',
+    description: 'Two adjacent level-5 fighters for actual-action Extra Attack tests.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+    ],
+  };
+}
+
+function jsonResponse(body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}

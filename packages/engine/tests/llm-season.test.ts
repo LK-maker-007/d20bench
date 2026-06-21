@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isFatalSeasonError,
+  llmActualCheapVerifyModelAgents,
+  llmActualCheapVerifySeason,
+  llmActualCheapVerifyV2Season,
+  llmActualCheapVerifyV3Season,
   llmFrontierModelAgents,
   llmFrontierSmartGlmTenXSeason,
   llmFrontierSmartSeason,
@@ -166,6 +170,47 @@ describe('LLM seasons', () => {
 
     expect(pairings).toHaveLength(llmToolcallVerifyModelAgents.length * 2);
     expect([...matchesByModel.values()]).toEqual(llmToolcallVerifyModelAgents.map(() => 4));
+  });
+
+  it('defines a cheap-model actual-action verification season', () => {
+    const pairings = llmActualCheapVerifySeason.pairings ?? [];
+    const modelAgents = new Set(llmActualCheapVerifyModelAgents);
+    const matchesByModel = new Map(llmActualCheapVerifyModelAgents.map((agent) => [agent, 0]));
+
+    expect(llmActualCheapVerifySeason.id).toBe('llm-actual-cheap-verify-v1');
+    expect(llmActualCheapVerifySeason.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapVerifySeason.seeds).toEqual([1]);
+    expect(llmActualCheapVerifySeason.scenarios.map((scenario) => scenario.battleType)).toEqual([
+      'hero-party-chokepoint',
+      'hero-party-status',
+    ]);
+    expect(llmActualCheapVerifySeason.agents).toEqual(expect.arrayContaining([
+      'openrouter:deepseek/deepseek-v4-flash',
+      'openrouter:mistralai/ministral-8b-2512',
+      'openrouter:meta-llama/llama-3.1-8b-instruct',
+      'openrouter:qwen/qwen3.5-flash-02-23',
+      'battlecast.smart',
+    ]));
+
+    for (const pairing of pairings) {
+      const agents = [pairing.redAgent, pairing.blueAgent];
+      expect(agents).toContain('battlecast.smart');
+      const model = agents.find((agent) => modelAgents.has(agent));
+      expect(model).toBeDefined();
+      matchesByModel.set(
+        model!,
+        matchesByModel.get(model!)! + llmActualCheapVerifySeason.scenarios.length * llmActualCheapVerifySeason.seeds.length,
+      );
+    }
+
+    expect(pairings).toHaveLength(llmActualCheapVerifyModelAgents.length * 2);
+    expect([...matchesByModel.values()]).toEqual(llmActualCheapVerifyModelAgents.map(() => 4));
+    expect(llmActualCheapVerifyV2Season.id).toBe('llm-actual-cheap-verify-v2');
+    expect(llmActualCheapVerifyV2Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapVerifyV2Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
+    expect(llmActualCheapVerifyV3Season.id).toBe('llm-actual-cheap-verify-v3');
+    expect(llmActualCheapVerifyV3Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapVerifyV3Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
   });
 
   it('defines a twenty-match GLM post-toolcall verification season', () => {

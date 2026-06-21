@@ -42,6 +42,8 @@ interface OpenRouterToolDecision {
   actionId: string;
   rationale?: string;
   toolCallId?: string;
+  toolCall: boolean;
+  repairedJson: boolean;
 }
 
 const openRouterRequestTimeoutMs = 90_000;
@@ -55,6 +57,7 @@ export interface OpenRouterDecisionTraceMeta {
   matchId: string;
   round: number;
   turnIndex: number;
+  turnStep?: number;
   activeCreatureId: string;
   activeCreatureName: string;
   agentId: string;
@@ -205,10 +208,10 @@ export async function chooseOpenRouterAction(
 
     const message = response.body?.choices?.[0]?.message;
     try {
-      const toolDecision = parseToolDecision(message);
+      const toolDecision = parseModelDecision(message);
       const acceptedAction = findLegalAction(context.catalogue, toolDecision.actionId);
       if (!acceptedAction) {
-        throw new Error(`tool call selected non-legal actionId: ${toolDecision.actionId}`);
+        throw new Error(`model selected non-legal actionId: ${toolDecision.actionId}`);
       }
       const trace = buildRawTrace({
         agent,
@@ -243,8 +246,8 @@ export async function chooseOpenRouterAction(
           usage: normalizeUsage(response.body?.usage),
           latencyMs: Date.now() - startedAt,
           structuredOutput: true,
-          repairedJson: false,
-          toolCall: true,
+          repairedJson: toolDecision.repairedJson,
+          toolCall: toolDecision.toolCall,
           attempts: attempt,
           rawTraceIds,
         },
@@ -383,13 +386,20 @@ function buildOpenRouterToolRequest(input: {
         'You are controlling one creature in a deterministic D20bench tactical combat benchmark.',
         `You must call the ${toolName} tool exactly once.`,
         'Choose exactly one actionId from the tool enum. Do not answer in text.',
+        'The actionId must match one enum value exactly. Do not use action names, spell names, weapon names, labels, target names, or partial ids.',
         'The engine handles all rules, dice, movement, spells, healing, buffs, AoE, and damage.',
-        'Use the observation metadata: action profiles, defenses, resources, recharges, active buffs, condition timers, and tacticReference.',
+        'Use the observation metadata: action profiles, defenses, resources, recharges, active buffs, condition timers, legal actions, recent logs, and tacticReference when present.',
+        'When the action space is actual-actions-v1, choose one concrete action now; the harness will ask again after the result if this creature still has action economy remaining.',
       ].join(' '),
     },
     ...(input.repairError ? [{
       role: 'system',
-      content: `Your previous response was rejected: ${input.repairError}. Call ${toolName} with one legal actionId from the enum.`,
+      content: [
+        `Your previous response was rejected: ${input.repairError}.`,
+        `Call ${toolName} with one exact actionId copied from the enum.`,
+        'Examples of invalid actionId values: Longbow, Fireball, Move, attack, Paladin.',
+        'Examples of valid shapes: attack:longbow:<target-id>, spell:fireball:center:<x>,<y>, move_toward:<target-id>, end_turn.',
+      ].join(' '),
     }] : []),
     {
       role: 'user',
@@ -417,7 +427,7 @@ function buildOpenRouterToolRequest(input: {
               actionId: {
                 type: 'string',
                 enum: input.legalActionIds,
-                description: 'One exact id from the current legalActions list.',
+                description: 'One exact id from the current legalActions list. This must be copied exactly from the enum; action names like Longbow or Fireball are invalid.',
               },
               rationale: {
                 type: 'string',
@@ -434,6 +444,16 @@ function buildOpenRouterToolRequest(input: {
       function: { name: toolName },
     } } : {}),
   };
+}
+
+function parseModelDecision(message: any): OpenRouterToolDecision {
+  try {
+    return parseToolDecision(message);
+  } catch (toolError) {
+    const contentDecision = parseContentJsonDecision(message);
+    if (contentDecision) return contentDecision;
+    throw toolError;
+  }
 }
 
 function parseToolDecision(message: any): OpenRouterToolDecision {
@@ -466,7 +486,41 @@ function parseToolDecision(message: any): OpenRouterToolDecision {
     actionId: parsed.actionId,
     rationale: typeof parsed.rationale === 'string' ? parsed.rationale : undefined,
     toolCallId: typeof toolCall.id === 'string' ? toolCall.id : undefined,
+    toolCall: true,
+    repairedJson: false,
   };
+}
+
+function parseContentJsonDecision(message: any): OpenRouterToolDecision | undefined {
+  const content = message?.content;
+  if (typeof content !== 'string' || content.trim().length === 0) return undefined;
+  const jsonText = extractJsonObjectText(content.trim());
+  if (!jsonText) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    return undefined;
+  }
+  if (!parsed || typeof parsed !== 'object') return undefined;
+  const value = parsed as Partial<OpenRouterToolDecision>;
+  if (typeof value.actionId !== 'string' || value.actionId.length === 0) return undefined;
+  return {
+    actionId: value.actionId,
+    rationale: typeof value.rationale === 'string' ? value.rationale : undefined,
+    toolCall: false,
+    repairedJson: true,
+  };
+}
+
+function extractJsonObjectText(content: string): string | undefined {
+  if (content.startsWith('{') && content.endsWith('}')) return content;
+  const fenced = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/i);
+  if (fenced) return fenced[1];
+  const first = content.indexOf('{');
+  const last = content.lastIndexOf('}');
+  if (first >= 0 && last > first) return content.slice(first, last + 1);
+  return undefined;
 }
 
 function buildRawTrace(input: {

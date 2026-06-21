@@ -2,9 +2,19 @@ import {
   type TacticType,
   type BattleState,
   creatureDistance,
+  getAoETargets,
+  hasResource,
+  pickRangedSphereCenter,
 } from './battlecast/engine/combat.js';
 import type { Creature, MonsterAction } from './battlecast/types/monster.js';
-import { canSee, getActiveActions } from './battlecast/engine/ai-targeting.js';
+import {
+  canSee,
+  estimateActionDamage as estimateBattlecastActionDamage,
+  getActiveActions,
+  getMultiattack,
+} from './battlecast/engine/ai-targeting.js';
+
+export type LegalActionSpace = 'primitive' | 'battlecast-full-turn' | 'actual-actions-v1';
 
 export const battlecastFullTurnTactics = [
   'aggressive',
@@ -29,6 +39,22 @@ export type LegalAction =
       targetName: string;
     }
   | {
+      id: string;
+      type: 'spell';
+      actionName: string;
+      effectKind: 'attack' | 'save' | 'aoe' | 'heal' | 'buff' | 'auto_darts' | 'special';
+      targetId?: string;
+      targetName?: string;
+      targetIds?: string[];
+      targetNames?: string[];
+      center?: { x: number; y: number };
+      expectedDamage?: number;
+      expectedHealing?: number;
+      isBonusAction?: boolean;
+      spellLevel?: number;
+      resourceCost?: { key: string; amount: number };
+    }
+  | {
       id: 'end_turn';
       type: 'end_turn';
     }
@@ -41,11 +67,17 @@ export type LegalAction =
 export interface LegalActionCatalogue {
   activeCreatureId: string;
   activeCreatureName: string;
+  actionSpace?: LegalActionSpace;
   actions: LegalAction[];
 }
 
 export interface GenerateLegalActionsOptions {
   includeBattlecastFullTurnActions?: boolean;
+  includeActualActions?: boolean;
+  actualTurnContext?: {
+    attackRollsRemaining?: number;
+    attackActionStarted?: boolean;
+  };
 }
 
 export function generateLegalActions(
@@ -54,17 +86,27 @@ export function generateLegalActions(
   options: GenerateLegalActionsOptions = {},
 ): LegalActionCatalogue {
   const actions: LegalAction[] = [];
+  const actionSpace: LegalActionSpace = options.includeBattlecastFullTurnActions
+    ? 'battlecast-full-turn'
+    : options.includeActualActions ? 'actual-actions-v1' : 'primitive';
   const enemies = state.creatures.filter((creature) =>
     creature.team !== active.team && creature.isAlive && !creature.dying
   );
-  const activeActions = getActiveActions(active)
-    .filter((action) =>
-      action.type !== 'multiattack' &&
-      action.attackBonus !== undefined &&
-      action.legendaryOnly !== true
-    );
+  const activeActions = getActiveActions(active).filter((action) =>
+    action.type !== 'multiattack' && action.legendaryOnly !== true
+  );
+  const attackRollsRemaining = options.actualTurnContext?.attackRollsRemaining ?? estimateAttackRollBudget(active);
+  const attackActionStarted = options.actualTurnContext?.attackActionStarted ?? false;
+  const hasMainAction = options.includeActualActions
+    ? !active.hasActed && (!attackActionStarted || attackRollsRemaining > 0)
+    : !active.hasActed;
+  const hasAttackRoll = options.includeActualActions
+    ? attackRollsRemaining > 0
+    : hasMainAction;
 
   for (const action of activeActions) {
+    if (isConcreteSpellAction(action) && options.includeActualActions) continue;
+    if (!hasAttackRoll || action.attackBonus === undefined) continue;
     for (const target of enemies) {
       if (!isTargetInRange(active, target, action)) continue;
       if (action.type === 'ranged' && !canSee(state, active, target)) continue;
@@ -77,6 +119,14 @@ export function generateLegalActions(
         expectedDamage: estimateActionDamage(action),
       });
     }
+  }
+
+  if (options.includeActualActions) {
+    actions.push(...generateConcreteSpellActions(state, active, {
+      hasMainAction,
+      attackActionStarted,
+      hasBonusAction: active.bonusActionUsed !== true,
+    }));
   }
 
   for (const target of enemies.filter((target) => creatureDistance(active, target) > 5)) {
@@ -99,6 +149,7 @@ export function generateLegalActions(
   return {
     activeCreatureId: active.id,
     activeCreatureName: active.displayName,
+    actionSpace,
     actions,
   };
 }
@@ -109,6 +160,16 @@ export function findLegalAction(catalogue: LegalActionCatalogue, actionId: strin
 
 export function attackActionId(actionName: string, targetId: string): string {
   return `attack:${slugActionName(actionName)}:${targetId}`;
+}
+
+export function spellActionId(
+  actionName: string,
+  targetId: string | undefined,
+  center: { x: number; y: number } | undefined,
+): string {
+  const base = `spell:${slugActionName(actionName)}`;
+  if (center) return `${base}:center:${center.x},${center.y}`;
+  return targetId ? `${base}:${targetId}` : base;
 }
 
 export function moveTowardActionId(targetId: string): string {
@@ -127,6 +188,18 @@ export function createBattlecastTacticAction(tactic: TacticType): LegalAction {
   };
 }
 
+export function estimateAttackRollBudget(active: Creature): number {
+  const multiattack = getMultiattack(active);
+  if (!multiattack) return 1;
+  const description = multiattack.description.toLowerCase();
+  if (active.monsterData.name === 'Hydra' && description.includes('as many bite attacks as it has heads')) {
+    return Math.max(1, active.hydraHeads?.living ?? 5);
+  }
+  const explicit = description.match(/\b(five|5|four|4|three|3|two|2)\b/);
+  if (explicit) return countWordToNumber(explicit[1]);
+  return 2;
+}
+
 function isTargetInRange(active: Creature, target: Creature, action: MonsterAction): boolean {
   const distance = creatureDistance(active, target);
   if (action.type === 'melee') {
@@ -138,6 +211,345 @@ function isTargetInRange(active: Creature, target: Creature, action: MonsterActi
   }
 
   return distance <= (action.reach ?? 5);
+}
+
+function generateConcreteSpellActions(
+  state: BattleState,
+  active: Creature,
+  economy: {
+    hasMainAction: boolean;
+    attackActionStarted: boolean;
+    hasBonusAction: boolean;
+  },
+): LegalAction[] {
+  const actions: LegalAction[] = [];
+  const candidates = getActiveActions(active)
+    .filter((action) => action.type !== 'multiattack' && action.legendaryOnly !== true)
+    .filter(isConcreteSpellAction);
+
+  for (const action of candidates) {
+    if (!canUseConcreteAction(active, action, economy)) continue;
+    if (!canPayForConcreteAction(active, action)) continue;
+
+    if (action.autoDarts) {
+      actions.push(...autoDartActions(state, active, action));
+      continue;
+    }
+
+    if (action.savingThrow?.area) {
+      actions.push(...areaActions(state, active, action));
+      continue;
+    }
+
+    if (action.targetScope === 'all_allies_in_area') {
+      const group = groupAllyTargets(state, active, action);
+      if ((group.targetIds?.length ?? 0) > 0) actions.push(group);
+      continue;
+    }
+
+    const targets = targetCandidates(state, active, action);
+    for (const target of targets) {
+      if (!targetMatchesAction(active, target, action)) continue;
+      if (!canReachActionTarget(active, target, action)) continue;
+      if (action.type === 'ranged' && target.team !== active.team && !canSee(state, active, target)) continue;
+      if (!isWorthTargeting(target, action)) continue;
+      actions.push(spellActionForTarget(action, target));
+    }
+  }
+
+  return dedupeActions(actions);
+}
+
+function isConcreteSpellAction(action: MonsterAction): boolean {
+  return action.spellLevel !== undefined ||
+    action.resourceCost !== undefined ||
+    action.savingThrow !== undefined ||
+    action.heal !== undefined ||
+    action.temporaryHp !== undefined ||
+    action.buff !== undefined ||
+    action.autoDarts !== undefined ||
+    action.powerWord !== undefined;
+}
+
+function canUseConcreteAction(
+  active: Creature,
+  action: MonsterAction,
+  economy: {
+    hasMainAction: boolean;
+    attackActionStarted: boolean;
+    hasBonusAction: boolean;
+  },
+): boolean {
+  if (action.isBonusAction) {
+    if (!economy.hasBonusAction) return false;
+    if (active.turnFlags?.bonusActionSpellCast && (action.spellLevel ?? 0) > 0) return false;
+    return true;
+  }
+  if (economy.attackActionStarted) return false;
+  if (!economy.hasMainAction) return false;
+  if (active.turnFlags?.bonusActionSpellCast && (action.spellLevel ?? 0) > 0) return false;
+  return true;
+}
+
+function canPayForConcreteAction(active: Creature, action: MonsterAction): boolean {
+  if (action.resourceCost && !hasResource(active, action.resourceCost.key, action.resourceCost.amount)) {
+    return false;
+  }
+  if (action.atWill || action.resourceCost) return true;
+  const level = action.spellLevel ?? 0;
+  if (level <= 0) return true;
+  for (let slot = level; slot <= 9; slot += 1) {
+    if (hasResource(active, `slot-${slot}`)) return true;
+  }
+  return false;
+}
+
+function autoDartActions(state: BattleState, active: Creature, action: MonsterAction): LegalAction[] {
+  return targetCandidates(state, active, action)
+    .filter((target) => target.team !== active.team && canReachActionTarget(active, target, action))
+    .map((target) => {
+      const dartCount = Math.max(1, action.autoDarts ?? 1);
+      return {
+        id: spellActionId(action.name, target.id, undefined),
+        type: 'spell' as const,
+        actionName: action.name,
+        effectKind: 'auto_darts' as const,
+        targetId: target.id,
+        targetName: target.displayName,
+        targetIds: Array.from({ length: dartCount }, () => target.id),
+        targetNames: Array.from({ length: dartCount }, () => target.displayName),
+        expectedDamage: estimateBattlecastActionDamage(action, target),
+        isBonusAction: action.isBonusAction,
+        spellLevel: action.spellLevel,
+        resourceCost: action.resourceCost,
+      };
+    });
+}
+
+function areaActions(state: BattleState, active: Creature, action: MonsterAction): LegalAction[] {
+  const area = action.savingThrow?.area?.toLowerCase() ?? '';
+  if (isPointOriginArea(area, action)) {
+    return pointAreaActions(state, active, action);
+  }
+  const targets = getAoETargets(state, active, action);
+  const targetIds = targets.map((target) => target.id);
+  if (targetIds.length === 0) return [];
+  const enemyHitCount = targets.filter((target) => target.team !== active.team).length;
+  if (enemyHitCount === 0 && action.targetScope !== 'all_allies_in_area') return [];
+  return [spellActionForArea(action, targets, undefined)];
+}
+
+function pointAreaActions(state: BattleState, active: Creature, action: MonsterAction): LegalAction[] {
+  const radius = parseAreaFeet(action.savingThrow?.area) ?? 20;
+  const enginePick = pickRangedSphereCenter(state, active, action, radius);
+  const centers = new Map<string, { x: number; y: number }>();
+  centers.set(`${enginePick.center.x},${enginePick.center.y}`, enginePick.center);
+  const enemies = state.creatures.filter((creature) => creature.team !== active.team && creature.isAlive && !creature.dying);
+  for (const enemy of enemies) {
+    if (!canReachCenter(active, enemy.position, action)) continue;
+    centers.set(`${enemy.position.x},${enemy.position.y}`, { ...enemy.position });
+  }
+  for (let i = 0; i < enemies.length; i += 1) {
+    for (let j = i + 1; j < enemies.length; j += 1) {
+      const center = {
+        x: Math.round((enemies[i].position.x + enemies[j].position.x) / 2),
+        y: Math.round((enemies[i].position.y + enemies[j].position.y) / 2),
+      };
+      if (!canReachCenter(active, center, action)) continue;
+      centers.set(`${center.x},${center.y}`, center);
+    }
+  }
+
+  return [...centers.values()]
+    .map((center) => {
+      const targets = creaturesInPointArea(state, active, center, radius);
+      const enemyHitCount = targets.filter((target) => target.team !== active.team).length;
+      return { center, targets, enemyHitCount };
+    })
+    .filter(({ targets, enemyHitCount }) => targets.length > 0 && enemyHitCount > 0)
+    .sort((left, right) =>
+      right.enemyHitCount - left.enemyHitCount ||
+      left.center.x - right.center.x ||
+      left.center.y - right.center.y
+    )
+    .slice(0, 8)
+    .map(({ center, targets }) => spellActionForArea(action, targets, center));
+}
+
+function groupAllyTargets(state: BattleState, active: Creature, action: MonsterAction): Extract<LegalAction, { type: 'spell' }> {
+  const range = action.range?.normal ?? 30;
+  const targets = state.creatures
+    .filter((creature) => creature.team === active.team && creature.isAlive && creatureDistance(active, creature) <= range)
+    .filter((creature) => isWorthTargeting(creature, action))
+    .slice(0, 6);
+  return {
+    id: spellActionId(action.name, undefined, undefined),
+    type: 'spell',
+    actionName: action.name,
+    effectKind: action.heal || action.temporaryHp || action.powerWord?.kind === 'heal' ? 'heal' : 'buff',
+    targetId: targets[0]?.id,
+    targetName: targets[0]?.displayName,
+    targetIds: targets.map((target) => target.id),
+    targetNames: targets.map((target) => target.displayName),
+    expectedHealing: action.heal ? estimateHealing(action) * targets.length : undefined,
+    isBonusAction: action.isBonusAction,
+    spellLevel: action.spellLevel,
+    resourceCost: action.resourceCost,
+  };
+}
+
+function spellActionForTarget(action: MonsterAction, target: Creature): Extract<LegalAction, { type: 'spell' }> {
+  return {
+    id: spellActionId(action.name, target.id, undefined),
+    type: 'spell',
+    actionName: action.name,
+    effectKind: effectKindForAction(action),
+    targetId: target.id,
+    targetName: target.displayName,
+    targetIds: [target.id],
+    targetNames: [target.displayName],
+    expectedDamage: estimateBattlecastActionDamage(action, target),
+    expectedHealing: action.heal || action.temporaryHp || action.powerWord?.kind === 'heal' ? estimateHealing(action) : undefined,
+    isBonusAction: action.isBonusAction,
+    spellLevel: action.spellLevel,
+    resourceCost: action.resourceCost,
+  };
+}
+
+function spellActionForArea(
+  action: MonsterAction,
+  targets: Creature[],
+  center: { x: number; y: number } | undefined,
+): Extract<LegalAction, { type: 'spell' }> {
+  return {
+    id: spellActionId(action.name, undefined, center),
+    type: 'spell',
+    actionName: action.name,
+    effectKind: 'aoe',
+    targetId: targets[0]?.id,
+    targetName: targets[0]?.displayName,
+    targetIds: targets.map((target) => target.id),
+    targetNames: targets.map((target) => target.displayName),
+    center,
+    expectedDamage: estimateActionDamage(action),
+    isBonusAction: action.isBonusAction,
+    spellLevel: action.spellLevel,
+    resourceCost: action.resourceCost,
+  };
+}
+
+function targetCandidates(state: BattleState, active: Creature, action: MonsterAction): Creature[] {
+  const alive = state.creatures.filter((creature) => creature.isAlive);
+  switch (action.targetScope) {
+    case 'self':
+      return [active];
+    case 'one_ally':
+      return alive.filter((creature) => creature.team === active.team);
+    case 'any_one':
+      return alive.filter((creature) => creature.id === active.id || !creature.dying);
+    case 'area_enemies':
+    case 'one_enemy':
+    case undefined:
+      return alive.filter((creature) => creature.team !== active.team && !creature.dying);
+    case 'all_allies_in_area':
+      return alive.filter((creature) => creature.team === active.team);
+  }
+}
+
+function targetMatchesAction(active: Creature, target: Creature, action: MonsterAction): boolean {
+  if (action.targetTypeRestriction) {
+    const restriction = action.targetTypeRestriction.toLowerCase();
+    if (!target.monsterData.type.toLowerCase().includes(restriction)) return false;
+  }
+  if (action.targetScope === 'self') return target.id === active.id;
+  if (action.targetScope === 'one_ally') return target.team === active.team;
+  if (action.targetScope === 'any_one') return true;
+  if (action.heal || action.temporaryHp || action.powerWord?.kind === 'heal') return target.team === active.team;
+  if (action.buff && action.targetScope !== 'one_enemy') return target.team === active.team;
+  return target.team !== active.team;
+}
+
+function canReachActionTarget(active: Creature, target: Creature, action: MonsterAction): boolean {
+  const distance = creatureDistance(active, target);
+  if (action.type === 'melee' && action.spellLevel === undefined && action.resourceCost === undefined) {
+    return distance <= (action.reach ?? 5);
+  }
+  const range = action.range?.long ?? action.range?.normal;
+  if (range !== undefined) return distance <= range;
+  if (action.targetScope === 'self') return target.id === active.id;
+  if (action.heal || action.buff || action.temporaryHp) return distance <= (action.reach ?? 5);
+  return distance <= (action.reach ?? 5);
+}
+
+function isWorthTargeting(target: Creature, action: MonsterAction): boolean {
+  if (action.heal || action.powerWord?.kind === 'heal') {
+    return target.currentHp < target.maxHp || target.dying || target.conditions.includes('unconscious');
+  }
+  if (action.temporaryHp) return (target.temporaryHp ?? 0) < estimateHealing(action);
+  if (action.buff) return !target.activeBuffs.some((buff) => buff.key === action.buff?.key);
+  if (action.savingThrow?.conditionOnFail) {
+    return !target.conditions.includes(action.savingThrow.conditionOnFail);
+  }
+  return true;
+}
+
+function effectKindForAction(action: MonsterAction): Extract<LegalAction, { type: 'spell' }>['effectKind'] {
+  if (action.autoDarts) return 'auto_darts';
+  if (action.savingThrow?.area) return 'aoe';
+  if (action.savingThrow) return 'save';
+  if (action.heal || action.temporaryHp || action.powerWord?.kind === 'heal') return 'heal';
+  if (action.buff) return 'buff';
+  if (action.attackBonus !== undefined) return 'attack';
+  return 'special';
+}
+
+function isPointOriginArea(area: string, action: MonsterAction): boolean {
+  if (!action.range) return false;
+  return area.includes('radius') || area.includes('sphere') || area.includes('cylinder');
+}
+
+function creaturesInPointArea(
+  state: BattleState,
+  active: Creature,
+  center: { x: number; y: number },
+  radiusFt: number,
+): Creature[] {
+  return state.creatures.filter((creature) => {
+    if (!creature.isAlive || creature.id === active.id) return false;
+    const dx = Math.abs(creature.position.x - center.x);
+    const dy = Math.abs(creature.position.y - center.y);
+    return Math.max(dx, dy) * 5 <= radiusFt;
+  });
+}
+
+function canReachCenter(active: Creature, center: { x: number; y: number }, action: MonsterAction): boolean {
+  const range = action.range?.normal ?? action.range?.long ?? 9999;
+  const dx = Math.abs(active.position.x - center.x);
+  const dy = Math.abs(active.position.y - center.y);
+  return Math.max(dx, dy) * 5 <= range;
+}
+
+function parseAreaFeet(area: string | undefined): number | undefined {
+  const match = area?.match(/(\d+)[\s-]?foot/i);
+  return match ? Number.parseInt(match[1], 10) : undefined;
+}
+
+function estimateHealing(action: MonsterAction): number {
+  if (action.powerWord?.kind === 'heal') return 120;
+  if (action.heal) return averageDice(action.heal.dice);
+  if (action.temporaryHp) return averageDice(action.temporaryHp.dice);
+  return 0;
+}
+
+function dedupeActions(actions: LegalAction[]): LegalAction[] {
+  const seen = new Set<string>();
+  const deduped: LegalAction[] = [];
+  for (const action of actions) {
+    if (seen.has(action.id)) continue;
+    seen.add(action.id);
+    deduped.push(action);
+  }
+  return deduped;
 }
 
 function estimateActionDamage(action: MonsterAction): number {
@@ -162,6 +574,13 @@ function averageDice(expression: string | undefined): number {
     const value = Number.parseInt(unsigned, 10);
     return Number.isFinite(value) ? total + sign * value : total;
   }, 0);
+}
+
+function countWordToNumber(value: string | undefined): number {
+  if (value === 'five' || value === '5') return 5;
+  if (value === 'four' || value === '4') return 4;
+  if (value === 'three' || value === '3') return 3;
+  return 2;
 }
 
 function slugActionName(actionName: string): string {

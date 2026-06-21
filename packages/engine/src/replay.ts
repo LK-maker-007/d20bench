@@ -46,6 +46,7 @@ export type ReplayEvent =
       matchId: string;
       round: number;
       turnIndex: number;
+      turnStep?: number;
       activeCreatureId: string;
       activeCreatureName: string;
       controller?: ReplayEventController;
@@ -57,6 +58,7 @@ export type ReplayEvent =
       matchId: string;
       round: number;
       turnIndex: number;
+      turnStep?: number;
       activeCreatureId: string;
       agentId: AgentId;
       requestedActionId: string;

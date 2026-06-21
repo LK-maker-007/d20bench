@@ -19,7 +19,7 @@ import type {
   RuntimeTraitEffect,
   Speed,
 } from './battlecast/types/monster.js';
-import type { LegalActionCatalogue, LegalAction } from './legal-actions.js';
+import type { LegalActionCatalogue, LegalAction, LegalActionSpace } from './legal-actions.js';
 
 type AbilityKey = keyof Abilities;
 
@@ -266,7 +266,15 @@ export interface LlmActionView {
   targetLabel?: string;
   targetRelation?: LlmCreatureView['relation'];
   targetTeam?: LlmCreatureView['team'];
+  targetIds?: string[];
+  targetNames?: string[];
+  center?: { x: number; y: number };
+  effectKind?: Extract<LegalAction, { type: 'spell' }>['effectKind'];
   expectedDamage?: number;
+  expectedHealing?: number;
+  isBonusAction?: boolean;
+  spellLevel?: number;
+  resourceCost?: { key: string; amount: number };
   tactic?: string;
   fullTurnDelegate?: boolean;
   description?: string;
@@ -281,7 +289,7 @@ export interface LlmGridView {
 export interface LlmBattleObservation {
   schemaVersion: 'd20bench.llm_observation.v2';
   objective: string;
-  actionSpace: 'primitive' | 'battlecast-full-turn';
+  actionSpace: LegalActionSpace;
   round: number;
   turnIndex: number;
   teamTactics: BattleState['teamTactics'];
@@ -310,14 +318,18 @@ export function buildLlmBattleObservation(
       left.id.localeCompare(right.id)
     );
   const creatureById = new Map(creatures.map((creature) => [creature.id, creature]));
-  const actionSpace = catalogue.actions.some((action) => action.type === 'battlecast_tactic')
-    ? 'battlecast-full-turn'
-    : 'primitive';
+  const actionSpace = catalogue.actionSpace ?? (
+    catalogue.actions.some((action) => action.type === 'battlecast_tactic')
+      ? 'battlecast-full-turn'
+      : catalogue.actions.some((action) => action.type === 'spell')
+        ? 'actual-actions-v1'
+        : 'primitive'
+  );
   const activeCreatureView = creatureById.get(activeCreature.id) ?? creatureView(state, activeCreature, activeCreature);
 
   return {
     schemaVersion: 'd20bench.llm_observation.v2',
-    objective: 'Choose exactly one legal action id for the active creature. Full-turn Battlecast delegate actions execute movement, spells, healing, buffs, AoE, and attacks through the copied Battlecast rules. Use creature actions, defenses, resources, recharges, buffs, and condition timers to choose the best delegate.',
+    objective: objectiveForActionSpace(actionSpace),
     actionSpace,
     round: state.round,
     turnIndex: state.turnIndex,
@@ -327,7 +339,7 @@ export function buildLlmBattleObservation(
     activeTeam: activeCreature.team,
     activeCreature: activeCreatureView,
     creatures,
-    tacticReference: tacticReference(),
+    tacticReference: actionSpace === 'battlecast-full-turn' ? tacticReference() : [],
     grid: {
       size: state.gridSize,
       movementBlocked: sortedCells(state.terrainBlocked),
@@ -417,6 +429,30 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
     };
   }
 
+  if (action.type === 'spell') {
+    const target = action.targetId ? creatureById.get(action.targetId) : undefined;
+    const targetLabels = action.targetIds?.map((targetId) => creatureById.get(targetId)?.label ?? targetId);
+    return {
+      id: action.id,
+      type: action.type,
+      label: spellActionLabel(action, targetLabels),
+      targetId: action.targetId,
+      targetName: action.targetName,
+      targetLabel: target?.label,
+      targetRelation: target?.relation,
+      targetTeam: target?.team,
+      targetIds: action.targetIds,
+      targetNames: action.targetNames,
+      center: action.center,
+      effectKind: action.effectKind,
+      expectedDamage: action.expectedDamage === undefined ? undefined : Number(action.expectedDamage.toFixed(2)),
+      expectedHealing: action.expectedHealing === undefined ? undefined : Number(action.expectedHealing.toFixed(2)),
+      isBonusAction: action.isBonusAction,
+      spellLevel: action.spellLevel,
+      resourceCost: action.resourceCost,
+    };
+  }
+
   if (action.type === 'battlecast_tactic') {
     const tactic = TACTIC_LABELS[action.tactic];
     return {
@@ -434,6 +470,29 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
     type: action.type,
     label: 'End turn',
   };
+}
+
+function objectiveForActionSpace(actionSpace: LegalActionSpace): string {
+  if (actionSpace === 'battlecast-full-turn') {
+    return 'Choose exactly one legal action id for the active creature. Full-turn Battlecast delegate actions execute movement, spells, healing, buffs, AoE, and attacks through the copied Battlecast rules. Use creature actions, defenses, resources, recharges, buffs, condition timers, and tacticReference to choose the best delegate.';
+  }
+  if (actionSpace === 'actual-actions-v1') {
+    return 'Choose exactly one concrete legal action id for the active creature. Delegates and strategy labels are not available. The engine applies the chosen action through Battlecast rules, shows the result in logs, and if this creature still has movement, attacks, or a bonus action remaining, you will be asked to choose the next concrete action from a fresh legal-action list.';
+  }
+  return 'Choose exactly one legal action id for the active creature. The engine applies the chosen action through Battlecast rules and rejects any action id not present in legalActions.';
+}
+
+function spellActionLabel(
+  action: Extract<LegalAction, { type: 'spell' }>,
+  targetLabels: string[] | undefined,
+): string {
+  const targetText = targetLabels && targetLabels.length > 1
+    ? targetLabels.join(', ')
+    : action.targetName ?? targetLabels?.[0];
+  const centerText = action.center ? ` at (${action.center.x},${action.center.y})` : '';
+  const targetSuffix = targetText ? ` targeting ${targetText}` : '';
+  const economy = action.isBonusAction ? 'bonus action ' : '';
+  return `${economy}${action.actionName}${centerText}${targetSuffix}`;
 }
 
 function abilityView(creature: Creature): Record<AbilityKey, LlmAbilityView> {

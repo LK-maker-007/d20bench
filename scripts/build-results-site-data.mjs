@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const resultsRoot = path.join(repoRoot, "results");
 const siteRoot = path.join(repoRoot, "apps", "results-site");
+const includeProgressOnly =
+  process.argv.includes("--include-progress-only") || process.env.D20BENCH_INCLUDE_PROGRESS_ONLY === "1";
 
 async function readJson(filePath) {
   return JSON.parse(await readFile(filePath, "utf8"));
@@ -33,6 +35,16 @@ async function listDirectories(dir) {
   }
 }
 
+function hasPublishableResults(season, progress) {
+  if (!season) {
+    return true;
+  }
+
+  const matchCount = Array.isArray(season.matches) ? season.matches.length : 0;
+  const failedMatches = Number(progress?.failedMatches ?? season.failedMatches ?? 0);
+  return matchCount > 0 || failedMatches === 0;
+}
+
 async function readSeasons() {
   const seasonIds = await listDirectories(path.join(resultsRoot, "seasons"));
   const seasons = [];
@@ -43,7 +55,7 @@ async function readSeasons() {
     const season = await readJsonIfExists(jsonPath);
     const progress = await readJsonIfExists(progressPath);
 
-    if (season || progress) {
+    if ((season || (includeProgressOnly && progress)) && hasPublishableResults(season, progress)) {
       seasons.push({
         ...(season || {
           seasonId: progress.seasonId || seasonId,

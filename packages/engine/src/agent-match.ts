@@ -2,15 +2,22 @@ import {
   DEFAULT_TACTICS,
   checkBattleComplete,
   creatureDistance,
+  executeSpell,
+  getAoETargets,
   initBattle,
+  processHydraEndOfTurn,
+  processTargetTurnEndOngoingEffects,
   pushLog,
   resolveAttack,
+  resolveAoE,
+  resolveSingleTargetSave,
+  checkAuraEntry,
   type TacticType,
   type BattleState,
 } from './battlecast/engine/combat.js';
 import type { Creature } from './battlecast/types/monster.js';
 import { moveToward } from './battlecast/engine/ai-movement.js';
-import { beginBattlecastControlledTurn, executeTurn } from './battlecast/engine/ai-turn.js';
+import { beginBattlecastControlledTurn, executeTurn, runOpportunityAttacks } from './battlecast/engine/ai-turn.js';
 import { getActiveActions } from './battlecast/engine/ai-targeting.js';
 import { withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
 import { maps } from './battlecast/data/maps.js';
@@ -19,6 +26,7 @@ import { createBattlecastCreatures, summarizeBattlecastBattle, type BattlecastBa
 import { getAgent, type Agent, type AgentId } from './agents.js';
 import {
   createBattlecastTacticAction,
+  estimateAttackRollBudget,
   findLegalAction,
   generateLegalActions,
   type LegalAction,
@@ -39,7 +47,7 @@ export interface AgentMatchSpec {
   llmDecisionTraceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
 }
 
-export type LlmActionSpace = 'primitive' | 'battlecast-full-turn';
+export type LlmActionSpace = 'primitive' | 'battlecast-full-turn' | 'actual-actions-v1';
 
 export interface AgentMatchResult {
   matchId: string;
@@ -211,6 +219,21 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
           : processManualAgentTurnStart({ state, active, agent, replay, matchId });
         if (!turnStart.canAct) continue;
 
+        if (agent.kind === 'openrouter-llm' && (spec.llmActionSpace ?? 'primitive') === 'actual-actions-v1') {
+          await runStepwiseOpenRouterTurn({
+            state,
+            active,
+            agent,
+            agentRng,
+            turnStart,
+            replay,
+            matchId,
+            traceSink: spec.llmDecisionTraceSink,
+          });
+          checkBattleComplete(state);
+          continue;
+        }
+
         const catalogue = createActionCatalogueForAgent(state, active, agent, spec.llmActionSpace ?? 'primitive');
         replay.push({
           type: 'turn_started',
@@ -343,6 +366,7 @@ interface AgentTurnInput {
   matchId?: string;
   round?: number;
   turnIndex?: number;
+  turnStep?: number;
   traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
 }
 
@@ -357,6 +381,16 @@ interface ManualTurnStartResult {
   logsBefore: number;
   eventsBefore: number;
   turnStartAlreadyProcessed: boolean;
+}
+
+interface ActualTurnContext {
+  attackRollsRemaining: number;
+  attackActionStarted: boolean;
+  ended: boolean;
+}
+
+interface ActualActionApplyResult {
+  ended: boolean;
 }
 
 function processManualAgentTurnStart(input: {
@@ -447,6 +481,7 @@ async function applyAgentTurnAsync(input: AgentTurnInput): Promise<AgentTurnResu
         matchId: input.matchId,
         round: input.round,
         turnIndex: input.turnIndex,
+        turnStep: input.turnStep,
         activeCreatureId: input.active.id,
         activeCreatureName: input.active.displayName,
         agentId: input.agent.id,
@@ -462,6 +497,122 @@ async function applyAgentTurnAsync(input: AgentTurnInput): Promise<AgentTurnResu
   }
 
   return applyAgentTurn(input);
+}
+
+async function runStepwiseOpenRouterTurn(input: {
+  state: BattleState;
+  active: Creature;
+  agent: Extract<Agent, { kind: 'openrouter-llm' }>;
+  agentRng: ReturnType<typeof createRng>;
+  turnStart: ManualTurnStartResult;
+  replay: ReplayEvent[];
+  matchId: string;
+  traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
+}): Promise<void> {
+  const actualTurn: ActualTurnContext = {
+    attackRollsRemaining: estimateAttackRollBudget(input.active),
+    attackActionStarted: false,
+    ended: false,
+  };
+  const maxSteps = 8;
+  let step = 0;
+
+  while (!input.state.isComplete && input.active.isAlive && !actualTurn.ended && step < maxSteps) {
+    const catalogue = createActionCatalogueForAgent(
+      input.state,
+      input.active,
+      input.agent,
+      'actual-actions-v1',
+      actualTurn,
+    );
+    const nonEndActions = catalogue.actions.filter((action) => action.type !== 'end_turn');
+    input.replay.push({
+      type: 'turn_started',
+      matchId: input.matchId,
+      round: input.state.round,
+      turnIndex: input.state.turnIndex,
+      turnStep: step,
+      activeCreatureId: input.active.id,
+      activeCreatureName: input.active.displayName,
+      controller: describeAgentController(input.agent),
+      legalActions: catalogue.actions,
+      stateHash: hashBattlecastState(input.state),
+    });
+
+    if (nonEndActions.length === 0) {
+      const acceptedAction: LegalAction = { id: 'end_turn', type: 'end_turn' };
+      const logsBefore = step === 0 ? input.turnStart.logsBefore : input.state.logs.length;
+      const eventsBefore = step === 0 ? input.turnStart.eventsBefore : input.state.events.length;
+      applyActualLegalAction(input.state, input.active, acceptedAction, input.agent, actualTurn);
+      input.replay.push({
+        type: 'action_resolved',
+        matchId: input.matchId,
+        round: input.state.round,
+        turnIndex: input.state.turnIndex,
+        turnStep: step,
+        activeCreatureId: input.active.id,
+        agentId: input.agent.id,
+        requestedActionId: 'automatic:no_legal_actions',
+        acceptedAction,
+        logs: input.state.logs.slice(logsBefore),
+        events: input.state.events.slice(eventsBefore),
+        stateHash: hashBattlecastState(input.state),
+      });
+      actualTurn.ended = true;
+      break;
+    }
+
+    const logsBefore = step === 0 ? input.turnStart.logsBefore : input.state.logs.length;
+    const eventsBefore = step === 0 ? input.turnStart.eventsBefore : input.state.events.length;
+    const selection = await chooseOpenRouterAction(input.agent, {
+      state: input.state,
+      activeCreature: input.active,
+      catalogue,
+      rng: input.agentRng,
+      traceMeta: {
+        matchId: input.matchId,
+        round: input.state.round,
+        turnIndex: input.state.turnIndex,
+        turnStep: step,
+        activeCreatureId: input.active.id,
+        activeCreatureName: input.active.displayName,
+        agentId: input.agent.id,
+      },
+      traceSink: input.traceSink,
+    });
+    const applyResult = applyActualLegalAction(input.state, input.active, selection.acceptedAction, input.agent, actualTurn);
+    checkBattleComplete(input.state);
+    input.replay.push({
+      type: 'action_resolved',
+      matchId: input.matchId,
+      round: input.state.round,
+      turnIndex: input.state.turnIndex,
+      turnStep: step,
+      activeCreatureId: input.active.id,
+      agentId: input.agent.id,
+      requestedActionId: selection.requestedActionId,
+      acceptedAction: selection.acceptedAction,
+      llmTrace: selection.trace,
+      logs: input.state.logs.slice(logsBefore),
+      events: input.state.events.slice(eventsBefore),
+      stateHash: hashBattlecastState(input.state),
+    });
+    actualTurn.ended = applyResult.ended;
+    step += 1;
+  }
+
+  if (!actualTurn.ended && !input.state.isComplete && input.active.isAlive) {
+    pushLog(input.state, {
+      round: input.state.round,
+      turn: input.state.turnIndex,
+      actor: input.active.displayName,
+      action: 'End Turn',
+      details: `${input.active.displayName} ends their turn after reaching the step limit.`,
+      type: 'info',
+    });
+  }
+  finishManualTurnEnd(input.state, input.active);
+  checkBattleComplete(input.state);
 }
 
 function applyBattlecastTacticTurn(
@@ -483,16 +634,162 @@ function createActionCatalogueForAgent(
   active: Creature,
   agent: Agent,
   llmActionSpace: LlmActionSpace,
+  actualTurnContext?: ActualTurnContext,
 ): LegalActionCatalogue {
   return agent.kind === 'battlecast-tactic'
     ? {
         activeCreatureId: active.id,
         activeCreatureName: active.displayName,
+        actionSpace: 'battlecast-full-turn',
         actions: [createBattlecastTacticAction(agent.tactic)],
       }
     : generateLegalActions(state, active, {
         includeBattlecastFullTurnActions: agent.kind === 'openrouter-llm' && llmActionSpace === 'battlecast-full-turn',
+        includeActualActions: agent.kind === 'openrouter-llm' && llmActionSpace === 'actual-actions-v1',
+        actualTurnContext,
       });
+}
+
+function applyActualLegalAction(
+  state: BattleState,
+  active: Creature,
+  action: LegalAction,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): ActualActionApplyResult {
+  if (action.type === 'end_turn') {
+    applyLegalAction(state, active, action, agent, true);
+    actualTurn.ended = true;
+    return { ended: true };
+  }
+
+  if (action.type === 'move_toward') {
+    const before = { ...active.position };
+    applyLegalAction(state, active, action, agent, true);
+    if (before.x !== active.position.x || before.y !== active.position.y) {
+      runOpportunityAttacks(state, active, before);
+      if (active.isAlive && !state.isComplete) {
+        checkAuraEntry(state, active, before);
+      }
+    }
+    return { ended: false };
+  }
+
+  if (action.type === 'attack') {
+    applyAttackAction(state, active, action, agent, actualTurn);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
+  if (action.type === 'spell') {
+    applySpellAction(state, active, action, agent, actualTurn);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
+  applyLegalAction(state, active, action, agent, true);
+  actualTurn.ended = true;
+  return { ended: true };
+}
+
+function applyAttackAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'attack' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  const target = state.creatures.find((creature) => creature.id === action.targetId);
+  const battlecastAction = getActiveActions(active).find((candidate) => candidate.name === action.actionName);
+  if (!target || !battlecastAction) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  resolveAttack(state, active, target, battlecastAction);
+  actualTurn.attackActionStarted = true;
+  actualTurn.attackRollsRemaining = Math.max(0, actualTurn.attackRollsRemaining - 1);
+  if (actualTurn.attackRollsRemaining === 0) {
+    active.hasActed = true;
+  }
+}
+
+function applySpellAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'spell' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  const battlecastAction = getActiveActions(active).find((candidate) => candidate.name === action.actionName);
+  if (!battlecastAction) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  const targetIds = action.targetIds?.length ? action.targetIds : action.targetId ? [action.targetId] : [];
+  const targets = targetIds
+    .map((targetId) => state.creatures.find((creature) => creature.id === targetId))
+    .filter((target): target is Creature => !!target);
+  const primaryTarget = action.targetId
+    ? state.creatures.find((creature) => creature.id === action.targetId) ?? targets[0] ?? null
+    : targets[0] ?? null;
+  let applied = false;
+
+  if (battlecastAction.autoDarts) {
+    applied = executeSpell(state, active, battlecastAction, primaryTarget, targets);
+  } else if (battlecastAction.spellLevel !== undefined || battlecastAction.resourceCost || battlecastAction.heal || battlecastAction.temporaryHp || battlecastAction.buff || battlecastAction.powerWord) {
+    const aoeTargets = battlecastAction.savingThrow?.area
+      ? targets.length > 0 ? targets : getAoETargets(state, active, battlecastAction)
+      : undefined;
+    applied = executeSpell(state, active, battlecastAction, primaryTarget, aoeTargets, action.center);
+  } else if (battlecastAction.savingThrow?.area) {
+    const aoeTargets = targets.length > 0 ? targets : getAoETargets(state, active, battlecastAction);
+    resolveAoE(state, active, battlecastAction, aoeTargets, action.center);
+    if (battlecastAction.recharge) active.recharges[battlecastAction.name] = false;
+    applied = true;
+  } else if (battlecastAction.savingThrow && primaryTarget) {
+    resolveSingleTargetSave(state, active, primaryTarget, battlecastAction);
+    if (battlecastAction.recharge) active.recharges[battlecastAction.name] = false;
+    applied = true;
+  } else if (battlecastAction.attackBonus !== undefined && primaryTarget) {
+    resolveAttack(state, active, primaryTarget, battlecastAction);
+    applied = true;
+  }
+
+  if (!applied) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  if (battlecastAction.isBonusAction) {
+    active.bonusActionUsed = true;
+  } else {
+    active.hasActed = true;
+    actualTurn.attackRollsRemaining = 0;
+  }
+}
+
+function shouldEndActualTurn(active: Creature, actualTurn: ActualTurnContext): boolean {
+  if (actualTurn.ended) return true;
+  const hasMainAction = !active.hasActed || (actualTurn.attackActionStarted && actualTurn.attackRollsRemaining > 0);
+  const hasBonusAction = active.bonusActionUsed !== true;
+  const hasMovement = active.movementRemaining > 0;
+  return !hasMainAction && !hasBonusAction && !hasMovement;
+}
+
+function pushInvalidActionLog(state: BattleState, active: Creature, agent: Agent, actionId: string): void {
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Invalid Action',
+    details: `${agent.id} requested ${actionId}, but the action could not be applied.`,
+    type: 'info',
+  });
+}
+
+function finishManualTurnEnd(state: BattleState, active: Creature): void {
+  processHydraEndOfTurn(state, active);
+  processTargetTurnEndOngoingEffects(state, active);
 }
 
 function applyLegalAction(

@@ -33,7 +33,7 @@ For each active creature:
    - allies and enemies with HP, AC, position, speed, initiative, conditions, resources, ability scores, saves, defenses, traits, and active action profiles
    - runtime status such as recharge readiness, active buffs, condition timers, concentration aura, wild shape, death saves, ongoing effects, and containment
    - current Battlecast team tactic flags
-   - tactic reference notes for the copied Battlecast full-turn delegates
+   - tactic reference notes only when copied Battlecast full-turn delegates are intentionally exposed
    - recent combat logs
    - exact legal action ids
 4. The LLM receives the observation and must call the OpenRouter tool `choose_d20bench_action` exactly once:
@@ -50,8 +50,9 @@ For each active creature:
 
 5. D20bench validates `actionId` against the legal-action catalogue.
 6. If valid, D20bench applies the accepted action through the rules engine.
-7. If invalid, missing, or unparsable, D20bench records the raw provider response and retries. It does not silently convert malformed model output into `end_turn`.
-8. The replay stores:
+7. In `actual-actions-v1`, if the creature still has action economy remaining after that action, D20bench regenerates the legal-action catalogue from the updated state and asks the model for another concrete action. This is how Extra Attack, multiattack-like attack budgets, movement plus attack, and bonus actions are represented: the model attacks, sees the result in logs/state, and then chooses the next action.
+8. If invalid, missing, or unparsable, D20bench records the raw provider response and retries. It does not silently convert malformed model output into `end_turn`.
+9. The replay stores:
    - requested action id
    - accepted action
    - LLM model metadata
@@ -76,6 +77,7 @@ Malformed model output is fail-closed:
 
 - Missing tool call: record `rejected`, retry with a repair instruction.
 - Non-legal `actionId`: record `rejected`, retry with a repair instruction.
+- Legal JSON content fallback: if a provider ignores the tool-call contract but returns parseable JSON containing a legal `actionId`, D20bench accepts it, records `toolCall: false` and `repairedJson: true`, and preserves the raw response. This keeps providers with partial tool support usable without letting models invent actions.
 - Repeated malformed output: fail that match rather than inventing an action.
 - Network error: record `network_error` and fail the match.
 - OpenRouter forced-tool compatibility error: record `http_error`, then retry the same decision without forced `tool_choice`.
@@ -141,7 +143,8 @@ The first implementation is deliberately narrow:
 
 - LLM agents choose from the existing D20bench legal-action catalogue.
 - The historical primitive action space contains `attack`, `move_toward`, and `end_turn`.
-- The full-turn action space also exposes copied Battlecast delegates: `battlecast_tactic:aggressive`, `battlecast_tactic:smart`, `battlecast_tactic:kiting`, and `battlecast_tactic:defensive`.
+- The historical full-turn action space also exposes copied Battlecast delegates: `battlecast_tactic:aggressive`, `battlecast_tactic:smart`, `battlecast_tactic:kiting`, and `battlecast_tactic:defensive`. These seasons verify tool calls and the copied Battlecast executor, but they are not the final fair action-space target.
+- `actual-actions-v1` is the current fair-action-space target. It forbids Battlecast tactic delegates for OpenRouter agents and exposes concrete movement, attack, spell, save, AoE, healing, buff, auto-dart, and end-turn actions. The async harness calls the model repeatedly within one creature turn when action economy remains.
 - The current observation schema is `d20bench.llm_observation.v2`, which includes Battlecast-relevant tactical metadata: action/spell profiles, defenses, resources, recharges, buffs, condition timers, concentration/wild-shape state, team tactic flags, and tactic reference notes.
 - Non-Battlecast agents now share Battlecast turn-start processing with the fixed tactic agents, including death saves, start-of-turn condition effects, movement reset, and skip-turn conditions.
 - Battlecast tactic agents still delegate to copied Battlecast `executeTurn`.
@@ -157,6 +160,9 @@ The first implementation is deliberately narrow:
 - `llm-toolcall-cheap-verify-v3` verifies the tool-call harness with Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash against `battlecast.smart` on the two public hero-party mirrors.
 - `llm-toolcall-glm-smart-20-v2` is the post-toolcall-fix GLM 5.2 check: 20 total matches against `battlecast.smart` using five seeds, two side assignments, and the two public hero-party mirrors. GLM uses a larger model-specific completion budget so its reasoning can reach the required tool call instead of truncating.
 - `llm-toolcall-frontier-smart-16-v2` verifies GPT-5.5 and Claude Opus 4.8 after the tool-call harness fix, with 16 matches per model against `battlecast.smart`.
+- `llm-actual-cheap-verify-v1` verifies the delegate-free actual-action harness with DeepSeek Flash, Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash against `battlecast.smart`, capped to one seed across the chokepoint and status-pressure public hero-party mirrors. It should be run with `--max-cost 20` during harness validation.
+- `llm-actual-cheap-verify-v2` repeats that scope after adding the legal JSON content fallback for providers that ignore `tool_calls`.
+- `llm-actual-cheap-verify-v3` repeats that scope after tightening repair instructions so models must copy exact action ids rather than action labels such as `Longbow`.
 - LLM ladder runs write `completed-matches.jsonl` checkpoints as matches finish; `--resume` reloads completed fixtures and continues with failed or unstarted fixtures.
 - LLM ladder runs also write local `raw-decisions.jsonl` audit logs for every OpenRouter decision attempt. These are intentionally not published by default.
 - Published benchmark results are append-only by season id: new experiments get new ids and new `results/seasons/<id>/` directories rather than overwriting previous runs.
@@ -165,14 +171,12 @@ This gives us a safe, auditable harness before we spend significant model budget
 
 ## Next Work
 
-The full-turn delegate action space gives LLMs access to the same Battlecast executor used by the fixed tactic agents without hand-reimplementing every rule. A later, more inspectable option generator can expand those delegates into explicit legal options:
+`actual-actions-v1` now replaces full-turn delegates as the fairness bridge. The remaining work is to keep widening the concrete catalogue until it matches every relevant Battlecast decision point:
 
-- spell casts
-- AoE centers and lines/cones
-- buffs and debuffs
-- healing and revive actions
-- multiattack
-- dash, dodge, disengage, help
-- bonus actions and reactions
+- more exact movement destinations, dash, dodge, disengage, and help
+- split-target Magic Missile and beam-style multiattacks
+- class-specific bonus actions such as Rage movement, Flurry, Steady Aim, and Wild Shape
+- reactions and optional smite/slot choices
+- richer AoE line/cone aim choices
 
-Once these are engine-generated legal actions, LLM agents can choose exact whole-turn plans instead of choosing a Battlecast tactic delegate. The current full-turn delegate mode is the fairness bridge until that richer planner exists.
+Until those are covered, `actual-actions-v1` results should be treated as harness-validation results, not final leaderboard claims.

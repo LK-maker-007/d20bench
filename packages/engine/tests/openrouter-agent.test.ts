@@ -125,7 +125,7 @@ describe('OpenRouter action selection', () => {
         return jsonResponse({
           id: 'gen-no-tool',
           model: 'test/tool-model',
-          choices: [{ finish_reason: 'stop', message: { content: '{"actionId":"end_turn"}' } }],
+          choices: [{ finish_reason: 'stop', message: { content: '{"actionId":"not-a-legal-action"}' } }],
           usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
         });
       }
@@ -150,7 +150,35 @@ describe('OpenRouter action selection', () => {
     expect(selection.acceptedAction.id).toBe(firstActionId);
     expect(selection.trace.attempts).toBe(2);
     expect(rawTraces.map((trace) => trace.parseStatus)).toEqual(['rejected', 'accepted']);
-    expect(rawTraces[0].parseError).toContain('did not include tool_calls');
+    expect(rawTraces[0].parseError).toContain('non-legal actionId');
+  });
+
+  it('accepts a legal JSON content action when a provider ignores the tool call contract', async () => {
+    const { context, firstActionId } = createDecisionContext();
+    const rawTraces: OpenRouterRawDecisionTrace[] = [];
+    globalThis.fetch = vi.fn(async () => jsonResponse({
+      id: 'gen-json-content',
+      model: 'test/tool-model',
+      choices: [{
+        finish_reason: 'stop',
+        message: {
+          content: JSON.stringify({ actionId: firstActionId, rationale: 'Provider returned JSON content instead of tool_calls.' }),
+        },
+      }],
+      usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+    })) as typeof fetch;
+
+    const selection = await chooseOpenRouterAction(
+      { id: 'openrouter:test/tool-model', kind: 'openrouter-llm', model: 'test/tool-model' },
+      { ...context, traceSink: (trace) => rawTraces.push(trace) },
+    );
+
+    expect(selection.acceptedAction.id).toBe(firstActionId);
+    expect(selection.trace.toolCall).toBe(false);
+    expect(selection.trace.repairedJson).toBe(true);
+    expect(selection.trace.attempts).toBe(1);
+    expect(rawTraces).toHaveLength(1);
+    expect(rawTraces[0].parseStatus).toBe('accepted');
   });
 
   it('retries forced tool_choice compatibility errors without consuming a repair attempt', async () => {
