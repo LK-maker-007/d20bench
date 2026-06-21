@@ -8,6 +8,8 @@ import {
   llmFrontierSmartTop3TenXSeason,
   llmSmartGlmModelAgents,
   llmSmartTop3ModelAgents,
+  llmToolcallCheapVerifySeason,
+  llmToolcallVerifyModelAgents,
   sanitizeBenchmarkErrorForArtifacts,
 } from '../src/index.js';
 
@@ -127,5 +129,39 @@ describe('LLM seasons', () => {
     expect(sanitizeBenchmarkErrorForArtifacts(
       'Manage it using https://openrouter.ai/workspaces/default/keys/example-key-id-123',
     )).toBe('Manage it using https://openrouter.ai/workspaces/<workspace>/keys/<key>');
+  });
+
+  it('defines a cheap-model tool-call verification season', () => {
+    const pairings = llmToolcallCheapVerifySeason.pairings ?? [];
+    const modelAgents = new Set(llmToolcallVerifyModelAgents);
+    const matchesByModel = new Map(llmToolcallVerifyModelAgents.map((agent) => [agent, 0]));
+
+    expect(llmToolcallCheapVerifySeason.id).toBe('llm-toolcall-cheap-verify-v3');
+    expect(llmToolcallCheapVerifySeason.llmActionSpace).toBe('battlecast-full-turn');
+    expect(llmToolcallCheapVerifySeason.seeds).toEqual([1]);
+    expect(llmToolcallCheapVerifySeason.scenarios.map((scenario) => scenario.battleType)).toEqual([
+      'hero-party-chokepoint',
+      'hero-party-status',
+    ]);
+    expect(llmToolcallCheapVerifySeason.agents).toEqual(expect.arrayContaining([
+      'openrouter:mistralai/ministral-8b-2512',
+      'openrouter:meta-llama/llama-3.1-8b-instruct',
+      'openrouter:qwen/qwen3.5-flash-02-23',
+      'battlecast.smart',
+    ]));
+
+    for (const pairing of pairings) {
+      const agents = [pairing.redAgent, pairing.blueAgent];
+      expect(agents).toContain('battlecast.smart');
+      const model = agents.find((agent) => modelAgents.has(agent));
+      expect(model).toBeDefined();
+      matchesByModel.set(
+        model!,
+        matchesByModel.get(model!)! + llmToolcallCheapVerifySeason.scenarios.length * llmToolcallCheapVerifySeason.seeds.length,
+      );
+    }
+
+    expect(pairings).toHaveLength(llmToolcallVerifyModelAgents.length * 2);
+    expect([...matchesByModel.values()]).toEqual(llmToolcallVerifyModelAgents.map(() => 4));
   });
 });

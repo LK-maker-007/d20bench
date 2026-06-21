@@ -4,14 +4,13 @@ import {
   creatureDistance,
   initBattle,
   pushLog,
-  runDeathSave,
   resolveAttack,
   type TacticType,
   type BattleState,
 } from './battlecast/engine/combat.js';
 import type { Creature } from './battlecast/types/monster.js';
 import { moveToward } from './battlecast/engine/ai-movement.js';
-import { executeTurn } from './battlecast/engine/ai-turn.js';
+import { beginBattlecastControlledTurn, executeTurn } from './battlecast/engine/ai-turn.js';
 import { getActiveActions } from './battlecast/engine/ai-targeting.js';
 import { withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
 import { maps } from './battlecast/data/maps.js';
@@ -25,7 +24,7 @@ import {
   type LegalAction,
   type LegalActionCatalogue,
 } from './legal-actions.js';
-import { chooseOpenRouterAction, type OpenRouterDecisionTrace } from './openrouter-agent.js';
+import { chooseOpenRouterAction, type OpenRouterDecisionTrace, type OpenRouterRawDecisionTrace } from './openrouter-agent.js';
 import { createRng, type RandomSeed } from './random.js';
 import { hashBattlecastState, type D20benchScenario } from './scenario.js';
 import type { ReplayEvent, ReplayEventController } from './replay.js';
@@ -37,6 +36,7 @@ export interface AgentMatchSpec {
   blueAgent: AgentId;
   maxRounds?: number;
   llmActionSpace?: LlmActionSpace;
+  llmDecisionTraceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
 }
 
 export type LlmActionSpace = 'primitive' | 'battlecast-full-turn';
@@ -91,11 +91,10 @@ export function runAgentMatch(spec: AgentMatchSpec): AgentMatchResult {
         if (!active || !active.isAlive) continue;
 
         const agent = active.team === 'red' ? red : blue;
-        if (active.dying && agent.kind !== 'battlecast-tactic') {
-          resolveAutomaticDyingTurn({ state, active, agent, replay, matchId });
-          continue;
-        }
-        if (agent.kind === 'legal-action') resetSimpleTurn(active);
+        const turnStart = agent.kind === 'battlecast-tactic'
+          ? { canAct: true, logsBefore: state.logs.length, eventsBefore: state.events.length, turnStartAlreadyProcessed: false }
+          : processManualAgentTurnStart({ state, active, agent, replay, matchId });
+        if (!turnStart.canAct) continue;
 
         const catalogue = createActionCatalogueForAgent(state, active, agent, spec.llmActionSpace ?? 'primitive');
         replay.push({
@@ -110,14 +109,15 @@ export function runAgentMatch(spec: AgentMatchSpec): AgentMatchResult {
           stateHash: hashBattlecastState(state),
         });
 
-        const logsBefore = state.logs.length;
-        const eventsBefore = state.events.length;
+        const logsBefore = turnStart.logsBefore;
+        const eventsBefore = turnStart.eventsBefore;
         const { requestedActionId, acceptedAction, llmTrace } = applyAgentTurn({
           state,
           active,
           agent,
           catalogue,
           agentRng,
+          turnStartAlreadyProcessed: turnStart.turnStartAlreadyProcessed,
         });
         checkBattleComplete(state);
 
@@ -206,11 +206,10 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
         if (!active || !active.isAlive) continue;
 
         const agent = active.team === 'red' ? red : blue;
-        if (active.dying && agent.kind !== 'battlecast-tactic') {
-          resolveAutomaticDyingTurn({ state, active, agent, replay, matchId });
-          continue;
-        }
-        if (agent.kind === 'legal-action' || agent.kind === 'openrouter-llm') resetSimpleTurn(active);
+        const turnStart = agent.kind === 'battlecast-tactic'
+          ? { canAct: true, logsBefore: state.logs.length, eventsBefore: state.events.length, turnStartAlreadyProcessed: false }
+          : processManualAgentTurnStart({ state, active, agent, replay, matchId });
+        if (!turnStart.canAct) continue;
 
         const catalogue = createActionCatalogueForAgent(state, active, agent, spec.llmActionSpace ?? 'primitive');
         replay.push({
@@ -225,14 +224,19 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
           stateHash: hashBattlecastState(state),
         });
 
-        const logsBefore = state.logs.length;
-        const eventsBefore = state.events.length;
+        const logsBefore = turnStart.logsBefore;
+        const eventsBefore = turnStart.eventsBefore;
         const { requestedActionId, acceptedAction, llmTrace } = await applyAgentTurnAsync({
           state,
           active,
           agent,
           catalogue,
           agentRng,
+          turnStartAlreadyProcessed: turnStart.turnStartAlreadyProcessed,
+          matchId,
+          round: state.round,
+          turnIndex: state.turnIndex,
+          traceSink: spec.llmDecisionTraceSink,
         });
         checkBattleComplete(state);
 
@@ -335,12 +339,79 @@ interface AgentTurnInput {
   agent: Agent;
   catalogue: LegalActionCatalogue;
   agentRng: ReturnType<typeof createRng>;
+  turnStartAlreadyProcessed: boolean;
+  matchId?: string;
+  round?: number;
+  turnIndex?: number;
+  traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
 }
 
 interface AgentTurnResult {
   requestedActionId: string;
   acceptedAction: LegalAction;
   llmTrace?: OpenRouterDecisionTrace;
+}
+
+interface ManualTurnStartResult {
+  canAct: boolean;
+  logsBefore: number;
+  eventsBefore: number;
+  turnStartAlreadyProcessed: boolean;
+}
+
+function processManualAgentTurnStart(input: {
+  state: BattleState;
+  active: Creature;
+  agent: Agent;
+  replay: ReplayEvent[];
+  matchId: string;
+}): ManualTurnStartResult {
+  const logsBefore = input.state.logs.length;
+  const eventsBefore = input.state.events.length;
+  const canAct = beginBattlecastControlledTurn(input.state, input.active);
+  checkBattleComplete(input.state);
+
+  if (canAct && !input.state.isComplete) {
+    return {
+      canAct: true,
+      logsBefore,
+      eventsBefore,
+      turnStartAlreadyProcessed: true,
+    };
+  }
+
+  const acceptedAction: LegalAction = { id: 'end_turn', type: 'end_turn' };
+  input.replay.push({
+    type: 'turn_started',
+    matchId: input.matchId,
+    round: input.state.round,
+    turnIndex: input.state.turnIndex,
+    activeCreatureId: input.active.id,
+    activeCreatureName: input.active.displayName,
+    controller: describeAgentController(input.agent),
+    legalActions: [acceptedAction],
+    stateHash: hashBattlecastState(input.state),
+  });
+  input.replay.push({
+    type: 'action_resolved',
+    matchId: input.matchId,
+    round: input.state.round,
+    turnIndex: input.state.turnIndex,
+    activeCreatureId: input.active.id,
+    agentId: input.agent.id,
+    requestedActionId: 'automatic:turn_start',
+    acceptedAction,
+    logs: input.state.logs.slice(logsBefore),
+    events: input.state.events.slice(eventsBefore),
+    stateHash: hashBattlecastState(input.state),
+  });
+
+  return {
+    canAct: false,
+    logsBefore,
+    eventsBefore,
+    turnStartAlreadyProcessed: true,
+  };
 }
 
 function applyAgentTurn(input: AgentTurnInput): AgentTurnResult {
@@ -361,7 +432,7 @@ function applyAgentTurn(input: AgentTurnInput): AgentTurnResult {
     rng: input.agentRng,
   });
   const acceptedAction = findLegalAction(input.catalogue, requested.id) ?? ({ id: 'end_turn', type: 'end_turn' } satisfies LegalAction);
-  applyLegalAction(input.state, input.active, acceptedAction, input.agent);
+  applyLegalAction(input.state, input.active, acceptedAction, input.agent, input.turnStartAlreadyProcessed);
   return { requestedActionId: requested.id, acceptedAction };
 }
 
@@ -372,8 +443,17 @@ async function applyAgentTurnAsync(input: AgentTurnInput): Promise<AgentTurnResu
       activeCreature: input.active,
       catalogue: input.catalogue,
       rng: input.agentRng,
+      traceMeta: input.matchId && input.round !== undefined && input.turnIndex !== undefined ? {
+        matchId: input.matchId,
+        round: input.round,
+        turnIndex: input.turnIndex,
+        activeCreatureId: input.active.id,
+        activeCreatureName: input.active.displayName,
+        agentId: input.agent.id,
+      } : undefined,
+      traceSink: input.traceSink,
     });
-    applyLegalAction(input.state, input.active, selection.acceptedAction, input.agent);
+    applyLegalAction(input.state, input.active, selection.acceptedAction, input.agent, input.turnStartAlreadyProcessed);
     return {
       requestedActionId: selection.requestedActionId,
       acceptedAction: selection.acceptedAction,
@@ -384,13 +464,18 @@ async function applyAgentTurnAsync(input: AgentTurnInput): Promise<AgentTurnResu
   return applyAgentTurn(input);
 }
 
-function applyBattlecastTacticTurn(state: BattleState, active: Creature, tactic: TacticType): void {
+function applyBattlecastTacticTurn(
+  state: BattleState,
+  active: Creature,
+  tactic: TacticType,
+  turnStartAlreadyProcessed = false,
+): void {
   state.teamTactics = {
     ...state.teamTactics,
     [active.team]: tactic,
   };
   active.stats.roundsSurvived = state.round;
-  executeTurn(state, active);
+  executeTurn(state, active, { turnStartAlreadyProcessed });
 }
 
 function createActionCatalogueForAgent(
@@ -410,15 +495,15 @@ function createActionCatalogueForAgent(
       });
 }
 
-function resetSimpleTurn(active: Creature): void {
-  active.hasActed = false;
-  active.hasMovedThisTurn = false;
-  active.movementRemaining = Math.max(active.monsterData.speed.walk, active.monsterData.speed.fly ?? 0);
-}
-
-function applyLegalAction(state: BattleState, active: Creature, action: LegalAction, agent: Agent): void {
+function applyLegalAction(
+  state: BattleState,
+  active: Creature,
+  action: LegalAction,
+  agent: Agent,
+  turnStartAlreadyProcessed = false,
+): void {
   if (action.type === 'battlecast_tactic') {
-    applyBattlecastTacticTurn(state, active, action.tactic);
+    applyBattlecastTacticTurn(state, active, action.tactic, turnStartAlreadyProcessed);
     return;
   }
 
@@ -468,45 +553,6 @@ function applyLegalAction(state: BattleState, active: Creature, action: LegalAct
     action: 'End Turn',
     details: `${active.displayName} ends their turn.`,
     type: 'info',
-  });
-}
-
-function resolveAutomaticDyingTurn(input: {
-  state: BattleState;
-  active: Creature;
-  agent: Agent;
-  replay: ReplayEvent[];
-  matchId: string;
-}): void {
-  input.replay.push({
-    type: 'turn_started',
-    matchId: input.matchId,
-    round: input.state.round,
-    turnIndex: input.state.turnIndex,
-    activeCreatureId: input.active.id,
-    activeCreatureName: input.active.displayName,
-    controller: describeAgentController(input.agent),
-    legalActions: [{ id: 'end_turn', type: 'end_turn' }],
-    stateHash: hashBattlecastState(input.state),
-  });
-
-  const logsBefore = input.state.logs.length;
-  const eventsBefore = input.state.events.length;
-  runDeathSave(input.state, input.active);
-  checkBattleComplete(input.state);
-
-  input.replay.push({
-    type: 'action_resolved',
-    matchId: input.matchId,
-    round: input.state.round,
-    turnIndex: input.state.turnIndex,
-    activeCreatureId: input.active.id,
-    agentId: input.agent.id,
-    requestedActionId: 'automatic:death_save',
-    acceptedAction: { id: 'end_turn', type: 'end_turn' },
-    logs: input.state.logs.slice(logsBefore),
-    events: input.state.events.slice(eventsBefore),
-    stateHash: hashBattlecastState(input.state),
   });
 }
 

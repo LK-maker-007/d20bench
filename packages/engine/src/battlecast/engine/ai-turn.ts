@@ -1440,12 +1440,22 @@ function tryUseSteadyAim(
   });
 }
 
-export function executeTurn(state: BattleState, creature: Creature): void {
-  if (!creature.isAlive || state.isComplete) return;
+export function beginBattlecastControlledTurn(state: BattleState, creature: Creature): boolean {
+  if (!creature.isAlive || state.isComplete) return false;
   if (!processTurnStart(state, creature)) {
     processTargetTurnEndOngoingEffects(state, creature);
-    return;
+    return false;
   }
+  return true;
+}
+
+export function executeTurn(
+  state: BattleState,
+  creature: Creature,
+  options: { turnStartAlreadyProcessed?: boolean } = {},
+): void {
+  if (!options.turnStartAlreadyProcessed && !beginBattlecastControlledTurn(state, creature)) return;
+  if (!creature.isAlive || state.isComplete) return;
   try {
   handlePassiveAuras(state, creature);
 

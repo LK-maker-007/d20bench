@@ -18,6 +18,7 @@ References:
 - https://github.com/sierra-research/tau-bench
 - https://github.com/SWE-bench/SWE-bench
 - https://openrouter.ai/docs/api/api-reference/chat/send-chat-completion-request
+- https://openrouter.ai/docs/guides/features/tool-calling
 - https://openrouter.ai/docs/guides/features/structured-outputs
 
 ## Control Loop
@@ -35,25 +36,49 @@ For each active creature:
    - tactic reference notes for the copied Battlecast full-turn delegates
    - recent combat logs
    - exact legal action ids
-4. The LLM receives the observation and must return structured JSON:
+4. The LLM receives the observation and must call the OpenRouter tool `choose_d20bench_action` exactly once:
 
 ```json
 {
-  "actionId": "attack:dagger:goblin-minion-blue-0-a4b5",
-  "rationale": "Focus the wounded adjacent enemy."
+  "tool": "choose_d20bench_action",
+  "arguments": {
+    "actionId": "attack:dagger:goblin-minion-blue-0-a4b5",
+    "rationale": "Focus the wounded adjacent enemy."
+  }
 }
 ```
 
 5. D20bench validates `actionId` against the legal-action catalogue.
 6. If valid, D20bench applies the accepted action through the rules engine.
-7. If invalid or unparsable, D20bench records the failure and falls back to `end_turn`.
+7. If invalid, missing, or unparsable, D20bench records the raw provider response and retries. It does not silently convert malformed model output into `end_turn`.
 8. The replay stores:
    - requested action id
    - accepted action
    - LLM model metadata
+   - finish reason, tool-call id, retry count, and raw trace ids
    - token usage when available
    - latency
    - logs, animation events, and state hash
+
+## Tool-Call Reliability And Raw Preservation
+
+The OpenRouter adapter uses tools rather than freeform JSON as the primary contract. Each request includes a single `choose_d20bench_action` function whose `actionId` field is constrained to the current legal-action ids. When a model/provider supports forced tool choice, the request forces that tool. If OpenRouter reports that no route supports the forced `tool_choice` value, D20bench records that HTTP error, remembers that provider limitation for the model, and immediately retries the same decision with the tool schema still present but without forced `tool_choice`.
+
+Every raw decision attempt is appended to:
+
+```text
+results/seasons/<season-id>/raw-decisions.jsonl
+```
+
+Those raw traces include request body, response body text, parsed response body, legal action ids, observation hash, match/turn metadata, parse status, parse error, and accepted action id when one exists. The file is ignored by git because it can contain full prompts and provider payloads, but it remains available locally for audit.
+
+Malformed model output is fail-closed:
+
+- Missing tool call: record `rejected`, retry with a repair instruction.
+- Non-legal `actionId`: record `rejected`, retry with a repair instruction.
+- Repeated malformed output: fail that match rather than inventing an action.
+- Network error: record `network_error` and fail the match.
+- OpenRouter forced-tool compatibility error: record `http_error`, then retry the same decision without forced `tool_choice`.
 
 ## OpenRouter Agent IDs
 
@@ -118,6 +143,7 @@ The first implementation is deliberately narrow:
 - The historical primitive action space contains `attack`, `move_toward`, and `end_turn`.
 - The full-turn action space also exposes copied Battlecast delegates: `battlecast_tactic:aggressive`, `battlecast_tactic:smart`, `battlecast_tactic:kiting`, and `battlecast_tactic:defensive`.
 - The current observation schema is `d20bench.llm_observation.v2`, which includes Battlecast-relevant tactical metadata: action/spell profiles, defenses, resources, recharges, buffs, condition timers, concentration/wild-shape state, team tactic flags, and tactic reference notes.
+- Non-Battlecast agents now share Battlecast turn-start processing with the fixed tactic agents, including death saves, start-of-turn condition effects, movement reset, and skip-turn conditions.
 - Battlecast tactic agents still delegate to copied Battlecast `executeTurn`.
 - LLM replay verification checks structure but skips model reruns.
 - `llm-smoke-v0` uses OpenRouter models for Kimi K2.7 Code, GLM 5.2, DeepSeek v4 Pro, DeepSeek v4 Flash, Qwen 3.5 Flash, Ministral 8B, and Llama 3.1 8B, plus `baseline.focus-fire`.
@@ -128,7 +154,9 @@ The first implementation is deliberately narrow:
 - `llm-frontier-smart-v1` is the going-forward public frontier benchmark. It keeps only `battlecast.smart` as the fixed opponent, uses the full-turn delegate action space, and runs two seeds across the chokepoint and status-pressure hero-party scenarios in both side assignments for 8 matches per model.
 - `llm-frontier-smart-top3-10x-v1` is a separate replication run for Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash. It uses the same two battle types and full-turn action space, but runs 20 seeds for 80 matches per model.
 - `llm-frontier-smart-glm-10x-v1` is a separate GLM 5.2 replication run with the same two battle types, full-turn action space, and 20 seeds for 80 matches.
+- `llm-toolcall-cheap-verify-v3` verifies the tool-call harness with Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash against `battlecast.smart` on the two public hero-party mirrors.
 - LLM ladder runs write `completed-matches.jsonl` checkpoints as matches finish; `--resume` reloads completed fixtures and continues with failed or unstarted fixtures.
+- LLM ladder runs also write local `raw-decisions.jsonl` audit logs for every OpenRouter decision attempt. These are intentionally not published by default.
 - Published benchmark results are append-only by season id: new experiments get new ids and new `results/seasons/<id>/` directories rather than overwriting previous runs.
 
 This gives us a safe, auditable harness before we spend significant model budget.

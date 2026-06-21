@@ -235,7 +235,7 @@ Baseline agents currently available:
 
 The `baseline.*` agents choose from the D20bench legal-action catalogue. The `battlecast.*` agents expose copied Battlecast tactic options as benchmark agents; their turns delegate to Battlecast `executeTurn`, so they can use the richer copied Battlecast AI for spells, AoE, healing, status, retreating, and special abilities. Replays mark those turns with a `battlecast_tactic:<tactic>` accepted action while preserving the resulting Battlecast logs and animation events.
 
-OpenRouter LLM agents use dynamic ids of the form `openrouter:<model-slug>`. They run through the async match harness, receive structured JSON observations with Battlecast-relevant tactical metadata, and must return a legal action id in structured JSON. Detailed design notes live in `docs/LLM_HARNESS.md`.
+OpenRouter LLM agents use dynamic ids of the form `openrouter:<model-slug>`. They run through the async match harness, receive structured JSON observations with Battlecast-relevant tactical metadata, and must call the `choose_d20bench_action` tool with a legal action id. The harness preserves raw provider request/response attempts locally, retries malformed or missing tool calls, and fails closed instead of converting bad output into benchmark actions. Detailed design notes live in `docs/LLM_HARNESS.md`.
 
 ### 5. Eval And Rating Layer
 
@@ -276,11 +276,13 @@ The fair-action-space LLM season is `llm-frontier-fullturn-v1`. It uses the same
 
 The going-forward public frontier benchmark is `llm-frontier-smart-v1`: the same model roster, but only against fixed `battlecast.smart` on the chokepoint and status-pressure hero-party mirrors. It uses the full-turn delegate action space and two seeds, giving each model 8 matches total: two scenarios, two side assignments, and two seeds. This keeps the public benchmark easier to interpret: each model is judged against one strong Battlecast reference tactic instead of a mix of random and alternate tactic personalities.
 
-Replication runs use new season ids rather than overwriting prior artifacts. For example, `llm-frontier-smart-top3-10x-v1` reruns Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash against `battlecast.smart` with 20 seeds, giving each model 80 matches while preserving `llm-frontier-smart-v1` unchanged. `llm-frontier-smart-glm-10x-v1` applies the same 80-match replication schedule to GLM 5.2.
+Replication runs use new season ids rather than overwriting prior artifacts. For example, `llm-frontier-smart-top3-10x-v1` reruns Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash against `battlecast.smart` with 20 seeds, giving each model 80 matches while preserving `llm-frontier-smart-v1` unchanged. `llm-frontier-smart-glm-10x-v1` applies the same 80-match replication schedule to GLM 5.2. `llm-toolcall-cheap-verify-v3` is the current cheap-model harness verification season for Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash.
 
 LLM seasons use a bounded parallel worker pool because model latency is the bottleneck. Completed matches are stored by fixture index, then Elo is applied in deterministic fixture order so rating results do not depend on API response timing.
 
 LLM seasons also checkpoint completed matches incrementally to `results/seasons/<season-id>/completed-matches.jsonl`. Running the CLI with `--resume` restores those completed fixtures, retries failed or unstarted fixtures, and then recomputes blended and per-battle-type Elo from the recovered match set.
+
+OpenRouter decision attempts are additionally written to local `results/seasons/<season-id>/raw-decisions.jsonl` audit logs. These logs include full prompts and provider payloads, so they are ignored by git and are not part of the public result artifact by default.
 
 Live LLM run progress is written to:
 

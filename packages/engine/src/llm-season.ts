@@ -11,6 +11,7 @@ import {
 import { loadLocalEnv } from './env.js';
 import type { EloStanding } from './ratings.js';
 import type { BattleType, D20benchScenario } from './scenario.js';
+import type { OpenRouterRawDecisionTrace } from './openrouter-agent.js';
 import { goblinDuelScenario } from './scenarios/public/goblin-duel.js';
 import { goblinWarbandMirrorScenario } from './scenarios/public/goblin-squad.js';
 import {
@@ -208,6 +209,10 @@ export const llmSmartGlmModelAgents: OpenRouterAgentId[] = [
   createOpenRouterAgentId('z-ai/glm-5.2'),
 ];
 
+export const llmToolcallVerifyModelAgents: OpenRouterAgentId[] = [
+  ...llmSmartTop3ModelAgents,
+];
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -311,10 +316,31 @@ export const llmFrontierSmartGlmTenXSeason: LlmSeasonConfig = {
   concurrency: 16,
 };
 
+export const llmToolcallCheapVerifySeason: LlmSeasonConfig = {
+  id: 'llm-toolcall-cheap-verify-v3',
+  description: 'Tool-call reliability verification season for the cheap model trio against Battlecast Smart on the chokepoint and status-pressure hero-party mirrors.',
+  agents: [
+    ...llmToolcallVerifyModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: [1],
+  maxRounds: 3,
+  pairings: createModelOpponentPairings(llmToolcallVerifyModelAgents, llmSmartOpponentAgents),
+  llmActionSpace: 'battlecast-full-turn',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 6,
+};
+
 export const llmSeasons = [
   llmFrontierSmartSeason,
   llmFrontierSmartTop3TenXSeason,
   llmFrontierSmartGlmTenXSeason,
+  llmToolcallCheapVerifySeason,
   llmFrontierFullTurnSeason,
   llmFrontierPublicSeason,
   llmSmokeSeason,
@@ -345,6 +371,7 @@ export async function runLlmSeason(
   const concurrency = normalizeConcurrency(runOptions.concurrency ?? config.concurrency, fixtures.length);
   const progressPath = runOptions.outDir ? join(runOptions.outDir, 'progress.json') : undefined;
   const checkpointPath = runOptions.outDir ? join(runOptions.outDir, 'completed-matches.jsonl') : undefined;
+  const rawDecisionTracePath = runOptions.outDir ? join(runOptions.outDir, 'raw-decisions.jsonl') : undefined;
   const costAccumulators = new Map<string, LlmModelCostSummary>();
   const outcomes: Array<LlmMatchOutcome | undefined> = Array(fixtures.length).fill(undefined);
   const activeMatches = new Map<number, LlmSeasonMatchProgress>();
@@ -357,6 +384,7 @@ export async function runLlmSeason(
   let progressSequence = 0;
   let progressWriteChain = Promise.resolve();
   let checkpointWriteChain = Promise.resolve();
+  let rawDecisionTraceWriteChain = Promise.resolve();
   let stopReason: string | undefined;
 
   if (checkpointPath) {
@@ -377,8 +405,20 @@ export async function runLlmSeason(
       }
     } else {
       await writeFile(checkpointPath, '', 'utf8');
+      if (rawDecisionTracePath) {
+        await writeFile(rawDecisionTracePath, '', 'utf8');
+      }
     }
   }
+
+  const appendRawDecisionTrace = async (trace: OpenRouterRawDecisionTrace): Promise<void> => {
+    if (!rawDecisionTracePath) return;
+    const write = rawDecisionTraceWriteChain.then(() =>
+      appendFile(rawDecisionTracePath, `${JSON.stringify(trace)}\n`, 'utf8')
+    );
+    rawDecisionTraceWriteChain = write.catch(() => undefined);
+    await write;
+  };
 
   const emitProgress = async (status: LlmSeasonProgressStatus): Promise<void> => {
     const progress = buildProgress({
@@ -443,6 +483,7 @@ export async function runLlmSeason(
           blueAgent: fixture.blueAgent,
           maxRounds: config.maxRounds,
           llmActionSpace: config.llmActionSpace,
+          llmDecisionTraceSink: appendRawDecisionTrace,
         });
         const matchCost = summarizeMatchCost(match, pricing, costAccumulators);
         const completedAt = new Date();
