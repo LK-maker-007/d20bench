@@ -279,6 +279,12 @@ export interface LlmActionView {
   isBonusAction?: boolean;
   spellLevel?: number;
   resourceCost?: { key: string; amount: number };
+  beastName?: string;
+  beastCr?: string;
+  beastAc?: number;
+  beastTempHp?: number;
+  beastSpeed?: number;
+  beastActions?: string[];
   tactic?: string;
   fullTurnDelegate?: boolean;
   description?: string;
@@ -504,6 +510,12 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       targetTeam: target?.team,
       expectedDamage: action.expectedDamage === undefined ? undefined : Number(action.expectedDamage.toFixed(2)),
       resourceCost: action.resourceCost,
+      beastName: action.beastName,
+      beastCr: action.beastCr,
+      beastAc: action.beastAc,
+      beastTempHp: action.beastTempHp,
+      beastSpeed: action.beastSpeed,
+      beastActions: action.beastActions,
       description: classFeatureDescription(action),
     };
   }
@@ -535,6 +547,9 @@ function classFeatureDescription(action: Extract<LegalAction, { type: 'class_fea
     return action.resourceCost
       ? 'Spend 1 ki and the bonus action to make the first Flurry of Blows unarmed strike. Remaining Flurry strikes are chosen as later concrete actions after seeing results.'
       : 'Make a remaining Flurry of Blows unarmed strike after seeing the previous strike result.';
+  }
+  if (action.feature === 'wild_shape') {
+    return 'Spend a Wild Shape use and the bonus action to transform into the listed beast form. The Druid keeps real HP and gains the listed temporary HP; beast AC, speed, physical abilities, traits, and actions replace the humanoid form.';
   }
   return 'Spend the bonus action to make one Martial Arts unarmed strike after attacking.';
 }

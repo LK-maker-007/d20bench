@@ -2,9 +2,11 @@ import {
   type TacticType,
   type BattleState,
   creatureDistance,
+  getFootprintSize,
   getAoETargets,
   getEffectiveMoveSpeed,
   hasResource,
+  isPositionBlocked,
   pickRangedSphereCenter,
 } from './battlecast/engine/combat.js';
 import type { Creature, MonsterAction } from './battlecast/types/monster.js';
@@ -16,6 +18,7 @@ import {
 } from './battlecast/engine/ai-targeting.js';
 import { reachableMovementDestinations } from './battlecast/engine/ai-movement.js';
 import { averageDamage } from './battlecast/engine/dice.js';
+import { getEligibleWildShapeBeasts } from './battlecast/data/heroes.js';
 
 export type LegalActionSpace = 'primitive' | 'battlecast-full-turn' | 'actual-actions-v1';
 
@@ -60,13 +63,19 @@ export type LegalAction =
   | {
       id: string;
       type: 'class_feature';
-      feature: 'steady_aim' | 'martial_arts_strike' | 'flurry_of_blows';
+      feature: 'steady_aim' | 'martial_arts_strike' | 'flurry_of_blows' | 'wild_shape';
       label: string;
       isBonusAction: boolean;
       targetId?: string;
       targetName?: string;
       expectedDamage?: number;
       resourceCost?: { key: string; amount: number };
+      beastName?: string;
+      beastCr?: string;
+      beastAc?: number;
+      beastTempHp?: number;
+      beastSpeed?: number;
+      beastActions?: string[];
     }
   | {
       id: string;
@@ -236,6 +245,10 @@ export function classFeatureTargetActionId(feature: string, targetId: string): s
   return `class_feature:${slugActionName(feature)}:${targetId}`;
 }
 
+export function wildShapeActionId(beastName: string): string {
+  return `class_feature:wild-shape:${slugActionName(beastName)}`;
+}
+
 export function createBattlecastTacticAction(tactic: TacticType): LegalAction {
   return {
     id: battlecastTacticActionId(tactic),
@@ -281,6 +294,7 @@ function coreActualActions(
       isBonusAction: true,
     });
   }
+  actions.push(...wildShapeActions(state, active, economy));
   actions.push(...monkBonusAttackActions(state, active, economy));
 
   const threatened = opportunityThreats(state, active).length > 0;
@@ -327,6 +341,50 @@ function canUseSteadyAim(
       (action.type !== 'ranged' || canSee(state, active, target))
     );
   });
+}
+
+function wildShapeActions(
+  state: BattleState,
+  active: Creature,
+  economy: { hasBonusAction: boolean },
+): LegalAction[] {
+  const level = active.monsterData.heroLevel ?? 0;
+  if (active.monsterData.heroClass !== 'Druid' || level < 2) return [];
+  if (!economy.hasBonusAction || active.wildShape || active.concentratingOn) return [];
+  if (!hasResource(active, 'wild-shape')) return [];
+  if (active.conditions.includes('incapacitated') || active.conditions.includes('unconscious')) return [];
+
+  const preferredBeastName = active.monsterData.preferredWildShapeBeast;
+  const isMoon = active.monsterData.heroSubclass === 'Circle of the Moon';
+  const tempHp = isMoon ? level * 3 : level;
+  const gridSize = state.gridSize ?? 20;
+
+  return getEligibleWildShapeBeasts({
+    level,
+    subclass: active.monsterData.heroSubclass,
+  })
+    .filter((beast) => !preferredBeastName || beast.name === preferredBeastName)
+    .filter((beast) => {
+      const footprint = getFootprintSize(beast.size);
+      if (active.position.x + footprint > gridSize || active.position.y + footprint > gridSize) return false;
+      return !isPositionBlocked(active.position, beast.size, state.creatures, active.id, state.terrainBlocked);
+    })
+    .map((beast) => ({
+      id: wildShapeActionId(beast.name),
+      type: 'class_feature' as const,
+      feature: 'wild_shape' as const,
+      label: `Wild Shape into ${beast.name}`,
+      isBonusAction: true,
+      resourceCost: { key: 'wild-shape', amount: 1 },
+      beastName: beast.name,
+      beastCr: beast.cr,
+      beastAc: beast.ac,
+      beastTempHp: tempHp,
+      beastSpeed: Math.max(beast.speed.walk, beast.speed.climb ?? 0, beast.speed.swim ?? 0, beast.speed.fly ?? 0),
+      beastActions: beast.actions
+        .filter((action) => action.legendaryOnly !== true)
+        .map((action) => action.name),
+    }));
 }
 
 function monkBonusAttackActions(

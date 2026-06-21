@@ -308,6 +308,57 @@ describe('agent matches', () => {
     expect(movedCatalogue.actions.some((action) => action.id === 'class_feature:steady-aim')).toBe(false);
   });
 
+  it('exposes Druid Wild Shape beast forms as concrete class feature actions', () => {
+    const state = initBattle(createBattlecastCreatures(druidWildShapeScenario().combatants, true), 8);
+    const druid = state.creatures.find((creature) => creature.team === 'red');
+    if (!druid) throw new Error('expected red druid');
+
+    const catalogue = generateLegalActions(state, druid, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, druid, catalogue);
+    const wildShape = catalogue.actions.find((action) =>
+      action.type === 'class_feature' && action.feature === 'wild_shape'
+    );
+
+    expect(wildShape).toEqual(expect.objectContaining({
+      type: 'class_feature',
+      feature: 'wild_shape',
+      isBonusAction: true,
+      resourceCost: { key: 'wild-shape', amount: 1 },
+      beastName: expect.any(String),
+      beastAc: expect.any(Number),
+      beastTempHp: 5,
+      beastActions: expect.any(Array),
+    }));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: wildShape?.id,
+        type: 'class_feature',
+        feature: 'wild_shape',
+        beastName: wildShape?.beastName,
+        beastAc: wildShape?.beastAc,
+        beastTempHp: 5,
+      }),
+    ]));
+
+    druid.concentratingOn = 'Moonbeam';
+    const concentratingCatalogue = generateLegalActions(state, druid, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    expect(concentratingCatalogue.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'wild_shape'
+    )).toBe(false);
+  });
+
   it('exposes Monk Martial Arts and Flurry as post-attack concrete class feature actions', () => {
     const state = initBattle(createBattlecastCreatures(monkFlurryScenario().combatants, true), 8);
     const monk = state.creatures.find((creature) => creature.team === 'red');
@@ -564,6 +615,56 @@ describe('agent matches', () => {
     expect(steadyAimResolution?.logs.some((log) => log.action === 'Steady Aim')).toBe(true);
     expect(steadyAimResolution?.events.some((event) => event.kind === 'effect' && event.label === 'Steady Aim')).toBe(true);
     expect(attackResolution?.turnStep).toBe(1);
+  });
+
+  it('lets an actual-action Druid choose a Wild Shape form', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let chosenWildShape: string | undefined;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const wildShape = actionIds.find((id) => id.startsWith('class_feature:wild-shape:'));
+      const actionId = wildShape ?? 'end_turn';
+      if (wildShape) chosenWildShape = actionId;
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Transform into a concrete legal beast form.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: druidWildShapeScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const wildShapeResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'class_feature' &&
+      event.acceptedAction.feature === 'wild_shape'
+    );
+
+    expect(chosenWildShape).toEqual(expect.stringMatching(/^class_feature:wild-shape:/));
+    expect(wildShapeResolution?.type).toBe('action_resolved');
+    expect(wildShapeResolution?.logs.some((log) => log.action === 'Wild Shape')).toBe(true);
+    expect(wildShapeResolution?.events.some((event) => event.kind === 'wildShape' && event.beastName)).toBe(true);
   });
 
   it('lets an actual-action Monk choose each Flurry of Blows strike after seeing the previous result', async () => {
@@ -842,6 +943,26 @@ function rogueSteadyAimScenario(): D20benchScenario {
     combatants: [
       { monster: buildHero('Rogue', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 8 } },
+    ],
+  };
+}
+
+function druidWildShapeScenario(): D20benchScenario {
+  return {
+    id: 'test.druid-wild-shape.v1',
+    name: 'Druid Wild Shape Test',
+    description: 'A level-5 Druid can spend Wild Shape to transform into a concrete beast form.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Druid', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
     ],
   };
 }

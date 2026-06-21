@@ -4,10 +4,12 @@ import {
   consumeResource,
   creatureDistance,
   executeSpell,
+  getFootprintSize,
   getEffectiveMoveSpeed,
   getAoETargets,
   hasResource,
   initBattle,
+  isPositionBlocked,
   processHydraEndOfTurn,
   processTargetTurnEndOngoingEffects,
   pushLog,
@@ -23,7 +25,8 @@ import { BASE_DURATIONS } from './battlecast/types/animation.js';
 import { moveToDestination, moveToward } from './battlecast/engine/ai-movement.js';
 import { beginBattlecastControlledTurn, executeTurn, runOpportunityAttacks } from './battlecast/engine/ai-turn.js';
 import { getActiveActions } from './battlecast/engine/ai-targeting.js';
-import { withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
+import { abilityModifier, withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
+import { getEligibleWildShapeBeasts } from './battlecast/data/heroes.js';
 import { maps } from './battlecast/data/maps.js';
 import { buildMovementBlockedSet, buildSightBlockedSet } from './battlecast/types/terrain.js';
 import { createBattlecastCreatures, summarizeBattlecastBattle, type BattlecastBattleSummary } from './battlecast-runner.js';
@@ -904,6 +907,11 @@ function applyClassFeatureAction(
     return;
   }
 
+  if (action.feature === 'wild_shape') {
+    applyWildShapeAction(state, active, action, agent);
+    return;
+  }
+
   if (action.feature === 'martial_arts_strike') {
     applyMonkBonusStrike(state, active, action, agent, actualTurn, 'martial_arts_strike');
     return;
@@ -912,6 +920,84 @@ function applyClassFeatureAction(
   if (action.feature === 'flurry_of_blows') {
     applyMonkBonusStrike(state, active, action, agent, actualTurn, 'flurry_of_blows');
   }
+}
+
+function applyWildShapeAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'class_feature' }>,
+  agent: Agent,
+): void {
+  const level = active.monsterData.heroLevel ?? 0;
+  if (
+    active.monsterData.heroClass !== 'Druid' ||
+    level < 2 ||
+    active.wildShape ||
+    active.bonusActionUsed ||
+    active.concentratingOn ||
+    !hasResource(active, 'wild-shape') ||
+    !action.beastName
+  ) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  const beast = getEligibleWildShapeBeasts({
+    level,
+    subclass: active.monsterData.heroSubclass,
+  }).find((candidate) => candidate.name === action.beastName);
+  if (!beast || !canWildShapeFit(state, active, beast.size)) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  consumeResource(active, 'wild-shape');
+  active.bonusActionUsed = true;
+  const isMoon = active.monsterData.heroSubclass === 'Circle of the Moon';
+  const tempHp = isMoon ? level * 3 : level;
+  const moonAc = 13 + abilityModifier(active.monsterData.abilities.wis);
+  const ac = isMoon ? Math.max(beast.ac, moonAc) : beast.ac;
+  active.wildShape = {
+    beastName: beast.name,
+    tempHp,
+    maxTempHp: tempHp,
+    formHp: beast.formHp,
+    cr: beast.cr,
+    ac,
+    speed: beast.speed,
+    actions: beast.actions,
+    size: beast.size,
+    traits: beast.traits,
+    saves: beast.saves,
+    abilities: beast.abilities,
+    isMoon,
+  };
+  if (beast.initialResources) {
+    for (const [key, value] of Object.entries(beast.initialResources)) {
+      active.resources[key] = value;
+    }
+  }
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Wild Shape',
+    details: `${active.displayName} transforms into a ${beast.name}! (${tempHp} temporary HP, AC ${ac})`,
+    type: 'special',
+  });
+  active.stats.actionUsage['Wild Shape'] = (active.stats.actionUsage['Wild Shape'] || 0) + 1;
+  state.events.push({ kind: 'wildShape', creatureId: active.id, beastName: beast.name, durationMs: 0 });
+}
+
+function canWildShapeFit(
+  state: BattleState,
+  active: Creature,
+  size: Creature['monsterData']['size'],
+): boolean {
+  const gridSize = state.gridSize ?? 20;
+  const footprint = getFootprintSize(size);
+  if (active.position.x + footprint > gridSize || active.position.y + footprint > gridSize) return false;
+  return !isPositionBlocked(active.position, size, state.creatures, active.id, state.terrainBlocked);
 }
 
 function applyMonkBonusStrike(
