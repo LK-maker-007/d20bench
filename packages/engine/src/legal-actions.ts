@@ -15,6 +15,7 @@ import {
   getMultiattack,
 } from './battlecast/engine/ai-targeting.js';
 import { reachableMovementDestinations } from './battlecast/engine/ai-movement.js';
+import { averageDamage } from './battlecast/engine/dice.js';
 
 export type LegalActionSpace = 'primitive' | 'battlecast-full-turn' | 'actual-actions-v1';
 
@@ -199,6 +200,10 @@ export function spellActionId(
   const base = `spell:${slugActionName(actionName)}`;
   if (center) return `${base}:center:${center.x},${center.y}`;
   return targetId ? `${base}:${targetId}` : base;
+}
+
+export function autoDartActionId(actionName: string, targetIds: string[]): string {
+  return `spell:${slugActionName(actionName)}:targets:${targetIds.join(',')}`;
 }
 
 export function moveTowardActionId(targetId: string): string {
@@ -490,25 +495,81 @@ function canPayForConcreteAction(active: Creature, action: MonsterAction): boole
 }
 
 function autoDartActions(state: BattleState, active: Creature, action: MonsterAction): LegalAction[] {
-  return targetCandidates(state, active, action)
+  const dartCount = Math.max(1, action.autoDarts ?? 1);
+  const targets = targetCandidates(state, active, action)
     .filter((target) => target.team !== active.team && canReachActionTarget(active, target, action))
-    .map((target) => {
-      const dartCount = Math.max(1, action.autoDarts ?? 1);
+    .sort((left, right) =>
+      left.currentHp - right.currentHp ||
+      left.displayName.localeCompare(right.displayName) ||
+      left.id.localeCompare(right.id)
+    )
+    .slice(0, 6);
+
+  return autoDartTargetDistributions(targets, dartCount)
+    .slice(0, 32)
+    .map((targetList) => {
+      const targetIds = targetList.map((target) => target.id);
+      const targetNames = targetList.map((target) => target.displayName);
+      const primary = targetList[0];
+      const singleTarget = targetIds.every((targetId) => targetId === primary.id);
       return {
-        id: spellActionId(action.name, target.id, undefined),
+        id: singleTarget ? spellActionId(action.name, primary.id, undefined) : autoDartActionId(action.name, targetIds),
         type: 'spell' as const,
         actionName: action.name,
         effectKind: 'auto_darts' as const,
-        targetId: target.id,
-        targetName: target.displayName,
-        targetIds: Array.from({ length: dartCount }, () => target.id),
-        targetNames: Array.from({ length: dartCount }, () => target.displayName),
-        expectedDamage: estimateBattlecastActionDamage(action, target),
+        targetId: primary.id,
+        targetName: primary.displayName,
+        targetIds,
+        targetNames,
+        expectedDamage: averageDamage(action.autoDartDamage ?? '1d4+1') * targetIds.length,
         isBonusAction: action.isBonusAction,
         spellLevel: action.spellLevel,
         resourceCost: action.resourceCost,
       };
     });
+}
+
+function autoDartTargetDistributions(targets: Creature[], dartCount: number): Creature[][] {
+  const results: Creature[][] = [];
+  const counts = Array.from({ length: targets.length }, () => 0);
+  const visit = (targetIndex: number, remaining: number) => {
+    if (targetIndex === targets.length - 1) {
+      counts[targetIndex] = remaining;
+      results.push(expandDartTargets(targets, counts));
+      counts[targetIndex] = 0;
+      return;
+    }
+    for (let count = remaining; count >= 0; count -= 1) {
+      counts[targetIndex] = count;
+      visit(targetIndex + 1, remaining - count);
+    }
+    counts[targetIndex] = 0;
+  };
+  if (targets.length > 0) visit(0, dartCount);
+  return results
+    .filter((targetList) => targetList.length === dartCount)
+    .sort((left, right) =>
+      distinctCreatureCount(left) - distinctCreatureCount(right) ||
+      targetListSortKey(left).localeCompare(targetListSortKey(right))
+    );
+}
+
+function expandDartTargets(targets: Creature[], counts: number[]): Creature[] {
+  const expanded: Creature[] = [];
+  for (let index = 0; index < targets.length; index += 1) {
+    for (let count = 0; count < counts[index]; count += 1) {
+      expanded.push(targets[index]);
+    }
+  }
+  return expanded;
+}
+
+function distinctCreatureCount(targets: Creature[]): number {
+  return new Set(targets.map((target) => target.id)).size;
+}
+
+function targetListSortKey(targets: Creature[]): string {
+  return targets.map((target) => target.id).join(',');
 }
 
 function areaActions(state: BattleState, active: Creature, action: MonsterAction): LegalAction[] {

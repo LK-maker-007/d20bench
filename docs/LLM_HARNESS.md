@@ -174,7 +174,7 @@ This gives us a safe, auditable harness before we spend significant model budget
 `actual-actions-v1` now replaces full-turn delegates as the fairness bridge. The remaining work is to keep widening the concrete catalogue until it matches every relevant Battlecast decision point:
 
 - dodge and help
-- split-target Magic Missile and monster-specific random ray actions
+- monster-specific random ray actions
 - class-specific bonus actions such as Rage movement, Flurry, Steady Aim, and Wild Shape
 - reactions and optional smite/slot choices
 - richer AoE line/cone aim choices

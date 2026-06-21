@@ -240,6 +240,34 @@ describe('agent matches', () => {
     expect(catalogue.actions.some((action) => action.type === 'spell' && action.actionName === 'Eldritch Blast')).toBe(false);
   });
 
+  it('exposes split-target Magic Missile auto-dart actions', () => {
+    const state = initBattle(createBattlecastCreatures(magicMissileSplitScenario().combatants, true), 12);
+    const wizard = state.creatures.find((creature) => creature.team === 'red');
+    if (!wizard) throw new Error('expected red wizard');
+
+    const catalogue = generateLegalActions(state, wizard, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    const splitMissile = catalogue.actions.find((action) =>
+      action.type === 'spell' &&
+      action.actionName === 'Magic Missile' &&
+      action.targetIds !== undefined &&
+      new Set(action.targetIds).size > 1
+    );
+
+    expect(splitMissile).toEqual(expect.objectContaining({
+      type: 'spell',
+      effectKind: 'auto_darts',
+      targetIds: expect.arrayContaining([
+        expect.stringContaining('fighter-l5-blue'),
+      ]),
+    }));
+  });
+
   it('asks an OpenRouter actual-action agent again after the first Extra Attack swing', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     globalThis.fetch = vi.fn(async (_url, init) => {
@@ -333,6 +361,58 @@ describe('agent matches', () => {
 
     expect(beamActions).toHaveLength(2);
     expect(beamActions.map((event) => event.turnStep)).toEqual([0, 1]);
+  });
+
+  it('executes a split-target Magic Missile selected by an actual-action LLM', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let chosenActionId: string | undefined;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const splitMissile = actionIds.find((id) => id.startsWith('spell:magic-missile:targets:') && new Set(id.split(':targets:')[1].split(',')).size > 1);
+      const actionId = splitMissile ?? 'end_turn';
+      if (splitMissile) chosenActionId = actionId;
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Split darts across wounded targets.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: magicMissileSplitScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const missileAction = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'spell' &&
+      event.acceptedAction.actionName === 'Magic Missile'
+    );
+
+    expect(chosenActionId).toEqual(expect.stringMatching(/^spell:magic-missile:targets:/));
+    expect(missileAction?.type).toBe('action_resolved');
+    expect(missileAction?.acceptedAction.type).toBe('spell');
+    if (missileAction?.acceptedAction.type !== 'spell') throw new Error('expected Magic Missile spell action');
+    expect(new Set(missileAction.acceptedAction.targetIds).size).toBeGreaterThan(1);
+    expect(missileAction.logs.filter((log) => log.action === 'Magic Missile')).toHaveLength(3);
   });
 
   it('lets an actual-action LLM disengage before moving without provoking opportunity attacks', async () => {
@@ -511,6 +591,27 @@ function warlockBeamScenario(): D20benchScenario {
     combatants: [
       { monster: buildHero('Warlock', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 8 } },
+    ],
+  };
+}
+
+function magicMissileSplitScenario(): D20benchScenario {
+  return {
+    id: 'test.magic-missile-split.v1',
+    name: 'Magic Missile Split Test',
+    description: 'A level-5 Wizard can split Magic Missile darts across multiple enemies.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 12,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Wizard', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 7, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 3 } },
     ],
   };
 }
