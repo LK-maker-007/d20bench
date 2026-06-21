@@ -176,6 +176,48 @@ describe('agent matches', () => {
     expect(observation.objective).toContain('Delegates and strategy labels are not available');
   });
 
+  it('exposes Dash and Disengage as concrete actual actions when relevant', () => {
+    const state = initBattle(createBattlecastCreatures(adjacentFighterDuelScenario().combatants, true), 8);
+    const active = state.creatures.find((creature) => creature.team === 'red');
+    if (!active) throw new Error('expected red fighter');
+
+    const catalogue = generateLegalActions(state, active, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    const dash = catalogue.actions.find((action) => action.type === 'dash');
+    const disengage = catalogue.actions.find((action) => action.type === 'disengage');
+
+    expect(dash).toEqual(expect.objectContaining({ id: 'dash', type: 'dash', extraMovement: 30 }));
+    expect(disengage).toEqual(expect.objectContaining({ id: 'disengage', type: 'disengage', isBonusAction: false }));
+
+    active.movementRemaining = 0;
+    const exhaustedMovementCatalogue = generateLegalActions(state, active, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    expect(exhaustedMovementCatalogue.actions.some((action) => action.type === 'move_toward')).toBe(false);
+    expect(exhaustedMovementCatalogue.actions.some((action) => action.type === 'dash')).toBe(true);
+
+    active.hasActed = true;
+    active.movementRemaining = 30;
+    const spentActionCatalogue = generateLegalActions(state, active, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    expect(spentActionCatalogue.actions.some((action) => action.type === 'attack')).toBe(false);
+    expect(spentActionCatalogue.actions.some((action) => action.type === 'dash')).toBe(false);
+  });
+
   it('asks an OpenRouter actual-action agent again after the first Extra Attack swing', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     globalThis.fetch = vi.fn(async (_url, init) => {
@@ -223,6 +265,63 @@ describe('agent matches', () => {
     expect(llmTurnStarts.some((event) => event.legalActions.some((action) => action.type === 'battlecast_tactic'))).toBe(false);
     expect(llmActions.filter((event) => event.acceptedAction.type === 'attack')).toHaveLength(2);
     expect(llmActions.map((event) => event.turnStep)).toEqual([0, 1]);
+  });
+
+  it('lets an actual-action LLM disengage before moving without provoking opportunity attacks', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let callIndex = 0;
+    let secondStepActionIds: string[] = [];
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      if (callIndex === 1) secondStepActionIds = [...actionIds];
+      const preferred = callIndex === 0
+        ? 'disengage'
+        : callIndex === 1
+          ? actionIds.find((id) => id.startsWith('move_toward:'))
+          : 'end_turn';
+      callIndex += 1;
+      const actionId = preferred && actionIds.includes(preferred) ? preferred : 'end_turn';
+      return jsonResponse({
+        id: `gen-${callIndex}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Take the concrete legal action.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: adjacentThreatWithFarTargetScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const llmActions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.llmTrace
+    );
+    const disengageResolution = llmActions.find((event) => event.acceptedAction.type === 'disengage');
+
+    expect(disengageResolution?.acceptedAction).toEqual(expect.objectContaining({ id: 'disengage' }));
+    expect(disengageResolution?.events.some((event) => event.kind === 'oaAvoided')).toBe(true);
+    expect(llmActions.some((event) => event.acceptedAction.type === 'move_toward')).toBe(true);
+    expect(secondStepActionIds.some((id) => id.startsWith('attack:'))).toBe(false);
+    expect(match.state.logs.some((log) => log.action === 'Opportunity Attack')).toBe(false);
   });
 
   it('uses distinct match ids for full-turn LLM action-space matches', () => {
@@ -300,6 +399,27 @@ function adjacentFighterDuelScenario(): D20benchScenario {
     combatants: [
       { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+    ],
+  };
+}
+
+function adjacentThreatWithFarTargetScenario(): D20benchScenario {
+  return {
+    id: 'test.adjacent-threat-far-target.v1',
+    name: 'Adjacent Threat With Far Target',
+    description: 'A red fighter can disengage from one adjacent fighter before moving toward another target.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 10,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 8 } },
     ],
   };
 }

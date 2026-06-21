@@ -272,6 +272,7 @@ export interface LlmActionView {
   effectKind?: Extract<LegalAction, { type: 'spell' }>['effectKind'];
   expectedDamage?: number;
   expectedHealing?: number;
+  extraMovement?: number;
   isBonusAction?: boolean;
   spellLevel?: number;
   resourceCost?: { key: string; amount: number };
@@ -450,6 +451,28 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       isBonusAction: action.isBonusAction,
       spellLevel: action.spellLevel,
       resourceCost: action.resourceCost,
+    };
+  }
+
+  if (action.type === 'dash') {
+    return {
+      id: action.id,
+      type: action.type,
+      label: `Dash for ${action.extraMovement} ft of extra movement`,
+      extraMovement: action.extraMovement,
+      description: 'Spend the main action to add extra movement for this turn.',
+    };
+  }
+
+  if (action.type === 'disengage') {
+    return {
+      id: action.id,
+      type: action.type,
+      label: action.isBonusAction ? 'Bonus action Disengage' : 'Disengage',
+      isBonusAction: action.isBonusAction,
+      description: action.isBonusAction
+        ? 'Spend a bonus action to prevent opportunity attacks from movement this turn.'
+        : 'Spend the main action to prevent opportunity attacks from movement this turn.',
     };
   }
 

@@ -3,6 +3,7 @@ import {
   type BattleState,
   creatureDistance,
   getAoETargets,
+  getEffectiveMoveSpeed,
   hasResource,
   pickRangedSphereCenter,
 } from './battlecast/engine/combat.js';
@@ -37,6 +38,16 @@ export type LegalAction =
       type: 'move_toward';
       targetId: string;
       targetName: string;
+    }
+  | {
+      id: 'dash';
+      type: 'dash';
+      extraMovement: number;
+    }
+  | {
+      id: 'disengage' | 'bonus_disengage';
+      type: 'disengage';
+      isBonusAction: boolean;
     }
   | {
       id: string;
@@ -101,8 +112,9 @@ export function generateLegalActions(
     ? !active.hasActed && (!attackActionStarted || attackRollsRemaining > 0)
     : !active.hasActed;
   const hasAttackRoll = options.includeActualActions
-    ? attackRollsRemaining > 0
+    ? hasMainAction && attackRollsRemaining > 0
     : hasMainAction;
+  const hasBonusAction = active.bonusActionUsed !== true;
 
   for (const action of activeActions) {
     if (isConcreteSpellAction(action) && options.includeActualActions) continue;
@@ -122,20 +134,27 @@ export function generateLegalActions(
   }
 
   if (options.includeActualActions) {
+    actions.push(...coreActualActions(state, active, {
+      hasMainAction,
+      attackActionStarted,
+      hasBonusAction,
+    }));
     actions.push(...generateConcreteSpellActions(state, active, {
       hasMainAction,
       attackActionStarted,
-      hasBonusAction: active.bonusActionUsed !== true,
+      hasBonusAction,
     }));
   }
 
-  for (const target of enemies.filter((target) => creatureDistance(active, target) > 5)) {
-    actions.push({
-      id: moveTowardActionId(target.id),
-      type: 'move_toward',
-      targetId: target.id,
-      targetName: target.displayName,
-    });
+  if (active.movementRemaining > 0) {
+    for (const target of enemies.filter((target) => creatureDistance(active, target) > 5)) {
+      actions.push({
+        id: moveTowardActionId(target.id),
+        type: 'move_toward',
+        targetId: target.id,
+        targetName: target.displayName,
+      });
+    }
   }
 
   if (options.includeBattlecastFullTurnActions) {
@@ -198,6 +217,68 @@ export function estimateAttackRollBudget(active: Creature): number {
   const explicit = description.match(/\b(five|5|four|4|three|3|two|2)\b/);
   if (explicit) return countWordToNumber(explicit[1]);
   return 2;
+}
+
+function coreActualActions(
+  state: BattleState,
+  active: Creature,
+  economy: {
+    hasMainAction: boolean;
+    attackActionStarted: boolean;
+    hasBonusAction: boolean;
+  },
+): LegalAction[] {
+  const actions: LegalAction[] = [];
+  const hasMainActionAvailable = economy.hasMainAction && !economy.attackActionStarted;
+  const dashMovement = movementAllowance(active, state);
+  if (hasMainActionAvailable && dashMovement > 0) {
+    actions.push({ id: 'dash', type: 'dash', extraMovement: dashMovement });
+  }
+
+  const threatened = opportunityThreats(state, active).length > 0;
+  if (!threatened) return actions;
+
+  if (hasMainActionAvailable) {
+    actions.push({ id: 'disengage', type: 'disengage', isBonusAction: false });
+  }
+  if (economy.hasBonusAction && canBonusDisengage(active)) {
+    actions.push({ id: 'bonus_disengage', type: 'disengage', isBonusAction: true });
+  }
+
+  return actions;
+}
+
+function movementAllowance(active: Creature, state: BattleState): number {
+  if (active.conditions.includes('restrained') || active.conditions.includes('grappled')) return 0;
+  return Math.max(0, getEffectiveMoveSpeed(active, state) - activeSpeedPenalty(active));
+}
+
+function activeSpeedPenalty(active: Creature): number {
+  return Math.max(0, ...((active.activeBuffs ?? []).map((buff) => buff.speedPenalty ?? 0)));
+}
+
+function canBonusDisengage(active: Creature): boolean {
+  return active.monsterData.heroClass === 'Rogue' || hasTrait(active, 'Nimble Escape');
+}
+
+function hasTrait(active: Creature, name: string): boolean {
+  const lower = name.toLowerCase();
+  return [
+    ...(active.monsterData.traits ?? []),
+    ...(active.wildShape?.traits ?? []),
+  ].some((trait) => trait.name.toLowerCase().includes(lower));
+}
+
+function opportunityThreats(state: BattleState, active: Creature): Creature[] {
+  return state.creatures.filter((enemy) => {
+    if (enemy.team === active.team || !enemy.isAlive || enemy.reactionUsed) return false;
+    if (enemy.conditions.includes('incapacitated') || enemy.conditions.includes('stunned') ||
+      enemy.conditions.includes('paralyzed') || enemy.conditions.includes('unconscious')) return false;
+    const reach = getActiveActions(enemy)
+      .filter((action) => action.type === 'melee')
+      .reduce((max, action) => Math.max(max, action.reach ?? 5), 5);
+    return creatureDistance(enemy, active) <= reach;
+  });
 }
 
 function isTargetInRange(active: Creature, target: Creature, action: MonsterAction): boolean {

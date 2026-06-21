@@ -3,6 +3,7 @@ import {
   checkBattleComplete,
   creatureDistance,
   executeSpell,
+  getEffectiveMoveSpeed,
   getAoETargets,
   initBattle,
   processHydraEndOfTurn,
@@ -16,6 +17,7 @@ import {
   type BattleState,
 } from './battlecast/engine/combat.js';
 import type { Creature } from './battlecast/types/monster.js';
+import { BASE_DURATIONS } from './battlecast/types/animation.js';
 import { moveToward } from './battlecast/engine/ai-movement.js';
 import { beginBattlecastControlledTurn, executeTurn, runOpportunityAttacks } from './battlecast/engine/ai-turn.js';
 import { getActiveActions } from './battlecast/engine/ai-targeting.js';
@@ -386,6 +388,7 @@ interface ManualTurnStartResult {
 interface ActualTurnContext {
   attackRollsRemaining: number;
   attackActionStarted: boolean;
+  disengaged: boolean;
   ended: boolean;
 }
 
@@ -512,6 +515,7 @@ async function runStepwiseOpenRouterTurn(input: {
   const actualTurn: ActualTurnContext = {
     attackRollsRemaining: estimateAttackRollBudget(input.active),
     attackActionStarted: false,
+    disengaged: false,
     ended: false,
   };
   const maxSteps = 8;
@@ -667,12 +671,24 @@ function applyActualLegalAction(
     const before = { ...active.position };
     applyLegalAction(state, active, action, agent, true);
     if (before.x !== active.position.x || before.y !== active.position.y) {
-      runOpportunityAttacks(state, active, before);
+      if (!actualTurn.disengaged) {
+        runOpportunityAttacks(state, active, before);
+      }
       if (active.isAlive && !state.isComplete) {
         checkAuraEntry(state, active, before);
       }
     }
     return { ended: false };
+  }
+
+  if (action.type === 'dash') {
+    applyDashAction(state, active, action, actualTurn);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
+  if (action.type === 'disengage') {
+    applyDisengageAction(state, active, action, actualTurn);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
   }
 
   if (action.type === 'attack') {
@@ -768,12 +784,89 @@ function applySpellAction(
   }
 }
 
+function applyDashAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'dash' }>,
+  actualTurn: ActualTurnContext,
+): void {
+  const extraMovement = Math.max(0, action.extraMovement || movementAllowance(active, state));
+  active.movementRemaining += extraMovement;
+  active.hasActed = true;
+  actualTurn.attackRollsRemaining = 0;
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Dash',
+    details: `${active.displayName} dashes, gaining ${extraMovement} ft of movement for this turn.`,
+    type: 'move',
+  });
+}
+
+function applyDisengageAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'disengage' }>,
+  actualTurn: ActualTurnContext,
+): void {
+  actualTurn.disengaged = true;
+  if (action.isBonusAction) {
+    active.bonusActionUsed = true;
+  } else {
+    active.hasActed = true;
+    actualTurn.attackRollsRemaining = 0;
+  }
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: action.isBonusAction ? 'Bonus Action Disengage' : 'Disengage',
+    details: `${active.displayName} avoids opportunity attacks from movement this turn.`,
+    type: 'move',
+  });
+  for (const enemy of opportunityThreats(state, active)) {
+    state.events.push({
+      kind: 'oaAvoided',
+      moverId: active.id,
+      enemyId: enemy.id,
+      reason: action.isBonusAction ? bonusDisengageReason(active) : 'disengage',
+      durationMs: BASE_DURATIONS.oaAvoided,
+    });
+  }
+}
+
 function shouldEndActualTurn(active: Creature, actualTurn: ActualTurnContext): boolean {
   if (actualTurn.ended) return true;
   const hasMainAction = !active.hasActed || (actualTurn.attackActionStarted && actualTurn.attackRollsRemaining > 0);
   const hasBonusAction = active.bonusActionUsed !== true;
   const hasMovement = active.movementRemaining > 0;
   return !hasMainAction && !hasBonusAction && !hasMovement;
+}
+
+function movementAllowance(active: Creature, state: BattleState): number {
+  if (active.conditions.includes('restrained') || active.conditions.includes('grappled')) return 0;
+  return Math.max(0, getEffectiveMoveSpeed(active, state) - activeSpeedPenalty(active));
+}
+
+function activeSpeedPenalty(active: Creature): number {
+  return Math.max(0, ...((active.activeBuffs ?? []).map((buff) => buff.speedPenalty ?? 0)));
+}
+
+function bonusDisengageReason(active: Creature): 'cunning' | 'nimble' {
+  return active.monsterData.heroClass === 'Rogue' ? 'cunning' : 'nimble';
+}
+
+function opportunityThreats(state: BattleState, active: Creature): Creature[] {
+  return state.creatures.filter((enemy) => {
+    if (enemy.team === active.team || !enemy.isAlive || enemy.reactionUsed) return false;
+    if (enemy.conditions.includes('incapacitated') || enemy.conditions.includes('stunned') ||
+      enemy.conditions.includes('paralyzed') || enemy.conditions.includes('unconscious')) return false;
+    const reach = getActiveActions(enemy)
+      .filter((enemyAction) => enemyAction.type === 'melee')
+      .reduce((max, enemyAction) => Math.max(max, enemyAction.reach ?? 5), 5);
+    return creatureDistance(enemy, active) <= reach;
+  });
 }
 
 function pushInvalidActionLog(state: BattleState, active: Creature, agent: Agent, actionId: string): void {

@@ -144,7 +144,7 @@ The first implementation is deliberately narrow:
 - LLM agents choose from the existing D20bench legal-action catalogue.
 - The historical primitive action space contains `attack`, `move_toward`, and `end_turn`.
 - The historical full-turn action space also exposes copied Battlecast delegates: `battlecast_tactic:aggressive`, `battlecast_tactic:smart`, `battlecast_tactic:kiting`, and `battlecast_tactic:defensive`. These seasons verify tool calls and the copied Battlecast executor, but they are not the final fair action-space target.
-- `actual-actions-v1` is the current fair-action-space target. It forbids Battlecast tactic delegates for OpenRouter agents and exposes concrete movement, attack, spell, save, AoE, healing, buff, auto-dart, and end-turn actions. The async harness calls the model repeatedly within one creature turn when action economy remains.
+- `actual-actions-v1` is the current fair-action-space target. It forbids Battlecast tactic delegates for OpenRouter agents and exposes concrete movement, Dash, Disengage, attack, spell, save, AoE, healing, buff, auto-dart, and end-turn actions. The async harness calls the model repeatedly within one creature turn when action economy remains.
 - The current observation schema is `d20bench.llm_observation.v2`, which includes Battlecast-relevant tactical metadata: action/spell profiles, defenses, resources, recharges, buffs, condition timers, concentration/wild-shape state, team tactic flags, and tactic reference notes.
 - Non-Battlecast agents now share Battlecast turn-start processing with the fixed tactic agents, including death saves, start-of-turn condition effects, movement reset, and skip-turn conditions.
 - Battlecast tactic agents still delegate to copied Battlecast `executeTurn`.
@@ -173,7 +173,7 @@ This gives us a safe, auditable harness before we spend significant model budget
 
 `actual-actions-v1` now replaces full-turn delegates as the fairness bridge. The remaining work is to keep widening the concrete catalogue until it matches every relevant Battlecast decision point:
 
-- more exact movement destinations, dash, dodge, disengage, and help
+- more exact movement destinations, dodge, and help
 - split-target Magic Missile and beam-style multiattacks
 - class-specific bonus actions such as Rage movement, Flurry, Steady Aim, and Wild Shape
 - reactions and optional smite/slot choices
