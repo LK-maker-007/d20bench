@@ -336,11 +336,32 @@ export const llmToolcallCheapVerifySeason: LlmSeasonConfig = {
   concurrency: 6,
 };
 
+export const llmToolcallGlmSmartTwentySeason: LlmSeasonConfig = {
+  id: 'llm-toolcall-glm-smart-20-v2',
+  description: 'Twenty-match post-toolcall-fix GLM 5.2 season against Battlecast Smart on the chokepoint and status-pressure hero-party mirrors.',
+  agents: [
+    ...llmSmartGlmModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: Array.from({ length: 5 }, (_, index) => index + 1),
+  maxRounds: 3,
+  pairings: createModelOpponentPairings(llmSmartGlmModelAgents, llmSmartOpponentAgents),
+  llmActionSpace: 'battlecast-full-turn',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 10,
+};
+
 export const llmSeasons = [
   llmFrontierSmartSeason,
   llmFrontierSmartTop3TenXSeason,
   llmFrontierSmartGlmTenXSeason,
   llmToolcallCheapVerifySeason,
+  llmToolcallGlmSmartTwentySeason,
   llmFrontierFullTurnSeason,
   llmFrontierPublicSeason,
   llmSmokeSeason,

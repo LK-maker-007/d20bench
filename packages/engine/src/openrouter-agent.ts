@@ -47,6 +47,7 @@ interface OpenRouterToolDecision {
 const openRouterRequestTimeoutMs = 90_000;
 const toolName = 'choose_d20bench_action';
 const defaultMaxCompletionTokens = 2048;
+const glmMaxCompletionTokens = 8192;
 const defaultDecisionAttempts = 2;
 const modelsWithoutForcedToolChoice = new Set<string>();
 
@@ -399,7 +400,7 @@ function buildOpenRouterToolRequest(input: {
   return {
     model: input.model,
     temperature: 0,
-    max_tokens: openRouterMaxCompletionTokens(),
+    max_tokens: openRouterMaxCompletionTokens(input.model),
     provider: {
       require_parameters: true,
     },
@@ -522,7 +523,12 @@ function hashJson(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
 
-function openRouterMaxCompletionTokens(): number {
+function openRouterMaxCompletionTokens(model: string): number {
+  if (model === 'z-ai/glm-5.2') {
+    return numberEnv('D20BENCH_OPENROUTER_GLM_MAX_COMPLETION_TOKENS')
+      ?? numberEnv('D20BENCH_OPENROUTER_MAX_COMPLETION_TOKENS')
+      ?? glmMaxCompletionTokens;
+  }
   return numberEnv('D20BENCH_OPENROUTER_MAX_COMPLETION_TOKENS') ?? defaultMaxCompletionTokens;
 }
 

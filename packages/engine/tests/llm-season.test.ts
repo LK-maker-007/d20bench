@@ -9,6 +9,7 @@ import {
   llmSmartGlmModelAgents,
   llmSmartTop3ModelAgents,
   llmToolcallCheapVerifySeason,
+  llmToolcallGlmSmartTwentySeason,
   llmToolcallVerifyModelAgents,
   sanitizeBenchmarkErrorForArtifacts,
 } from '../src/index.js';
@@ -163,5 +164,39 @@ describe('LLM seasons', () => {
 
     expect(pairings).toHaveLength(llmToolcallVerifyModelAgents.length * 2);
     expect([...matchesByModel.values()]).toEqual(llmToolcallVerifyModelAgents.map(() => 4));
+  });
+
+  it('defines a twenty-match GLM post-toolcall verification season', () => {
+    const pairings = llmToolcallGlmSmartTwentySeason.pairings ?? [];
+    const modelAgents = new Set(llmSmartGlmModelAgents);
+    const matchesByModel = new Map(llmSmartGlmModelAgents.map((agent) => [agent, 0]));
+
+    expect(llmToolcallGlmSmartTwentySeason.id).toBe('llm-toolcall-glm-smart-20-v2');
+    expect(llmToolcallGlmSmartTwentySeason.llmActionSpace).toBe('battlecast-full-turn');
+    expect(llmToolcallGlmSmartTwentySeason.seeds).toEqual(
+      Array.from({ length: 5 }, (_, index) => index + 1),
+    );
+    expect(llmToolcallGlmSmartTwentySeason.scenarios.map((scenario) => scenario.battleType)).toEqual([
+      'hero-party-chokepoint',
+      'hero-party-status',
+    ]);
+    expect(llmToolcallGlmSmartTwentySeason.agents).toEqual(expect.arrayContaining([
+      'openrouter:z-ai/glm-5.2',
+      'battlecast.smart',
+    ]));
+
+    for (const pairing of pairings) {
+      const agents = [pairing.redAgent, pairing.blueAgent];
+      expect(agents).toContain('battlecast.smart');
+      const model = agents.find((agent) => modelAgents.has(agent));
+      expect(model).toBeDefined();
+      matchesByModel.set(
+        model!,
+        matchesByModel.get(model!)! + llmToolcallGlmSmartTwentySeason.scenarios.length * llmToolcallGlmSmartTwentySeason.seeds.length,
+      );
+    }
+
+    expect(pairings).toHaveLength(llmSmartGlmModelAgents.length * 2);
+    expect([...matchesByModel.values()]).toEqual(llmSmartGlmModelAgents.map(() => 20));
   });
 });

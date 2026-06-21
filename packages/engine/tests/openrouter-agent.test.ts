@@ -11,10 +11,14 @@ import { initBattle } from '../src/battlecast/engine/combat.js';
 
 const originalFetch = globalThis.fetch;
 const originalApiKey = process.env.OPENROUTER_API_KEY;
+const originalMaxCompletionTokens = process.env.D20BENCH_OPENROUTER_MAX_COMPLETION_TOKENS;
+const originalGlmMaxCompletionTokens = process.env.D20BENCH_OPENROUTER_GLM_MAX_COMPLETION_TOKENS;
 
 describe('OpenRouter action selection', () => {
   beforeEach(() => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    delete process.env.D20BENCH_OPENROUTER_MAX_COMPLETION_TOKENS;
+    delete process.env.D20BENCH_OPENROUTER_GLM_MAX_COMPLETION_TOKENS;
   });
 
   afterEach(() => {
@@ -23,6 +27,16 @@ describe('OpenRouter action selection', () => {
       delete process.env.OPENROUTER_API_KEY;
     } else {
       process.env.OPENROUTER_API_KEY = originalApiKey;
+    }
+    if (originalMaxCompletionTokens === undefined) {
+      delete process.env.D20BENCH_OPENROUTER_MAX_COMPLETION_TOKENS;
+    } else {
+      process.env.D20BENCH_OPENROUTER_MAX_COMPLETION_TOKENS = originalMaxCompletionTokens;
+    }
+    if (originalGlmMaxCompletionTokens === undefined) {
+      delete process.env.D20BENCH_OPENROUTER_GLM_MAX_COMPLETION_TOKENS;
+    } else {
+      process.env.D20BENCH_OPENROUTER_GLM_MAX_COMPLETION_TOKENS = originalGlmMaxCompletionTokens;
     }
     vi.restoreAllMocks();
   });
@@ -71,6 +85,33 @@ describe('OpenRouter action selection', () => {
     expect(requests[0].max_completion_tokens).toBeUndefined();
     expect(requests[0].parallel_tool_calls).toBeUndefined();
     expect(requests[0].provider.require_parameters).toBe(true);
+  });
+
+  it('uses a larger default completion budget for GLM reasoning models', async () => {
+    const { context, firstActionId } = createDecisionContext();
+    const requests: any[] = [];
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      requests.push(body);
+      return jsonResponse({
+        id: 'gen-glm-tool-ok',
+        model: 'z-ai/glm-5.2',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [toolCall({ actionId: firstActionId, rationale: 'GLM tool call.' })],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    await chooseOpenRouterAction(
+      { id: 'openrouter:z-ai/glm-5.2', kind: 'openrouter-llm', model: 'z-ai/glm-5.2' },
+      context,
+    );
+
+    expect(requests[0].max_tokens).toBe(8192);
   });
 
   it('repairs a missing tool call without converting it to end_turn', async () => {

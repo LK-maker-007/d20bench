@@ -155,6 +155,7 @@ The first implementation is deliberately narrow:
 - `llm-frontier-smart-top3-10x-v1` is a separate replication run for Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash. It uses the same two battle types and full-turn action space, but runs 20 seeds for 80 matches per model.
 - `llm-frontier-smart-glm-10x-v1` is a separate GLM 5.2 replication run with the same two battle types, full-turn action space, and 20 seeds for 80 matches.
 - `llm-toolcall-cheap-verify-v3` verifies the tool-call harness with Ministral 8B, Llama 3.1 8B, and Qwen 3.5 Flash against `battlecast.smart` on the two public hero-party mirrors.
+- `llm-toolcall-glm-smart-20-v2` is the post-toolcall-fix GLM 5.2 check: 20 total matches against `battlecast.smart` using five seeds, two side assignments, and the two public hero-party mirrors. GLM uses a larger model-specific completion budget so its reasoning can reach the required tool call instead of truncating.
 - LLM ladder runs write `completed-matches.jsonl` checkpoints as matches finish; `--resume` reloads completed fixtures and continues with failed or unstarted fixtures.
 - LLM ladder runs also write local `raw-decisions.jsonl` audit logs for every OpenRouter decision attempt. These are intentionally not published by default.
 - Published benchmark results are append-only by season id: new experiments get new ids and new `results/seasons/<id>/` directories rather than overwriting previous runs.
