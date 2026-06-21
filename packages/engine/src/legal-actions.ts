@@ -6,6 +6,8 @@ import {
   getAoETargets,
   getEffectiveMoveSpeed,
   hasResource,
+  isInCone,
+  isInLine,
   isPositionBlocked,
   pickRangedSphereCenter,
 } from './battlecast/engine/combat.js';
@@ -87,6 +89,7 @@ export type LegalAction =
       targetIds?: string[];
       targetNames?: string[];
       center?: { x: number; y: number };
+      direction?: { x: number; y: number };
       expectedDamage?: number;
       expectedHealing?: number;
       isBonusAction?: boolean;
@@ -223,6 +226,10 @@ export function spellActionId(
   const base = `spell:${slugActionName(actionName)}`;
   if (center) return `${base}:center:${center.x},${center.y}`;
   return targetId ? `${base}:${targetId}` : base;
+}
+
+export function directionalSpellActionId(actionName: string, direction: { x: number; y: number }): string {
+  return `spell:${slugActionName(actionName)}:direction:${direction.x},${direction.y}`;
 }
 
 export function autoDartActionId(actionName: string, targetIds: string[]): string {
@@ -806,12 +813,52 @@ function areaActions(state: BattleState, active: Creature, action: MonsterAction
   if (isPointOriginArea(area, action)) {
     return pointAreaActions(state, active, action);
   }
+  if (area.includes('cone') || area.includes('line')) {
+    return directionalAreaActions(state, active, action, area);
+  }
   const targets = getAoETargets(state, active, action);
   const targetIds = targets.map((target) => target.id);
   if (targetIds.length === 0) return [];
   const enemyHitCount = targets.filter((target) => target.team !== active.team).length;
   if (enemyHitCount === 0 && action.targetScope !== 'all_allies_in_area') return [];
   return [spellActionForArea(action, targets, undefined)];
+}
+
+function directionalAreaActions(
+  state: BattleState,
+  active: Creature,
+  action: MonsterAction,
+  area: string,
+): LegalAction[] {
+  const range = parseAreaFeet(action.savingThrow?.area) ?? 30;
+  const checker = area.includes('cone') ? isInCone : isInLine;
+  const alive = state.creatures.filter((creature) => creature.isAlive && creature.id !== active.id);
+  const enemies = alive.filter((creature) => creature.team !== active.team && !creature.dying);
+  const seenDirections = new Set<string>();
+
+  return enemies
+    .map((enemy) => ({ ...enemy.position }))
+    .filter((direction) => {
+      const key = `${direction.x},${direction.y}`;
+      if (seenDirections.has(key)) return false;
+      seenDirections.add(key);
+      return true;
+    })
+    .map((direction) => {
+      const targets = alive.filter((creature) => checker(active.position, direction, creature.position, range));
+      const enemyHitCount = targets.filter((target) => target.team !== active.team).length;
+      const allyHitCount = targets.filter((target) => target.team === active.team).length;
+      return { direction, targets, enemyHitCount, allyHitCount };
+    })
+    .filter(({ enemyHitCount }) => enemyHitCount > 0)
+    .sort((left, right) =>
+      right.enemyHitCount - left.enemyHitCount ||
+      left.allyHitCount - right.allyHitCount ||
+      left.direction.x - right.direction.x ||
+      left.direction.y - right.direction.y
+    )
+    .slice(0, 8)
+    .map(({ direction, targets }) => spellActionForArea(action, targets, undefined, direction));
 }
 
 function pointAreaActions(state: BattleState, active: Creature, action: MonsterAction): LegalAction[] {
@@ -895,9 +942,10 @@ function spellActionForArea(
   action: MonsterAction,
   targets: Creature[],
   center: { x: number; y: number } | undefined,
+  direction?: { x: number; y: number },
 ): Extract<LegalAction, { type: 'spell' }> {
   return {
-    id: spellActionId(action.name, undefined, center),
+    id: direction ? directionalSpellActionId(action.name, direction) : spellActionId(action.name, undefined, center),
     type: 'spell',
     actionName: action.name,
     effectKind: 'aoe',
@@ -906,6 +954,7 @@ function spellActionForArea(
     targetIds: targets.map((target) => target.id),
     targetNames: targets.map((target) => target.displayName),
     center,
+    direction,
     expectedDamage: estimateActionDamage(action),
     isBonusAction: action.isBonusAction,
     spellLevel: action.spellLevel,

@@ -268,6 +268,49 @@ describe('agent matches', () => {
     }));
   });
 
+  it('exposes multiple directional Lightning Bolt actions', () => {
+    const state = initBattle(createBattlecastCreatures(lightningBoltDirectionScenario().combatants, true), 12);
+    const wizard = state.creatures.find((creature) => creature.team === 'red');
+    if (!wizard) throw new Error('expected red wizard');
+
+    const catalogue = generateLegalActions(state, wizard, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, wizard, catalogue);
+    const lightningActions = catalogue.actions.filter((action) =>
+      action.type === 'spell' &&
+      action.actionName === 'Lightning Bolt' &&
+      action.direction
+    );
+
+    expect(lightningActions.length).toBeGreaterThanOrEqual(2);
+    expect(lightningActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'spell:lightning-bolt:direction:6,2',
+        type: 'spell',
+        direction: { x: 6, y: 2 },
+        targetIds: expect.arrayContaining([
+          expect.stringContaining('fighter-l5-blue'),
+        ]),
+      }),
+      expect.objectContaining({
+        id: 'spell:lightning-bolt:direction:2,8',
+        type: 'spell',
+        direction: { x: 2, y: 8 },
+      }),
+    ]));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'spell:lightning-bolt:direction:6,2',
+        direction: { x: 6, y: 2 },
+      }),
+    ]));
+  });
+
   it('exposes Rogue Steady Aim as a concrete class feature action', () => {
     const state = initBattle(createBattlecastCreatures(rogueSteadyAimScenario().combatants, true), 12);
     const rogue = state.creatures.find((creature) => creature.team === 'red');
@@ -604,6 +647,68 @@ describe('agent matches', () => {
     if (missileAction?.acceptedAction.type !== 'spell') throw new Error('expected Magic Missile spell action');
     expect(new Set(missileAction.acceptedAction.targetIds).size).toBeGreaterThan(1);
     expect(missileAction.logs.filter((log) => log.action === 'Magic Missile')).toHaveLength(3);
+  });
+
+  it('executes a selected directional Lightning Bolt with the chosen aim point', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let chosenDirection: { x: number; y: number } | undefined;
+    let chosenActionId: string | undefined;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const lightning = actionIds.find((id) => id.startsWith('spell:lightning-bolt:direction:'));
+      const actionId = lightning ?? 'end_turn';
+      if (lightning) {
+        chosenActionId = lightning;
+        const [x, y] = lightning.split(':direction:')[1].split(',').map(Number);
+        chosenDirection = { x, y };
+      }
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Aim the line through clustered enemies.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: lightningBoltDirectionScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const lightningResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'spell' &&
+      event.acceptedAction.id === chosenActionId
+    );
+
+    expect(chosenActionId).toEqual(expect.stringMatching(/^spell:lightning-bolt:direction:/));
+    expect(lightningResolution?.type).toBe('action_resolved');
+    if (lightningResolution?.acceptedAction.type !== 'spell') throw new Error('expected Lightning Bolt spell action');
+    expect(lightningResolution.acceptedAction.direction).toEqual(chosenDirection);
+    expect(lightningResolution.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: 'aoe',
+        shape: 'line',
+        direction: chosenDirection,
+      }),
+    ]));
   });
 
   it('lets an actual-action Rogue use Steady Aim before choosing an attack', async () => {
@@ -1018,6 +1123,28 @@ function magicMissileSplitScenario(): D20benchScenario {
       { monster: buildHero('Wizard', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 7, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 3 } },
+    ],
+  };
+}
+
+function lightningBoltDirectionScenario(): D20benchScenario {
+  return {
+    id: 'test.lightning-bolt-direction.v1',
+    name: 'Lightning Bolt Direction Test',
+    description: 'A level-5 Wizard can choose among concrete line directions for Lightning Bolt.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 12,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Wizard', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 6, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 10, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 8 } },
     ],
   };
 }

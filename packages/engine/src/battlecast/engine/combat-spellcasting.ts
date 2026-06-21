@@ -654,6 +654,8 @@ export function executeSpell(
    * (dragon breath) omit this and keep the caster-centered default.
    */
   aoeCenter?: { x: number; y: number },
+  /** Optional explicit aim point for caster-origin cone/line AoEs. */
+  aoeDirection?: { x: number; y: number },
 ): boolean {
   const level = action.spellLevel ?? 0;
   let slotLevelUsed = level;
@@ -776,7 +778,7 @@ export function executeSpell(
 
   // Area save spell (Fireball, Thunderwave, Sacred Flame if save-type)
   if (castAction.savingThrow && aoeTargets) {
-    resolveAoE(state, caster, castAction, aoeTargets, aoeCenter, undefined, true);
+    resolveAoE(state, caster, castAction, aoeTargets, aoeCenter, aoeDirection, true);
     attachConcentrationAura(state, caster, castAction, aoeCenter);
     applyLandAidHeal(state, caster, castAction);
     return true;
@@ -784,7 +786,7 @@ export function executeSpell(
 
   // Single-target save spell with no AoE array (e.g., Sacred Flame)
   if (castAction.savingThrow && primaryTarget) {
-    resolveAoE(state, caster, castAction, [primaryTarget], aoeCenter, undefined, true);
+    resolveAoE(state, caster, castAction, [primaryTarget], aoeCenter, aoeDirection, true);
     attachConcentrationAura(state, caster, castAction, aoeCenter);
     return true;
   }

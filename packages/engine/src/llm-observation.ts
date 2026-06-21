@@ -271,6 +271,7 @@ export interface LlmActionView {
   destination?: { x: number; y: number };
   distanceFt?: number;
   center?: { x: number; y: number };
+  direction?: { x: number; y: number };
   effectKind?: Extract<LegalAction, { type: 'spell' }>['effectKind'];
   feature?: Extract<LegalAction, { type: 'class_feature' }>['feature'];
   expectedDamage?: number;
@@ -464,6 +465,7 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       targetIds: action.targetIds,
       targetNames: action.targetNames,
       center: action.center,
+      direction: action.direction,
       effectKind: action.effectKind,
       expectedDamage: action.expectedDamage === undefined ? undefined : Number(action.expectedDamage.toFixed(2)),
       expectedHealing: action.expectedHealing === undefined ? undefined : Number(action.expectedHealing.toFixed(2)),
@@ -575,9 +577,10 @@ function spellActionLabel(
     ? targetLabels.join(', ')
     : action.targetName ?? targetLabels?.[0];
   const centerText = action.center ? ` at (${action.center.x},${action.center.y})` : '';
+  const directionText = action.direction ? ` toward (${action.direction.x},${action.direction.y})` : '';
   const targetSuffix = targetText ? ` targeting ${targetText}` : '';
   const economy = action.isBonusAction ? 'bonus action ' : '';
-  return `${economy}${action.actionName}${centerText}${targetSuffix}`;
+  return `${economy}${action.actionName}${centerText}${directionText}${targetSuffix}`;
 }
 
 function abilityView(creature: Creature): Record<AbilityKey, LlmAbilityView> {

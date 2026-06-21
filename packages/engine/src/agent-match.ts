@@ -795,10 +795,10 @@ function applySpellAction(
     const aoeTargets = battlecastAction.savingThrow?.area
       ? targets.length > 0 ? targets : getAoETargets(state, active, battlecastAction)
       : undefined;
-    applied = executeSpell(state, active, battlecastAction, primaryTarget, aoeTargets, action.center);
+    applied = executeSpell(state, active, battlecastAction, primaryTarget, aoeTargets, action.center, action.direction);
   } else if (battlecastAction.savingThrow?.area) {
     const aoeTargets = targets.length > 0 ? targets : getAoETargets(state, active, battlecastAction);
-    resolveAoE(state, active, battlecastAction, aoeTargets, action.center);
+    resolveAoE(state, active, battlecastAction, aoeTargets, action.center, action.direction);
     if (battlecastAction.recharge) active.recharges[battlecastAction.name] = false;
     applied = true;
   } else if (battlecastAction.savingThrow && primaryTarget) {
