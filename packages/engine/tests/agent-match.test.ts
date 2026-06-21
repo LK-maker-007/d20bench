@@ -268,6 +268,46 @@ describe('agent matches', () => {
     }));
   });
 
+  it('exposes Rogue Steady Aim as a concrete class feature action', () => {
+    const state = initBattle(createBattlecastCreatures(rogueSteadyAimScenario().combatants, true), 12);
+    const rogue = state.creatures.find((creature) => creature.team === 'red');
+    if (!rogue) throw new Error('expected red rogue');
+
+    const catalogue = generateLegalActions(state, rogue, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, rogue, catalogue);
+    const steadyAim = catalogue.actions.find((action) => action.id === 'class_feature:steady-aim');
+
+    expect(steadyAim).toEqual(expect.objectContaining({
+      type: 'class_feature',
+      feature: 'steady_aim',
+      isBonusAction: true,
+    }));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'class_feature:steady-aim',
+        type: 'class_feature',
+        feature: 'steady_aim',
+        isBonusAction: true,
+      }),
+    ]));
+
+    rogue.hasMovedThisTurn = true;
+    const movedCatalogue = generateLegalActions(state, rogue, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    expect(movedCatalogue.actions.some((action) => action.id === 'class_feature:steady-aim')).toBe(false);
+  });
+
   it('asks an OpenRouter actual-action agent again after the first Extra Attack swing', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     globalThis.fetch = vi.fn(async (_url, init) => {
@@ -413,6 +453,61 @@ describe('agent matches', () => {
     if (missileAction?.acceptedAction.type !== 'spell') throw new Error('expected Magic Missile spell action');
     expect(new Set(missileAction.acceptedAction.targetIds).size).toBeGreaterThan(1);
     expect(missileAction.logs.filter((log) => log.action === 'Magic Missile')).toHaveLength(3);
+  });
+
+  it('lets an actual-action Rogue use Steady Aim before choosing an attack', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let callIndex = 0;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const preferred = callIndex === 0
+        ? 'class_feature:steady-aim'
+        : callIndex === 1
+          ? actionIds.find((id) => id.startsWith('attack:'))
+          : 'end_turn';
+      callIndex += 1;
+      const actionId = preferred && actionIds.includes(preferred) ? preferred : 'end_turn';
+      return jsonResponse({
+        id: `gen-${callIndex}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Use the concrete legal class feature, then attack.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: rogueSteadyAimScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const llmActions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.llmTrace
+    );
+    const steadyAimResolution = llmActions.find((event) => event.acceptedAction.id === 'class_feature:steady-aim');
+    const attackResolution = llmActions.find((event) => event.acceptedAction.type === 'attack');
+
+    expect(steadyAimResolution?.turnStep).toBe(0);
+    expect(steadyAimResolution?.logs.some((log) => log.action === 'Steady Aim')).toBe(true);
+    expect(steadyAimResolution?.events.some((event) => event.kind === 'effect' && event.label === 'Steady Aim')).toBe(true);
+    expect(attackResolution?.turnStep).toBe(1);
   });
 
   it('lets an actual-action LLM disengage before moving without provoking opportunity attacks', async () => {
@@ -612,6 +707,26 @@ function magicMissileSplitScenario(): D20benchScenario {
       { monster: buildHero('Wizard', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 7, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 3 } },
+    ],
+  };
+}
+
+function rogueSteadyAimScenario(): D20benchScenario {
+  return {
+    id: 'test.rogue-steady-aim.v1',
+    name: 'Rogue Steady Aim Test',
+    description: 'A level-5 Rogue can spend a bonus action on Steady Aim before making a ranged attack.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 12,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Rogue', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 8 } },
     ],
   };
 }

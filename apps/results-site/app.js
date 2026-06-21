@@ -777,6 +777,7 @@
     ids.add("llm-frontier-smart-v1");
     ids.add("llm-frontier-smart-top3-10x-v1");
     ids.add("llm-frontier-smart-glm-10x-v1");
+    ids.add("llm-actual-cheap-verify-v4");
     ids.add("llm-toolcall-cheap-verify-v3");
     ids.add("llm-toolcall-glm-smart-20-v2");
     ids.add("llm-toolcall-frontier-smart-16-v2");

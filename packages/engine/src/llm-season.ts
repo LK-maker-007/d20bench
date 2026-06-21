@@ -418,7 +418,14 @@ export const llmActualCheapVerifyV3Season: LlmSeasonConfig = {
   description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after strict exact-action-id repair instructions and legal JSON content fallback.',
 };
 
+export const llmActualCheapVerifyV4Season: LlmSeasonConfig = {
+  ...llmActualCheapVerifySeason,
+  id: 'llm-actual-cheap-verify-v4',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after exposing Rogue Steady Aim as a concrete class-feature action.',
+};
+
 export const llmSeasons = [
+  llmActualCheapVerifyV4Season,
   llmActualCheapVerifyV3Season,
   llmActualCheapVerifyV2Season,
   llmActualCheapVerifySeason,

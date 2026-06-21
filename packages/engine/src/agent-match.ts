@@ -702,6 +702,11 @@ function applyActualLegalAction(
     return { ended: shouldEndActualTurn(active, actualTurn) };
   }
 
+  if (action.type === 'class_feature') {
+    applyClassFeatureAction(state, active, action);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
   if (action.type === 'attack') {
     applyAttackAction(state, active, action, agent, actualTurn);
     return { ended: shouldEndActualTurn(active, actualTurn) };
@@ -858,6 +863,37 @@ function applyDisengageAction(
       enemyId: enemy.id,
       reason: action.isBonusAction ? bonusDisengageReason(active) : 'disengage',
       durationMs: BASE_DURATIONS.oaAvoided,
+    });
+  }
+}
+
+function applyClassFeatureAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'class_feature' }>,
+): void {
+  if (action.feature === 'steady_aim') {
+    active.turnFlags = {
+      ...active.turnFlags,
+      steadyAim: true,
+    };
+    active.bonusActionUsed = true;
+    active.movementRemaining = 0;
+    active.stats.actionUsage['Steady Aim'] = (active.stats.actionUsage['Steady Aim'] || 0) + 1;
+    pushLog(state, {
+      round: state.round,
+      turn: state.turnIndex,
+      actor: active.displayName,
+      action: 'Steady Aim',
+      details: `${active.displayName} holds position and gains Advantage on the next attack.`,
+      type: 'special',
+    });
+    state.events.push({
+      kind: 'effect',
+      creatureId: active.id,
+      label: 'Steady Aim',
+      tone: 'success',
+      durationMs: BASE_DURATIONS.effect,
     });
   }
 }

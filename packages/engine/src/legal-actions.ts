@@ -58,6 +58,13 @@ export type LegalAction =
       isBonusAction: boolean;
     }
   | {
+      id: 'class_feature:steady-aim';
+      type: 'class_feature';
+      feature: 'steady_aim';
+      label: 'Steady Aim';
+      isBonusAction: boolean;
+    }
+  | {
       id: string;
       type: 'spell';
       actionName: string;
@@ -253,6 +260,15 @@ function coreActualActions(
   if (hasMainActionAvailable && dashMovement > 0) {
     actions.push({ id: 'dash', type: 'dash', extraMovement: dashMovement });
   }
+  if (canUseSteadyAim(state, active, economy)) {
+    actions.push({
+      id: 'class_feature:steady-aim',
+      type: 'class_feature',
+      feature: 'steady_aim',
+      label: 'Steady Aim',
+      isBonusAction: true,
+    });
+  }
 
   const threatened = opportunityThreats(state, active).length > 0;
   if (!threatened) return actions;
@@ -278,6 +294,26 @@ function activeSpeedPenalty(active: Creature): number {
 
 function canBonusDisengage(active: Creature): boolean {
   return active.monsterData.heroClass === 'Rogue' || hasTrait(active, 'Nimble Escape');
+}
+
+function canUseSteadyAim(
+  state: BattleState,
+  active: Creature,
+  economy: { hasBonusAction: boolean },
+): boolean {
+  if (active.monsterData.heroClass !== 'Rogue' || (active.monsterData.heroLevel ?? 0) < 3) return false;
+  if (!economy.hasBonusAction || active.hasMovedThisTurn || active.turnFlags?.steadyAim) return false;
+  if (active.conditions.includes('incapacitated') || active.conditions.includes('unconscious')) return false;
+  return getActiveActions(active).some((action) => {
+    if (action.attackBonus === undefined || action.type === 'multiattack' || action.legendaryOnly === true) return false;
+    return state.creatures.some((target) =>
+      target.team !== active.team &&
+      target.isAlive &&
+      !target.dying &&
+      isTargetInRange(active, target, action) &&
+      (action.type !== 'ranged' || canSee(state, active, target))
+    );
+  });
 }
 
 function hasTrait(active: Creature, name: string): boolean {

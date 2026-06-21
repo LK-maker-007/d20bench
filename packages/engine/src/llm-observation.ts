@@ -272,6 +272,7 @@ export interface LlmActionView {
   distanceFt?: number;
   center?: { x: number; y: number };
   effectKind?: Extract<LegalAction, { type: 'spell' }>['effectKind'];
+  feature?: Extract<LegalAction, { type: 'class_feature' }>['feature'];
   expectedDamage?: number;
   expectedHealing?: number;
   extraMovement?: number;
@@ -485,6 +486,17 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       description: action.isBonusAction
         ? 'Spend a bonus action to prevent opportunity attacks from movement this turn.'
         : 'Spend the main action to prevent opportunity attacks from movement this turn.',
+    };
+  }
+
+  if (action.type === 'class_feature') {
+    return {
+      id: action.id,
+      type: action.type,
+      label: action.label,
+      feature: action.feature,
+      isBonusAction: action.isBonusAction,
+      description: 'Spend a bonus action without moving to gain Advantage on the next weapon attack this turn.',
     };
   }
 
