@@ -1,6 +1,452 @@
 window.D20BENCH_RESULTS = {
-  "generatedAt": "2026-06-22T18:48:01.251Z",
+  "generatedAt": "2026-06-22T20:29:38.279Z",
   "seasons": [
+    {
+      "seasonId": "llm-actual-glm-smart-4round-v1",
+      "description": "Small delegate-free actual-action check for GLM 5.2 against Battlecast Smart, with four combat rounds per match.",
+      "generatedAt": "2026-06-22T19:37:11.197Z",
+      "startedAt": "2026-06-22T19:37:11.198Z",
+      "completedAt": "2026-06-22T20:28:26.046Z",
+      "llmActionSpace": "actual-actions-v1",
+      "initialRating": 1000,
+      "kFactor": 32,
+      "maxRounds": 4,
+      "concurrency": 2,
+      "totalMatches": 4,
+      "completedMatches": 4,
+      "failedMatches": 0,
+      "stopReason": "estimated cost reached $3.00",
+      "standings": [
+        {
+          "agentId": "battlecast.smart",
+          "rating": 1023.8009426289977,
+          "matches": 4,
+          "wins": 3,
+          "losses": 1,
+          "draws": 0,
+          "score": 3
+        },
+        {
+          "agentId": "openrouter:z-ai/glm-5.2",
+          "rating": 976.1990573710023,
+          "matches": 4,
+          "wins": 1,
+          "losses": 3,
+          "draws": 0,
+          "score": 1
+        }
+      ],
+      "battleTypeStandings": [
+        {
+          "battleType": "hero-party-chokepoint",
+          "standings": [
+            {
+              "agentId": "battlecast.smart",
+              "rating": 1030.5304984710244,
+              "matches": 2,
+              "wins": 2,
+              "losses": 0,
+              "draws": 0,
+              "score": 2
+            },
+            {
+              "agentId": "openrouter:z-ai/glm-5.2",
+              "rating": 969.4695015289755,
+              "matches": 2,
+              "wins": 0,
+              "losses": 2,
+              "draws": 0,
+              "score": 0
+            }
+          ]
+        },
+        {
+          "battleType": "hero-party-status",
+          "standings": [
+            {
+              "agentId": "openrouter:z-ai/glm-5.2",
+              "rating": 1001.4695015289755,
+              "matches": 2,
+              "wins": 1,
+              "losses": 1,
+              "draws": 0,
+              "score": 1
+            },
+            {
+              "agentId": "battlecast.smart",
+              "rating": 998.5304984710245,
+              "matches": 2,
+              "wins": 1,
+              "losses": 1,
+              "draws": 0,
+              "score": 1
+            }
+          ]
+        }
+      ],
+      "costSummary": {
+        "totalDecisions": 168,
+        "promptTokens": 2490178,
+        "completionTokens": 192942,
+        "totalTokens": 2683120,
+        "estimatedCostUsd": 3.0346358000000007,
+        "byModel": [
+          {
+            "agentId": "openrouter:z-ai/glm-5.2",
+            "model": "z-ai/glm-5.2",
+            "decisions": 168,
+            "promptTokens": 2490178,
+            "completionTokens": 192942,
+            "totalTokens": 2683120,
+            "estimatedCostUsd": 3.0346358000000007
+          }
+        ]
+      },
+      "harnessAudit": {
+        "modelTurnStarts": 210,
+        "modelActionResolutions": 210,
+        "modelDelegateLegalActionExposures": 0,
+        "modelDelegateSelections": 0,
+        "modelStepwiseTurns": 46,
+        "modelStepwiseContinuations": 142,
+        "maxModelActionsInTurn": 7,
+        "modelToolCallDecisions": 168,
+        "modelJsonFallbackDecisions": 0,
+        "modelRepairAttempts": 1,
+        "modelNoLogMovementActions": 0,
+        "modelInvalidActionApplications": 0,
+        "acceptedActionCounts": [
+          {
+            "actionKey": "end_turn",
+            "count": 58
+          },
+          {
+            "actionKey": "move_to",
+            "count": 27
+          },
+          {
+            "actionKey": "attack:Eldritch Blast",
+            "count": 14
+          },
+          {
+            "actionKey": "move_toward",
+            "count": 14
+          },
+          {
+            "actionKey": "spell:Healing Word",
+            "count": 11
+          },
+          {
+            "actionKey": "attack:Javelin",
+            "count": 10
+          },
+          {
+            "actionKey": "attack:Longbow",
+            "count": 10
+          },
+          {
+            "actionKey": "spell:Cure Wounds",
+            "count": 7
+          },
+          {
+            "actionKey": "reaction:cutting_words_attack",
+            "count": 6
+          },
+          {
+            "actionKey": "spell:Hunter's Mark",
+            "count": 5
+          },
+          {
+            "actionKey": "spell:Spiritual Weapon",
+            "count": 5
+          },
+          {
+            "actionKey": "attack:Longsword",
+            "count": 4
+          },
+          {
+            "actionKey": "spell:Aid",
+            "count": 4
+          },
+          {
+            "actionKey": "spell:Hex",
+            "count": 4
+          },
+          {
+            "actionKey": "spell:Lightning Bolt",
+            "count": 3
+          },
+          {
+            "actionKey": "class_feature:action_surge",
+            "count": 2
+          },
+          {
+            "actionKey": "reaction:cutting_words_damage",
+            "count": 2
+          },
+          {
+            "actionKey": "reaction:decline",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Bless",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Guiding Bolt",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Innate Sorcery",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Land's Aid",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Lay on Hands",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Scorching Ray",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Second Wind",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Shield of Faith",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Vicious Mockery",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Channel Divinity: Divine Spark Harm",
+            "count": 1
+          },
+          {
+            "actionKey": "spell:Channel Divinity: Preserve Life",
+            "count": 1
+          },
+          {
+            "actionKey": "spell:Dissonant Whispers",
+            "count": 1
+          },
+          {
+            "actionKey": "spell:Hold Person",
+            "count": 1
+          }
+        ],
+        "modelActionSpaceTurnStarts": [
+          {
+            "actionSpace": "actual-actions-v1",
+            "count": 210
+          }
+        ]
+      },
+      "failures": [],
+      "matches": [
+        {
+          "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_z-ai_glm-5.2__battlecast.smart",
+          "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+          "battleType": "hero-party-chokepoint",
+          "seed": 1,
+          "redAgent": "openrouter:z-ai/glm-5.2",
+          "blueAgent": "battlecast.smart",
+          "winner": "blue",
+          "redScore": 0,
+          "blueScore": 1,
+          "redRatingBefore": 1000,
+          "blueRatingBefore": 1000,
+          "redRatingAfter": 984,
+          "blueRatingAfter": 1016,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 1000,
+          "redBattleTypeRatingAfter": 984,
+          "blueBattleTypeRatingAfter": 1016,
+          "finalStateHash": "8adf812302d4a807765303165c54c49854d003c119fdc82725b2d5c90e22629e",
+          "llmDecisions": 32,
+          "estimatedCostUsd": 0.5777777599999999
+        },
+        {
+          "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_z-ai_glm-5.2",
+          "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+          "battleType": "hero-party-chokepoint",
+          "seed": 1,
+          "redAgent": "battlecast.smart",
+          "blueAgent": "openrouter:z-ai/glm-5.2",
+          "winner": "red",
+          "redScore": 1,
+          "blueScore": 0,
+          "redRatingBefore": 1016,
+          "blueRatingBefore": 984,
+          "redRatingAfter": 1030.5304984710244,
+          "blueRatingAfter": 969.4695015289755,
+          "redBattleTypeRatingBefore": 1016,
+          "blueBattleTypeRatingBefore": 984,
+          "redBattleTypeRatingAfter": 1030.5304984710244,
+          "blueBattleTypeRatingAfter": 969.4695015289755,
+          "finalStateHash": "adbb206983afbb78d91eb9c0d6e7d808adfbca5b8ddcf1c56415d98b8430fda5",
+          "llmDecisions": 38,
+          "estimatedCostUsd": 0.7530864600000001
+        },
+        {
+          "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_z-ai_glm-5.2__battlecast.smart",
+          "scenarioId": "public.hero-mirror-status-l5.v1",
+          "battleType": "hero-party-status",
+          "seed": 1,
+          "redAgent": "openrouter:z-ai/glm-5.2",
+          "blueAgent": "battlecast.smart",
+          "winner": "blue",
+          "redScore": 0,
+          "blueScore": 1,
+          "redRatingBefore": 969.4695015289755,
+          "blueRatingBefore": 1030.5304984710244,
+          "redRatingAfter": 956.2528663663891,
+          "blueRatingAfter": 1043.747133633611,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 1000,
+          "redBattleTypeRatingAfter": 984,
+          "blueBattleTypeRatingAfter": 1016,
+          "finalStateHash": "191145f0f21f8b3e4a1ecd11f377a7667016ad58f48c73c7f4c8c16948f5b7d3",
+          "llmDecisions": 41,
+          "estimatedCostUsd": 0.7459053
+        },
+        {
+          "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_z-ai_glm-5.2",
+          "scenarioId": "public.hero-mirror-status-l5.v1",
+          "battleType": "hero-party-status",
+          "seed": 1,
+          "redAgent": "battlecast.smart",
+          "blueAgent": "openrouter:z-ai/glm-5.2",
+          "winner": "blue",
+          "redScore": 0,
+          "blueScore": 1,
+          "redRatingBefore": 1043.747133633611,
+          "blueRatingBefore": 956.2528663663891,
+          "redRatingAfter": 1023.8009426289977,
+          "blueRatingAfter": 976.1990573710023,
+          "redBattleTypeRatingBefore": 1016,
+          "blueBattleTypeRatingBefore": 984,
+          "redBattleTypeRatingAfter": 998.5304984710245,
+          "blueBattleTypeRatingAfter": 1001.4695015289755,
+          "finalStateHash": "7881fb13542b28f0761e8ce42376643abe3f9c671645e1d4ab5fe123cb7d7acd",
+          "llmDecisions": 57,
+          "estimatedCostUsd": 0.9578662799999998
+        }
+      ],
+      "progress": {
+        "seasonId": "llm-actual-glm-smart-4round-v1",
+        "description": "Small delegate-free actual-action check for GLM 5.2 against Battlecast Smart, with four combat rounds per match.",
+        "status": "stopped",
+        "llmActionSpace": "actual-actions-v1",
+        "startedAt": "2026-06-22T19:37:11.198Z",
+        "updatedAt": "2026-06-22T20:28:26.047Z",
+        "concurrency": 2,
+        "maxRounds": 4,
+        "totalMatches": 4,
+        "completedMatches": 4,
+        "failedMatches": 0,
+        "runningMatches": 0,
+        "stopReason": "estimated cost reached $3.00",
+        "costSummary": {
+          "totalDecisions": 168,
+          "promptTokens": 2490178,
+          "completionTokens": 192942,
+          "totalTokens": 2683120,
+          "estimatedCostUsd": 3.0346358000000007,
+          "byModel": [
+            {
+              "agentId": "openrouter:z-ai/glm-5.2",
+              "model": "z-ai/glm-5.2",
+              "decisions": 168,
+              "promptTokens": 2490178,
+              "completionTokens": 192942,
+              "totalTokens": 2683120,
+              "estimatedCostUsd": 3.0346358000000007
+            }
+          ]
+        },
+        "activeMatches": [],
+        "recentMatches": [
+          {
+            "index": 3,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-status-l5.v1",
+            "battleType": "hero-party-status",
+            "seed": 1,
+            "redAgent": "battlecast.smart",
+            "blueAgent": "openrouter:z-ai/glm-5.2",
+            "startedAt": "2026-06-22T19:54:56.274Z",
+            "completedAt": "2026-06-22T20:28:26.041Z",
+            "durationMs": 2009767,
+            "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_z-ai_glm-5.2",
+            "winner": "blue",
+            "llmDecisions": 57,
+            "estimatedCostUsd": 0.9578662799999998,
+            "finalStateHash": "7881fb13542b28f0761e8ce42376643abe3f9c671645e1d4ab5fe123cb7d7acd"
+          },
+          {
+            "index": 2,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-status-l5.v1",
+            "battleType": "hero-party-status",
+            "seed": 1,
+            "redAgent": "openrouter:z-ai/glm-5.2",
+            "blueAgent": "battlecast.smart",
+            "startedAt": "2026-06-22T19:51:52.451Z",
+            "completedAt": "2026-06-22T20:18:40.958Z",
+            "durationMs": 1608507,
+            "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_z-ai_glm-5.2__battlecast.smart",
+            "winner": "blue",
+            "llmDecisions": 41,
+            "estimatedCostUsd": 0.7459053,
+            "finalStateHash": "191145f0f21f8b3e4a1ecd11f377a7667016ad58f48c73c7f4c8c16948f5b7d3"
+          },
+          {
+            "index": 0,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+            "battleType": "hero-party-chokepoint",
+            "seed": 1,
+            "redAgent": "openrouter:z-ai/glm-5.2",
+            "blueAgent": "battlecast.smart",
+            "startedAt": "2026-06-22T19:37:11.359Z",
+            "completedAt": "2026-06-22T19:54:56.270Z",
+            "durationMs": 1064911,
+            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_z-ai_glm-5.2__battlecast.smart",
+            "winner": "blue",
+            "llmDecisions": 32,
+            "estimatedCostUsd": 0.5777777599999999,
+            "finalStateHash": "8adf812302d4a807765303165c54c49854d003c119fdc82725b2d5c90e22629e"
+          },
+          {
+            "index": 1,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+            "battleType": "hero-party-chokepoint",
+            "seed": 1,
+            "redAgent": "battlecast.smart",
+            "blueAgent": "openrouter:z-ai/glm-5.2",
+            "startedAt": "2026-06-22T19:37:11.359Z",
+            "completedAt": "2026-06-22T19:51:52.445Z",
+            "durationMs": 881086,
+            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_z-ai_glm-5.2",
+            "winner": "red",
+            "llmDecisions": 38,
+            "estimatedCostUsd": 0.7530864600000001,
+            "finalStateHash": "adbb206983afbb78d91eb9c0d6e7d808adfbca5b8ddcf1c56415d98b8430fda5"
+          }
+        ],
+        "failures": []
+      },
+      "sourcePath": "results/seasons/llm-actual-glm-smart-4round-v1/standings.json",
+      "progressPath": "results/seasons/llm-actual-glm-smart-4round-v1/progress.json"
+    },
     {
       "seasonId": "llm-actual-cheap-round-robin-v2",
       "description": "Delegate-free actual-action round robin for the four cheap OpenRouter models and Battlecast Smart, with four fixtures per unordered matchup and four combat rounds per match.",

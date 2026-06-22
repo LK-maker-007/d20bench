@@ -22,6 +22,7 @@ import {
   llmActualCheapVerifyV12Season,
   llmActualCuttingWordsVerifySeason,
   llmActualDeflectVerifySeason,
+  llmActualGlmSmartFourRoundSeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
   llmActualRecklessVerifySeason,
@@ -395,6 +396,29 @@ describe('LLM seasons', () => {
         expect(orderedPairKeys.has(`${redAgent} -> ${blueAgent}`)).toBe(true);
       }
     }
+  });
+
+  it('defines the small GLM actual-action smart verification season', () => {
+    const pairings = llmActualGlmSmartFourRoundSeason.pairings ?? [];
+
+    expect(llmActualGlmSmartFourRoundSeason.id).toBe('llm-actual-glm-smart-4round-v1');
+    expect(llmActualGlmSmartFourRoundSeason.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualGlmSmartFourRoundSeason.maxRounds).toBe(4);
+    expect(llmActualGlmSmartFourRoundSeason.seeds).toEqual([1]);
+    expect(llmActualGlmSmartFourRoundSeason.agents).toEqual([
+      'openrouter:z-ai/glm-5.2',
+      'battlecast.smart',
+    ]);
+    expect(llmActualGlmSmartFourRoundSeason.scenarios.map((scenario) => scenario.battleType)).toEqual([
+      'hero-party-chokepoint',
+      'hero-party-status',
+    ]);
+    expect(pairings).toEqual([
+      { redAgent: 'openrouter:z-ai/glm-5.2', blueAgent: 'battlecast.smart' },
+      { redAgent: 'battlecast.smart', blueAgent: 'openrouter:z-ai/glm-5.2' },
+    ]);
+    expect(pairings.length * llmActualGlmSmartFourRoundSeason.scenarios.length * llmActualGlmSmartFourRoundSeason.seeds.length)
+      .toBe(4);
   });
 
   it('defines a twenty-match GLM post-toolcall verification season', () => {

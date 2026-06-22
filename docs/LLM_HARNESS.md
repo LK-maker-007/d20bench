@@ -226,6 +226,13 @@ Latest fair-action round-robin audit:
 - Harness audit passed with 4322 model concrete action resolutions, 0 delegate exposures/selections, 4322 model turn starts using `actual-actions-v1`, 826 stepwise model turns, max 10 actions in one model turn, 0 invalid action applications, and 0 no-effect movement actions.
 - The action mix included opportunity reactions, Cutting Words reactions, Divine Smite choices, Action Surge, Wild Shape, Stabilise, Dodge, AoE/status/support spells, healing, buffs, movement, attacks, and end-turns.
 
+Latest strong-model spot check:
+
+- `llm-actual-glm-smart-4round-v1` finished 4/4, 0 failed: GLM 5.2 vs `battlecast.smart` on chokepoint and status-pressure mirrors, both side assignments, four combat rounds per match.
+- Result: `battlecast.smart` 1023.8 Elo, 3-1; GLM 5.2 976.2 Elo, 1-3. GLM's win was the status-pressure match where Battlecast Smart was red and GLM was blue.
+- Published accepted-decision cost was `$3.034636`; raw API-attempt cost including one rejected repair attempt was `$4.333136`.
+- Harness audit passed with 210 model concrete action resolutions, 0 delegate exposures/selections, 210 model turn starts using `actual-actions-v1`, 46 stepwise model turns, max 7 actions in one model turn, 0 invalid action applications, and 0 no-effect movement actions.
+
 This gives us a safe, auditable harness before we spend significant model budget.
 
 Current confidence checklist:

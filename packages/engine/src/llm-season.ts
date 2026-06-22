@@ -1068,6 +1068,26 @@ export const llmActualCheapRoundRobinV2Season: LlmSeasonConfig = {
   concurrency: 6,
 };
 
+export const llmActualGlmSmartFourRoundSeason: LlmSeasonConfig = {
+  id: 'llm-actual-glm-smart-4round-v1',
+  description: 'Small delegate-free actual-action check for GLM 5.2 against Battlecast Smart, with four combat rounds per match.',
+  agents: [
+    ...llmSmartGlmModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: [1],
+  maxRounds: 4,
+  pairings: createModelOpponentPairings(llmSmartGlmModelAgents, llmSmartOpponentAgents),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 2,
+};
+
 export const llmActualReactionVerifySeason: LlmSeasonConfig = {
   id: 'llm-actual-reaction-verify-v1',
   description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control opportunity-attack reactions against a Battlecast Kiting mover.',
@@ -1338,6 +1358,7 @@ export const llmSeasons = [
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
+  llmActualGlmSmartFourRoundSeason,
   llmActualCheapRoundRobinV2Season,
   llmActualCheapVerifyV12Season,
   llmActualCheapVerifyV11Season,
