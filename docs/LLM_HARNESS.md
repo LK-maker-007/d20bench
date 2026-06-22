@@ -1,5 +1,9 @@
 # LLM Agent Harness
 
+For a narrative design write-up with code pointers and lessons from the latest
+actual-action runs, see
+[`ACTUAL_ACTION_HARNESS_LEARNINGS.md`](ACTUAL_ACTION_HARNESS_LEARNINGS.md).
+
 ## Goal
 
 D20bench LLM agents should control combatants by choosing from engine-generated legal actions. The model never mutates battle state directly, never rolls dice, and never invents rules effects. The engine remains the source of truth for rules, legality, replay logs, scoring, and final state hashes.
