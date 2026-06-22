@@ -798,6 +798,7 @@
     ids.add("llm-frontier-smart-v1");
     ids.add("llm-frontier-smart-top3-10x-v1");
     ids.add("llm-frontier-smart-glm-10x-v1");
+    ids.add("llm-actual-cheap-round-robin-v2");
     ids.add("llm-actual-cheap-verify-v12");
     ids.add("llm-actual-cheap-verify-v11");
     ids.add("llm-actual-spell-followup-verify-v1");

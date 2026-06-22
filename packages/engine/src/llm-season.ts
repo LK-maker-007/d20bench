@@ -1045,6 +1045,29 @@ export const llmActualCheapVerifyV12Season: LlmSeasonConfig = {
   description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after filtering no-progress move_toward actions from actual-actions-v1.',
 };
 
+export const llmActualCheapRoundRobinV2Season: LlmSeasonConfig = {
+  id: 'llm-actual-cheap-round-robin-v2',
+  description: 'Delegate-free actual-action round robin for the four cheap OpenRouter models and Battlecast Smart, with four fixtures per unordered matchup and four combat rounds per match.',
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: [1],
+  maxRounds: 4,
+  pairings: createRoundRobinPairings([
+    ...llmActualCheapVerifyModelAgents,
+    ...llmSmartOpponentAgents,
+  ]),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 6,
+};
+
 export const llmActualReactionVerifySeason: LlmSeasonConfig = {
   id: 'llm-actual-reaction-verify-v1',
   description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control opportunity-attack reactions against a Battlecast Kiting mover.',
@@ -1315,6 +1338,7 @@ export const llmSeasons = [
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
+  llmActualCheapRoundRobinV2Season,
   llmActualCheapVerifyV12Season,
   llmActualCheapVerifyV11Season,
   llmActualCheapVerifyV10Season,

@@ -187,6 +187,7 @@ The first implementation is deliberately narrow:
 - `llm-actual-cheap-verify-v10` repeats the same broad cheap scope after provider hardening: `rationale` is optional in the tool schema, OpenRouter 200 responses containing provider error bodies are retried as provider errors, and tool-call-shaped JSON content (`name` plus `arguments.actionId`) is accepted when the action id is exact and legal.
 - `llm-actual-cheap-verify-v11` repeats the broad cheap scope after exposing non-geometric multi-target saving throws such as Paladin Abjure Foes.
 - `llm-actual-cheap-verify-v12` repeats the broad cheap scope after filtering no-progress `move_toward` actions from `actual-actions-v1`, preventing models from spending stepwise turns on movement choices that cannot reduce distance or change position.
+- `llm-actual-cheap-round-robin-v2` is the fair-action-space completion season for the current harness phase: DeepSeek Flash, Ministral 8B, Llama 3.1 8B, Qwen 3.5 Flash, and `battlecast.smart` play an ordered round robin in `actual-actions-v1`. It uses the chokepoint and status-pressure hero-party mirrors, seed 1, both side assignments for every unordered pair, four fixture contexts per unordered matchup, and four combat rounds per match.
 - `llm-actual-reaction-verify-v1` is a focused hidden reaction smoke season: Battlecast Kiting controls a Ranger that starts adjacent to an OpenRouter-controlled Fighter, forcing a live opportunity-attack reaction choice in four cheap-model matches.
 - `llm-actual-mitigation-verify-v3` is a focused hidden mitigation smoke season: Battlecast Aggressive controls a high-level Fighter attacking an OpenRouter-controlled Rogue, forcing live trigger-time Uncanny Dodge choices in four cheap-model matches with isolated async Battlecast RNG. The model sees the hit log, incoming damage, damage type, and expected reduction before each mitigation choice.
 - `llm-actual-deflect-verify-v3` is a focused hidden mitigation smoke season for Monk Deflect Attacks and Ranger Superior Hunter's Defense. It uses the same cheap model set against Battlecast Aggressive on two one-round mitigation fixtures and covers movement-triggered opportunity-attack damage reactions.
@@ -216,6 +217,15 @@ Latest broad cheap audit:
 - The action mix included attacks, spells, reactions, class features, movement, Dash, Dodge, and end-turn actions, confirming models are executing concrete actions rather than selecting strategy delegates.
 - The results site surfaces these audit checks directly: LLM action count, delegate exposures/selections, stepwise turn count, invalid action applications, and no-effect movement actions.
 
+Latest fair-action round-robin audit:
+
+- `llm-actual-cheap-round-robin-v2` finished 40/40, 0 failed. Published accepted-decision cost is `$5.103671`; raw API-attempt cost for the completed season is `$7.280952`.
+- Including the paused exploratory `llm-actual-cheap-verify-v13` and abandoned oversized `llm-actual-cheap-round-robin-v1` traces, total raw API-attempt cost for this work session was `$8.575244`, under the `$10` cap.
+- Overall Elo: `battlecast.smart` 1130.0 (14-2), DeepSeek Flash 1036.3 (10-6), Ministral 8B 983.6 (7-9), Qwen 3.5 Flash 971.0 (7-9), Llama 3.1 8B 879.1 (2-14).
+- Per-battle-type Elo: `battlecast.smart` went 8-0 in chokepoint and 6-2 in status-pressure; DeepSeek went 5-3 in both battle types.
+- Harness audit passed with 4322 model concrete action resolutions, 0 delegate exposures/selections, 4322 model turn starts using `actual-actions-v1`, 826 stepwise model turns, max 10 actions in one model turn, 0 invalid action applications, and 0 no-effect movement actions.
+- The action mix included opportunity reactions, Cutting Words reactions, Divine Smite choices, Action Surge, Wild Shape, Stabilise, Dodge, AoE/status/support spells, healing, buffs, movement, attacks, and end-turns.
+
 This gives us a safe, auditable harness before we spend significant model budget.
 
 Current confidence checklist:
@@ -239,5 +249,6 @@ Latest focused support-action audit:
 - any newly copied Battlecast mechanic must get a concrete legal-action representation or an explicit passive/automatic classification before it appears in a public LLM Elo season
 - trigger-time reactions such as Shield or Counterspell should be implemented as exact reaction catalogues once those mechanics exist in the copied engine
 - before publishing final public leaderboard claims, run the public `battlecast.smart` schedule in `actual-actions-v1` with the intended production model set and archive the harness audit beside the standings
+- use `llm-actual-cheap-round-robin-v2` as the current cheap-model confidence gate before larger model spend
 
 Until those are covered, `actual-actions-v1` results should be treated as harness-validation results, not final leaderboard claims.

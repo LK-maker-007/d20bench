@@ -7,6 +7,7 @@ import {
   llmActualClassFeatureVerifySeason,
   llmActualClassFeatureVerifyV2Season,
   llmActualCheapVerifyModelAgents,
+  llmActualCheapRoundRobinV2Season,
   llmActualCheapVerifySeason,
   llmActualCheapVerifyV2Season,
   llmActualCheapVerifyV3Season,
@@ -357,6 +358,43 @@ describe('LLM seasons', () => {
       pairing.redAgent.startsWith('openrouter:') &&
       pairing.blueAgent === 'battlecast.aggressive'
     )).toBe(true);
+  });
+
+  it('defines the cheap-model actual-action round robin verification season', () => {
+    const agents = llmActualCheapRoundRobinV2Season.agents;
+    const pairings = llmActualCheapRoundRobinV2Season.pairings ?? [];
+    const orderedPairKeys = new Set(pairings.map((pairing) => `${pairing.redAgent} -> ${pairing.blueAgent}`));
+    const matchesPerOrderedPair = llmActualCheapRoundRobinV2Season.scenarios.length *
+      llmActualCheapRoundRobinV2Season.seeds.length;
+    const matchesPerUnorderedPair = matchesPerOrderedPair * 2;
+
+    expect(llmActualCheapRoundRobinV2Season.id).toBe('llm-actual-cheap-round-robin-v2');
+    expect(llmActualCheapRoundRobinV2Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapRoundRobinV2Season.maxRounds).toBe(4);
+    expect(llmActualCheapRoundRobinV2Season.seeds).toEqual([1]);
+    expect(llmActualCheapRoundRobinV2Season.scenarios.map((scenario) => scenario.battleType)).toEqual([
+      'hero-party-chokepoint',
+      'hero-party-status',
+    ]);
+    expect(agents).toEqual([
+      'openrouter:deepseek/deepseek-v4-flash',
+      'openrouter:mistralai/ministral-8b-2512',
+      'openrouter:meta-llama/llama-3.1-8b-instruct',
+      'openrouter:qwen/qwen3.5-flash-02-23',
+      'battlecast.smart',
+    ]);
+    expect(pairings).toHaveLength(agents.length * (agents.length - 1));
+    expect(orderedPairKeys.size).toBe(pairings.length);
+    expect(matchesPerOrderedPair).toBe(2);
+    expect(matchesPerUnorderedPair).toBe(4);
+    expect(pairings.length * matchesPerOrderedPair).toBe(40);
+
+    for (const redAgent of agents) {
+      for (const blueAgent of agents) {
+        if (redAgent === blueAgent) continue;
+        expect(orderedPairKeys.has(`${redAgent} -> ${blueAgent}`)).toBe(true);
+      }
+    }
   });
 
   it('defines a twenty-match GLM post-toolcall verification season', () => {
