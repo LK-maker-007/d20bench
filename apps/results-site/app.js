@@ -777,6 +777,7 @@
     ids.add("llm-frontier-smart-v1");
     ids.add("llm-frontier-smart-top3-10x-v1");
     ids.add("llm-frontier-smart-glm-10x-v1");
+    ids.add("llm-actual-cheap-verify-v7");
     ids.add("llm-actual-cheap-verify-v6");
     ids.add("llm-actual-cheap-verify-v5");
     ids.add("llm-actual-cheap-verify-v4");

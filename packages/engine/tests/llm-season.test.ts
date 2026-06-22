@@ -9,6 +9,7 @@ import {
   llmActualCheapVerifyV4Season,
   llmActualCheapVerifyV5Season,
   llmActualCheapVerifyV6Season,
+  llmActualCheapVerifyV7Season,
   llmFrontierModelAgents,
   llmFrontierSmartGlmTenXSeason,
   llmFrontierSmartSeason,
@@ -223,6 +224,9 @@ describe('LLM seasons', () => {
     expect(llmActualCheapVerifyV6Season.id).toBe('llm-actual-cheap-verify-v6');
     expect(llmActualCheapVerifyV6Season.llmActionSpace).toBe('actual-actions-v1');
     expect(llmActualCheapVerifyV6Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
+    expect(llmActualCheapVerifyV7Season.id).toBe('llm-actual-cheap-verify-v7');
+    expect(llmActualCheapVerifyV7Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapVerifyV7Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
   });
 
   it('defines a twenty-match GLM post-toolcall verification season', () => {

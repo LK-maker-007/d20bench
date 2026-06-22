@@ -14,7 +14,9 @@ import {
   type D20benchScenario,
 } from '../src/index.js';
 import { buildHero } from '../src/battlecast/data/heroes.js';
-import { initBattle } from '../src/battlecast/engine/combat.js';
+import { initBattle, resolveAttack } from '../src/battlecast/engine/combat.js';
+import { withBattlecastRng } from '../src/battlecast/engine/dice.js';
+import { getActiveActions } from '../src/battlecast/engine/ai-targeting.js';
 import { createBattlecastCreatures } from '../src/battlecast-runner.js';
 
 const originalFetch = globalThis.fetch;
@@ -189,10 +191,18 @@ describe('agent matches', () => {
       },
     });
     const dash = catalogue.actions.find((action) => action.type === 'dash');
+    const dodge = catalogue.actions.find((action) => action.type === 'dodge');
+    const help = catalogue.actions.find((action) => action.type === 'help');
     const disengage = catalogue.actions.find((action) => action.type === 'disengage');
     const moveTo = catalogue.actions.find((action) => action.type === 'move_to');
 
     expect(dash).toEqual(expect.objectContaining({ id: 'dash', type: 'dash', extraMovement: 30 }));
+    expect(dodge).toEqual(expect.objectContaining({ id: 'dodge', type: 'dodge' }));
+    expect(help).toEqual(expect.objectContaining({
+      id: expect.stringMatching(/^help:/),
+      type: 'help',
+      targetId: expect.stringContaining('fighter-l5-blue'),
+    }));
     expect(disengage).toEqual(expect.objectContaining({ id: 'disengage', type: 'disengage', isBonusAction: false }));
     expect(moveTo).toEqual(expect.objectContaining({ type: 'move_to', destination: expect.any(Object), distanceFt: expect.any(Number) }));
 
@@ -219,6 +229,8 @@ describe('agent matches', () => {
     });
     expect(spentActionCatalogue.actions.some((action) => action.type === 'attack')).toBe(false);
     expect(spentActionCatalogue.actions.some((action) => action.type === 'dash')).toBe(false);
+    expect(spentActionCatalogue.actions.some((action) => action.type === 'dodge')).toBe(false);
+    expect(spentActionCatalogue.actions.some((action) => action.type === 'help')).toBe(false);
   });
 
   it('exposes Eldritch Blast beams as stepwise attack actions', () => {
@@ -1082,6 +1094,150 @@ describe('agent matches', () => {
     expect(match.state.logs.some((log) => log.action === 'Opportunity Attack')).toBe(false);
   });
 
+  it('lets an actual-action LLM Dodge and keep the defensive flag until its next turn', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let callIndex = 0;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const preferred = callIndex === 0 ? 'dodge' : 'end_turn';
+      callIndex += 1;
+      const actionId = actionIds.includes(preferred) ? preferred : 'end_turn';
+      return jsonResponse({
+        id: `gen-${callIndex}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Take a concrete defensive action.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: adjacentFighterDuelScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const red = match.state.creatures.find((creature) => creature.team === 'red');
+    const dodgeResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'dodge'
+    );
+
+    expect(dodgeResolution?.logs.some((log) => log.action === 'Dodge')).toBe(true);
+    expect(dodgeResolution?.events.some((event) => event.kind === 'effect' && event.label === 'Dodge')).toBe(true);
+    expect(red?.turnFlags?.dodge).toBe(true);
+    expect(red?.stats.actionUsage.Dodge).toBe(1);
+  });
+
+  it('lets an actual-action LLM Help against an adjacent target', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let callIndex = 0;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const help = actionIds.find((id) => id.startsWith('help:'));
+      const preferred = callIndex === 0 ? help : 'end_turn';
+      callIndex += 1;
+      const actionId = preferred && actionIds.includes(preferred) ? preferred : 'end_turn';
+      return jsonResponse({
+        id: `gen-${callIndex}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Help an ally attack the adjacent target.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: adjacentFighterDuelScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const blue = match.state.creatures.find((creature) => creature.team === 'blue');
+    const helpResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'help'
+    );
+
+    expect(helpResolution?.logs.some((log) => log.action === 'Help')).toBe(true);
+    expect(helpResolution?.events.some((event) => event.kind === 'effect' && event.label === 'Help')).toBe(true);
+    expect(blue?.activeBuffs.some((buff) => buff.key.startsWith('help:') && buff.advantageForAllAttackers)).toBe(true);
+  });
+
+  it('applies Dodge as Disadvantage in copied attack resolution', () => {
+    const state = initBattle(createBattlecastCreatures(adjacentFighterDuelScenario().combatants, true), 8);
+    const target = state.creatures.find((creature) => creature.team === 'red');
+    const attacker = state.creatures.find((creature) => creature.team === 'blue');
+    if (!target || !attacker) throw new Error('expected adjacent fighters');
+    const attack = getActiveActions(attacker).find((action) => action.type === 'melee' && action.attackBonus !== undefined);
+    if (!attack) throw new Error('expected melee attack');
+
+    target.turnFlags = { ...target.turnFlags, dodge: true };
+    withBattlecastRng(sequenceRng([0.99, 0]), () => {
+      resolveAttack(state, attacker, target, attack);
+    });
+
+    expect(target.currentHp).toBe(target.maxHp);
+    expect(state.logs.some((log) => log.type === 'miss' && log.action === attack.name)).toBe(true);
+  });
+
+  it('applies Help as a consumed Advantage opening on the target', () => {
+    const state = initBattle(createBattlecastCreatures(helpOpeningScenario().combatants, true), 8);
+    const helper = state.creatures.find((creature) => creature.id.includes('red-0'));
+    const attacker = state.creatures.find((creature) => creature.id.includes('red-1'));
+    const target = state.creatures.find((creature) => creature.team === 'blue');
+    if (!helper || !attacker || !target) throw new Error('expected help scenario creatures');
+    const attack = getActiveActions(attacker).find((action) => action.type === 'melee' && action.attackBonus !== undefined);
+    if (!attack) throw new Error('expected melee attack');
+    target.activeBuffs.push({
+      name: 'Help',
+      key: `help:${helper.id}:${target.id}`,
+      casterId: helper.id,
+      appliedRound: state.round,
+      endRound: state.round + 2,
+      advantageForAllAttackers: true,
+      expiresOnSourceTurnStart: true,
+    });
+
+    withBattlecastRng(sequenceRng([0, 0.99, 0.5, 0.5, 0.5, 0.5]), () => {
+      resolveAttack(state, attacker, target, attack);
+    });
+
+    expect(target.currentHp).toBeLessThan(target.maxHp);
+    expect(target.activeBuffs.some((buff) => buff.key.startsWith('help:'))).toBe(false);
+    expect(state.events.some((event) => event.kind === 'hit' && event.targetId === target.id)).toBe(true);
+  });
+
   it('uses distinct match ids for full-turn LLM action-space matches', () => {
     const primitive = runAgentMatch({
       scenario: goblinDuelScenario,
@@ -1178,6 +1334,27 @@ function adjacentThreatWithFarTargetScenario(): D20benchScenario {
       { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 8 } },
+    ],
+  };
+}
+
+function helpOpeningScenario(): D20benchScenario {
+  return {
+    id: 'test.help-opening.v1',
+    name: 'Help Opening Test',
+    description: 'Two allied fighters can set up and consume a Help opening against an adjacent enemy.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 3 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 4 } },
     ],
   };
 }
@@ -1370,4 +1547,11 @@ function jsonResponse(body: unknown): Response {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+function sequenceRng(values: number[]) {
+  let index = 0;
+  return {
+    next: () => values[index++] ?? 0.5,
+  };
 }

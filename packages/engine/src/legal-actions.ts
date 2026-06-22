@@ -62,6 +62,16 @@ export type LegalAction =
       distanceFt: number;
     }
   | {
+      id: 'dodge';
+      type: 'dodge';
+    }
+  | {
+      id: string;
+      type: 'help';
+      targetId: string;
+      targetName: string;
+    }
+  | {
       id: 'dash';
       type: 'dash';
       extraMovement: number;
@@ -259,6 +269,10 @@ export function moveToActionId(destination: { x: number; y: number }): string {
   return `move_to:${destination.x},${destination.y}`;
 }
 
+export function helpActionId(targetId: string): string {
+  return `help:${targetId}`;
+}
+
 export function battlecastTacticActionId(tactic: TacticType): string {
   return `battlecast_tactic:${tactic}`;
 }
@@ -307,6 +321,10 @@ function coreActualActions(
   if (hasMainActionAvailable && dashMovement > 0) {
     actions.push({ id: 'dash', type: 'dash', extraMovement: dashMovement });
   }
+  if (hasMainActionAvailable && canTakeDefensiveAction(active)) {
+    actions.push({ id: 'dodge', type: 'dodge' });
+    actions.push(...helpActions(state, active));
+  }
   if (canUseSteadyAim(state, active, economy)) {
     actions.push({
       id: 'class_feature:steady-aim',
@@ -331,6 +349,34 @@ function coreActualActions(
   }
 
   return actions;
+}
+
+function canTakeDefensiveAction(active: Creature): boolean {
+  return !active.conditions.includes('incapacitated') &&
+    !active.conditions.includes('unconscious') &&
+    !active.conditions.includes('stunned') &&
+    !active.conditions.includes('paralyzed');
+}
+
+function helpActions(state: BattleState, active: Creature): LegalAction[] {
+  return state.creatures
+    .filter((target) =>
+      target.team !== active.team &&
+      target.isAlive &&
+      !target.dying &&
+      creatureDistance(active, target) <= 5
+    )
+    .sort((left, right) =>
+      left.currentHp - right.currentHp ||
+      left.displayName.localeCompare(right.displayName) ||
+      left.id.localeCompare(right.id)
+    )
+    .map((target) => ({
+      id: helpActionId(target.id),
+      type: 'help' as const,
+      targetId: target.id,
+      targetName: target.displayName,
+    }));
 }
 
 function movementAllowance(active: Creature, state: BattleState): number {

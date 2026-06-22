@@ -705,6 +705,16 @@ function applyActualLegalAction(
     return { ended: shouldEndActualTurn(active, actualTurn) };
   }
 
+  if (action.type === 'dodge') {
+    applyDodgeAction(state, active, actualTurn);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
+  if (action.type === 'help') {
+    applyHelpAction(state, active, action, agent, actualTurn);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
   if (action.type === 'disengage') {
     applyDisengageAction(state, active, action, actualTurn);
     return { ended: shouldEndActualTurn(active, actualTurn) };
@@ -798,6 +808,79 @@ function applyRandomRayAction(
   if (actualTurn.attackRollsRemaining === 0) {
     active.hasActed = true;
   }
+}
+
+function applyDodgeAction(
+  state: BattleState,
+  active: Creature,
+  actualTurn: ActualTurnContext,
+): void {
+  active.turnFlags = {
+    ...active.turnFlags,
+    dodge: true,
+  };
+  active.hasActed = true;
+  actualTurn.attackRollsRemaining = 0;
+  active.stats.actionUsage.Dodge = (active.stats.actionUsage.Dodge || 0) + 1;
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Dodge',
+    details: `${active.displayName} focuses on defense until their next turn.`,
+    type: 'special',
+  });
+  state.events.push({
+    kind: 'effect',
+    creatureId: active.id,
+    label: 'Dodge',
+    tone: 'default',
+    durationMs: BASE_DURATIONS.effect,
+  });
+}
+
+function applyHelpAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'help' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  const target = state.creatures.find((creature) => creature.id === action.targetId);
+  if (!target || !target.isAlive || target.team === active.team || creatureDistance(active, target) > 5) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  const key = `help:${active.id}:${target.id}`;
+  target.activeBuffs = (target.activeBuffs ?? []).filter((buff) => buff.key !== key);
+  target.activeBuffs.push({
+    name: 'Help',
+    key,
+    casterId: active.id,
+    appliedRound: state.round,
+    endRound: state.round + 2,
+    advantageForAllAttackers: true,
+    expiresOnSourceTurnStart: true,
+  });
+  active.hasActed = true;
+  actualTurn.attackRollsRemaining = 0;
+  active.stats.actionUsage.Help = (active.stats.actionUsage.Help || 0) + 1;
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Help',
+    details: `${active.displayName} distracts ${target.displayName}, giving the next attack against it Advantage.`,
+    type: 'special',
+  });
+  state.events.push({
+    kind: 'effect',
+    creatureId: target.id,
+    label: 'Help',
+    tone: 'success',
+    durationMs: BASE_DURATIONS.effect,
+  });
 }
 
 function processPostMoveEffects(

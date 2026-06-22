@@ -451,6 +451,30 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
     };
   }
 
+  if (action.type === 'dodge') {
+    return {
+      id: action.id,
+      type: action.type,
+      label: 'Dodge',
+      description: 'Spend the main action to impose Disadvantage on attack rolls against this creature until its next turn.',
+    };
+  }
+
+  if (action.type === 'help') {
+    const target = creatureById.get(action.targetId);
+    return {
+      id: action.id,
+      type: action.type,
+      label: `Help against ${target?.label ?? action.targetName}`,
+      targetId: action.targetId,
+      targetName: action.targetName,
+      targetLabel: target?.label,
+      targetRelation: target?.relation,
+      targetTeam: target?.team,
+      description: 'Spend the main action to give the next attack roll against this adjacent target Advantage before this creature next acts.',
+    };
+  }
+
   if (action.type === 'random_ray') {
     const target = creatureById.get(action.targetId);
     return {

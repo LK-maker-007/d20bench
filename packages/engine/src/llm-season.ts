@@ -436,7 +436,14 @@ export const llmActualCheapVerifyV6Season: LlmSeasonConfig = {
   description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after stricter repair prompts list only the current exact legal action ids.',
 };
 
+export const llmActualCheapVerifyV7Season: LlmSeasonConfig = {
+  ...llmActualCheapVerifySeason,
+  id: 'llm-actual-cheap-verify-v7',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after exposing Dodge and Help as concrete actual actions.',
+};
+
 export const llmSeasons = [
+  llmActualCheapVerifyV7Season,
   llmActualCheapVerifyV6Season,
   llmActualCheapVerifyV5Season,
   llmActualCheapVerifyV4Season,

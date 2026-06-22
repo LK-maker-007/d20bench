@@ -923,6 +923,10 @@ function hasDisadvantage(attacker: Creature, target: Creature, action: MonsterAc
   // Weapon Mastery: Sap gives the target Disadvantage on its next attack roll.
   if (attacker.activeBuffs?.some(b => b.attackDisadvantage)) dis = true;
 
+  // Dodge action: attacks against the dodging target have Disadvantage
+  // until the target's next turn start resets turnFlags.
+  if (target.turnFlags?.dodge) dis = true;
+
   // Target is prone and ranged
   if (target.conditions.includes('prone') && action.type === 'ranged') dis = true;
 
