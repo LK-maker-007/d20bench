@@ -26,6 +26,7 @@ import {
   resolveSingleTargetSave,
   rollSaveWithBuffs,
   stabiliseDyingAlly,
+  tryEscapeContainer,
   checkAuraEntry,
   type DamageReactionDecisionContext,
   type DamageReactionHooks,
@@ -39,6 +40,7 @@ import { moveToDestination, moveToward } from './battlecast/engine/ai-movement.j
 import {
   beginBattlecastControlledTurn,
   executeTurn,
+  processPassiveAuras,
   runOpportunityAttacks,
   type OpportunityAttackDecisionContext,
   type OpportunityAttackHooks,
@@ -570,6 +572,11 @@ function processManualAgentTurnStart(input: {
   checkBattleComplete(input.state);
 
   if (canAct && !input.state.isComplete) {
+    processPassiveAuras(input.state, input.active);
+    checkBattleComplete(input.state);
+  }
+
+  if (canAct && input.active.isAlive && !input.state.isComplete) {
     return {
       canAct: true,
       logsBefore,
@@ -993,6 +1000,11 @@ async function applyActualLegalAction(input: {
     return { ended: shouldEndActualTurn(active, actualTurn) };
   }
 
+  if (action.type === 'escape_container') {
+    applyEscapeContainerAction(state, active, action, agent, actualTurn);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
   if (action.type === 'disengage') {
     applyDisengageAction(state, active, action, actualTurn);
     return { ended: shouldEndActualTurn(active, actualTurn) };
@@ -1232,6 +1244,22 @@ function applyStabiliseAction(
 ): void {
   const target = state.creatures.find((creature) => creature.id === action.targetId);
   if (!target || !stabiliseDyingAlly(state, active, target)) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+  active.hasActed = true;
+  actualTurn.attackRollsRemaining = 0;
+  actualTurn.pendingSmite = undefined;
+}
+
+function applyEscapeContainerAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'escape_container' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  if (!active.containedBy || active.containedBy.sourceId !== action.sourceId || !tryEscapeContainer(state, active)) {
     pushInvalidActionLog(state, active, agent, action.id);
     return;
   }

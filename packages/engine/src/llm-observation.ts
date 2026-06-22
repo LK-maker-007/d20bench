@@ -508,6 +508,20 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
     };
   }
 
+  if (action.type === 'escape_container') {
+    return {
+      id: action.id,
+      type: action.type,
+      label: `Escape ${action.containerKey}`,
+      targetId: action.sourceId,
+      targetName: action.sourceName,
+      targetLabel: creatureById.get(action.sourceId)?.label,
+      targetRelation: 'enemy' as const,
+      targetTeam: creatureById.get(action.sourceId)?.team,
+      description: `Spend the main action to attempt a Strength escape check against DC ${action.escapeDc}. Success exits ${action.containerKey}; failure still spends the action.`,
+    };
+  }
+
   if (action.type === 'smite') {
     const target = creatureById.get(action.targetId);
     return {

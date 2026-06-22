@@ -286,6 +286,59 @@ describe('agent matches', () => {
     expect(spentActionCatalogue.actions.some((action) => action.type === 'stabilise')).toBe(false);
   });
 
+  it('exposes Escape as a concrete actual action for contained creatures', () => {
+    const state = initBattle(createBattlecastCreatures(adjacentFighterDuelScenario().combatants, true), 8);
+    const active = state.creatures.find((creature) => creature.team === 'red');
+    const source = state.creatures.find((creature) => creature.team === 'blue');
+    if (!active || !source) throw new Error('expected duel combatants');
+    active.containedBy = {
+      key: 'Engulf',
+      sourceId: source.id,
+      sourceName: source.displayName,
+      conditions: ['restrained'],
+      totalCover: true,
+      movesWithSource: true,
+      escapeDc: 12,
+    };
+    active.conditions.push('restrained');
+
+    const catalogue = generateLegalActions(state, active, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, active, catalogue);
+
+    expect(catalogue.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'escape:container',
+        type: 'escape_container',
+        containerKey: 'Engulf',
+        sourceId: source.id,
+        escapeDc: 12,
+      }),
+    ]));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'escape:container',
+        type: 'escape_container',
+        description: expect.stringContaining('DC 12'),
+      }),
+    ]));
+
+    active.hasActed = true;
+    const spentActionCatalogue = generateLegalActions(state, active, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 0,
+        attackActionStarted: false,
+      },
+    });
+    expect(spentActionCatalogue.actions.some((action) => action.type === 'escape_container')).toBe(false);
+  });
+
   it('exposes Eldritch Blast beams as stepwise attack actions', () => {
     const state = initBattle(createBattlecastCreatures(warlockBeamScenario().combatants, true), 12);
     const warlock = state.creatures.find((creature) => creature.team === 'red');
@@ -2167,6 +2220,55 @@ describe('agent matches', () => {
     ]));
   });
 
+  it('applies passive aura damage before manual-controlled turns', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let choseHolyNimbus = false;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const holyNimbus = actionIds.find((id) => id.includes('holy-nimbus'));
+      const actionId = holyNimbus ?? 'end_turn';
+      if (holyNimbus) choseHolyNimbus = true;
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Activate Holy Nimbus if available.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: paladinHolyNimbusScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'baseline.random-legal',
+      maxRounds: 2,
+      llmActionSpace: 'actual-actions-v1',
+    });
+
+    expect(choseHolyNimbus).toBe(true);
+    expect(match.state.logs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        actor: 'Paladin L20',
+        action: 'Holy Nimbus',
+        details: expect.stringContaining('takes'),
+        damage: expect.any(Number),
+      }),
+    ]));
+  });
+
   it('asks an OpenRouter reactor to choose an opportunity attack after an actual-action move trigger', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     const observedReactionIds: string[][] = [];
@@ -3188,6 +3290,26 @@ function paladinAbjureFoesScenario(): D20benchScenario {
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 5, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 6, y: 3 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 7, y: 4 } },
+    ],
+  };
+}
+
+function paladinHolyNimbusScenario(): D20benchScenario {
+  return {
+    id: 'test.paladin-holy-nimbus.v1',
+    name: 'Paladin Holy Nimbus Test',
+    description: 'A level-20 Paladin can activate Holy Nimbus, damaging an adjacent manual-controlled enemy at turn start.',
+    battleType: 'class-feature-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Paladin', 20), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 3, y: 2 } },
     ],
   };
 }

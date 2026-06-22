@@ -499,7 +499,7 @@ function processHolyNimbusAuras(state: BattleState, creature: Creature): void {
 }
 
 /** Passive aura effects at start of turn (Fire Aura, Heat Aura, Fear Aura). */
-function handlePassiveAuras(state: BattleState, creature: Creature): void {
+export function processPassiveAuras(state: BattleState, creature: Creature): void {
   processHolyNimbusAuras(state, creature);
   if (!creature.isAlive) return;
 
@@ -1531,7 +1531,7 @@ export function executeTurn(
     state.damageReactionHooks = options.damageReactions;
   }
   try {
-  handlePassiveAuras(state, creature);
+  processPassiveAuras(state, creature);
 
   if (tryEscapeContainer(state, creature)) {
     creature.hasActed = true;

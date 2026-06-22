@@ -80,6 +80,14 @@ export type LegalAction =
       targetName: string;
     }
   | {
+      id: 'escape:container';
+      type: 'escape_container';
+      containerKey: string;
+      sourceId: string;
+      sourceName: string;
+      escapeDc: number;
+    }
+  | {
       id: string;
       type: 'smite';
       smite: 'divine_smite' | 'decline';
@@ -398,6 +406,10 @@ export function stabiliseActionId(targetId: string): string {
   return `stabilise:${targetId}`;
 }
 
+export function escapeContainerActionId(): 'escape:container' {
+  return 'escape:container';
+}
+
 export function divineSmiteActionId(resourceKey: string): string {
   return `smite:divine-smite:${resourceKey}`;
 }
@@ -674,6 +686,9 @@ function coreActualActions(
   if (hasMainActionAvailable && dashMovement > 0) {
     actions.push({ id: 'dash', type: 'dash', extraMovement: dashMovement });
   }
+  if (hasMainActionAvailable) {
+    actions.push(...escapeContainerActions(state, active));
+  }
   if (hasMainActionAvailable && canTakeDefensiveAction(active)) {
     actions.push({ id: 'dodge', type: 'dodge' });
     actions.push(...helpActions(state, active));
@@ -805,6 +820,21 @@ function stabiliseActions(state: BattleState, active: Creature): LegalAction[] {
       targetId: target.id,
       targetName: target.displayName,
     }));
+}
+
+function escapeContainerActions(state: BattleState, active: Creature): LegalAction[] {
+  const container = active.containedBy;
+  if (!container?.escapeDc || !active.isAlive) return [];
+  const source = state.creatures.find((creature) => creature.id === container.sourceId);
+  if (!source?.isAlive) return [];
+  return [{
+    id: escapeContainerActionId(),
+    type: 'escape_container' as const,
+    containerKey: container.key,
+    sourceId: source.id,
+    sourceName: source.displayName,
+    escapeDc: container.escapeDc,
+  }];
 }
 
 function smiteActions(
