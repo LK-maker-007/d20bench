@@ -134,7 +134,7 @@ export type LegalAction =
   | {
       id: string;
       type: 'class_feature';
-      feature: 'steady_aim' | 'martial_arts_strike' | 'flurry_of_blows' | 'wild_shape' | 'frenzy';
+      feature: 'steady_aim' | 'action_surge' | 'martial_arts_strike' | 'flurry_of_blows' | 'wild_shape' | 'frenzy';
       label: string;
       isBonusAction: boolean;
       targetId?: string;
@@ -628,6 +628,16 @@ function coreActualActions(
       isBonusAction: true,
     });
   }
+  if (canUseActionSurge(active, economy)) {
+    actions.push({
+      id: 'class_feature:action-surge',
+      type: 'class_feature',
+      feature: 'action_surge',
+      label: 'Action Surge',
+      isBonusAction: false,
+      resourceCost: { key: 'action-surge', amount: 1 },
+    });
+  }
   actions.push(...wildShapeActions(state, active, economy));
   actions.push(...monkBonusAttackActions(state, active, economy));
   actions.push(...frenzyActions(state, active, economy));
@@ -813,6 +823,17 @@ function canUseSteadyAim(
       (action.type !== 'ranged' || canSee(state, active, target))
     );
   });
+}
+
+function canUseActionSurge(
+  active: Creature,
+  economy: { hasMainAction: boolean; attackActionStarted: boolean },
+): boolean {
+  if (active.monsterData.heroClass !== 'Fighter' || (active.monsterData.heroLevel ?? 0) < 2) return false;
+  if (!hasResource(active, 'action-surge')) return false;
+  if (active.conditions.includes('incapacitated') || active.conditions.includes('unconscious')) return false;
+  if (economy.hasMainAction) return false;
+  return active.hasActed || economy.attackActionStarted;
 }
 
 function wildShapeActions(

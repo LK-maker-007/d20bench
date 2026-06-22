@@ -382,6 +382,27 @@ export const llmActualCuttingWordsDamageVerifyScenario: D20benchScenario = {
   ],
 };
 
+export const llmActualActionSurgeVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-action-surge-fighter-duel.v1',
+  name: 'LLM Action Surge Fighter Duel',
+  description: 'An OpenRouter-controlled Fighter should be able to spend Action Surge after its first attack action and then choose more concrete attacks.',
+  battleType: 'action-surge-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['class-feature', 'action-surge', 'stepwise-action-economy'],
+  designNotes: [
+    'Designed as a live-model harness validation for concrete Fighter Action Surge choices.',
+    'The Fighter starts adjacent to a durable target so extra attacks after Action Surge remain relevant.',
+  ],
+  combatants: [
+    { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 2 } },
+    { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+  ],
+};
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -719,7 +740,28 @@ export const llmActualCuttingWordsVerifySeason: LlmSeasonConfig = {
   concurrency: 4,
 };
 
+export const llmActualActionSurgeVerifySeason: LlmSeasonConfig = {
+  id: 'llm-actual-action-surge-verify-v1',
+  description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control Fighter Action Surge as a concrete stepwise class-feature action.',
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    'battlecast.aggressive',
+  ],
+  scenarios: [llmActualActionSurgeVerifyScenario],
+  seeds: [1],
+  maxRounds: 1,
+  pairings: llmActualCheapVerifyModelAgents.map((model) => ({
+    redAgent: model,
+    blueAgent: 'battlecast.aggressive' as const,
+  })),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
 export const llmSeasons = [
+  llmActualActionSurgeVerifySeason,
   llmActualCuttingWordsVerifySeason,
   llmActualRetaliationVerifySeason,
   llmActualDeflectVerifySeason,

@@ -1,6 +1,389 @@
 window.D20BENCH_RESULTS = {
-  "generatedAt": "2026-06-22T13:16:17.832Z",
+  "generatedAt": "2026-06-22T13:25:41.401Z",
   "seasons": [
+    {
+      "seasonId": "llm-actual-action-surge-verify-v1",
+      "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control Fighter Action Surge as a concrete stepwise class-feature action.",
+      "generatedAt": "2026-06-22T13:24:53.219Z",
+      "startedAt": "2026-06-22T13:24:53.220Z",
+      "completedAt": "2026-06-22T13:25:21.576Z",
+      "llmActionSpace": "actual-actions-v1",
+      "initialRating": 1000,
+      "kFactor": 32,
+      "maxRounds": 1,
+      "concurrency": 4,
+      "totalMatches": 4,
+      "completedMatches": 4,
+      "failedMatches": 0,
+      "standings": [
+        {
+          "agentId": "openrouter:deepseek/deepseek-v4-flash",
+          "rating": 1016,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+          "rating": 1015.3298231018226,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "rating": 999.2975328274754,
+          "matches": 1,
+          "wins": 0,
+          "losses": 0,
+          "draws": 1,
+          "score": 0.5
+        },
+        {
+          "agentId": "openrouter:mistralai/ministral-8b-2512",
+          "rating": 999.263693206478,
+          "matches": 1,
+          "wins": 0,
+          "losses": 0,
+          "draws": 1,
+          "score": 0.5
+        },
+        {
+          "agentId": "battlecast.aggressive",
+          "rating": 970.108950864224,
+          "matches": 4,
+          "wins": 0,
+          "losses": 2,
+          "draws": 2,
+          "score": 1
+        }
+      ],
+      "battleTypeStandings": [
+        {
+          "battleType": "action-surge-smoke",
+          "standings": [
+            {
+              "agentId": "openrouter:deepseek/deepseek-v4-flash",
+              "rating": 1016,
+              "matches": 1,
+              "wins": 1,
+              "losses": 0,
+              "draws": 0,
+              "score": 1
+            },
+            {
+              "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+              "rating": 1015.3298231018226,
+              "matches": 1,
+              "wins": 1,
+              "losses": 0,
+              "draws": 0,
+              "score": 1
+            },
+            {
+              "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+              "rating": 999.2975328274754,
+              "matches": 1,
+              "wins": 0,
+              "losses": 0,
+              "draws": 1,
+              "score": 0.5
+            },
+            {
+              "agentId": "openrouter:mistralai/ministral-8b-2512",
+              "rating": 999.263693206478,
+              "matches": 1,
+              "wins": 0,
+              "losses": 0,
+              "draws": 1,
+              "score": 0.5
+            },
+            {
+              "agentId": "battlecast.aggressive",
+              "rating": 970.108950864224,
+              "matches": 4,
+              "wins": 0,
+              "losses": 2,
+              "draws": 2,
+              "score": 1
+            }
+          ]
+        }
+      ],
+      "costSummary": {
+        "totalDecisions": 20,
+        "promptTokens": 74650,
+        "completionTokens": 4211,
+        "totalTokens": 78861,
+        "estimatedCostUsd": 0.0072535,
+        "byModel": [
+          {
+            "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+            "model": "qwen/qwen3.5-flash-02-23",
+            "decisions": 7,
+            "promptTokens": 25698,
+            "completionTokens": 3593,
+            "totalTokens": 29291,
+            "estimatedCostUsd": 0.00260455
+          },
+          {
+            "agentId": "openrouter:mistralai/ministral-8b-2512",
+            "model": "mistralai/ministral-8b-2512",
+            "decisions": 4,
+            "promptTokens": 14993,
+            "completionTokens": 191,
+            "totalTokens": 15184,
+            "estimatedCostUsd": 0.0022776
+          },
+          {
+            "agentId": "openrouter:deepseek/deepseek-v4-flash",
+            "model": "deepseek/deepseek-v4-flash",
+            "decisions": 6,
+            "promptTokens": 23288,
+            "completionTokens": 328,
+            "totalTokens": 23616,
+            "estimatedCostUsd": 0.00215496
+          },
+          {
+            "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+            "model": "meta-llama/llama-3.1-8b-instruct",
+            "decisions": 3,
+            "promptTokens": 10671,
+            "completionTokens": 99,
+            "totalTokens": 10770,
+            "estimatedCostUsd": 0.00021639
+          }
+        ]
+      },
+      "failures": [],
+      "matches": [
+        {
+          "matchId": "hidden.llm-action-surge-fighter-duel.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+          "scenarioId": "hidden.llm-action-surge-fighter-duel.v1",
+          "battleType": "action-surge-smoke",
+          "seed": 1,
+          "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+          "blueAgent": "battlecast.aggressive",
+          "winner": "red",
+          "redScore": 1,
+          "blueScore": 0,
+          "redRatingBefore": 1000,
+          "blueRatingBefore": 1000,
+          "redRatingAfter": 1016,
+          "blueRatingAfter": 984,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 1000,
+          "redBattleTypeRatingAfter": 1016,
+          "blueBattleTypeRatingAfter": 984,
+          "finalStateHash": "0a4b3231932d7cd2f2a4170d8acefc3956708a2cb94a57e95ca70951e2f37db1",
+          "llmDecisions": 6,
+          "estimatedCostUsd": 0.00215496
+        },
+        {
+          "matchId": "hidden.llm-action-surge-fighter-duel.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+          "scenarioId": "hidden.llm-action-surge-fighter-duel.v1",
+          "battleType": "action-surge-smoke",
+          "seed": 1,
+          "redAgent": "openrouter:mistralai/ministral-8b-2512",
+          "blueAgent": "battlecast.aggressive",
+          "winner": "draw",
+          "redScore": 0.5,
+          "blueScore": 0.5,
+          "redRatingBefore": 1000,
+          "blueRatingBefore": 984,
+          "redRatingAfter": 999.263693206478,
+          "blueRatingAfter": 984.736306793522,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 984,
+          "redBattleTypeRatingAfter": 999.263693206478,
+          "blueBattleTypeRatingAfter": 984.736306793522,
+          "finalStateHash": "f2a8db2ca18f6ab17833f76ef40feb80b3667229f18722117533a5d7778fa6da",
+          "llmDecisions": 4,
+          "estimatedCostUsd": 0.0022776
+        },
+        {
+          "matchId": "hidden.llm-action-surge-fighter-duel.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+          "scenarioId": "hidden.llm-action-surge-fighter-duel.v1",
+          "battleType": "action-surge-smoke",
+          "seed": 1,
+          "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "blueAgent": "battlecast.aggressive",
+          "winner": "draw",
+          "redScore": 0.5,
+          "blueScore": 0.5,
+          "redRatingBefore": 1000,
+          "blueRatingBefore": 984.736306793522,
+          "redRatingAfter": 999.2975328274754,
+          "blueRatingAfter": 985.4387739660466,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 984.736306793522,
+          "redBattleTypeRatingAfter": 999.2975328274754,
+          "blueBattleTypeRatingAfter": 985.4387739660466,
+          "finalStateHash": "9eb2a9b20a90fa77367d8b5bcd63c8ed318813cc2e1813e408de0ec58241dd1d",
+          "llmDecisions": 3,
+          "estimatedCostUsd": 0.00021639
+        },
+        {
+          "matchId": "hidden.llm-action-surge-fighter-duel.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+          "scenarioId": "hidden.llm-action-surge-fighter-duel.v1",
+          "battleType": "action-surge-smoke",
+          "seed": 1,
+          "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+          "blueAgent": "battlecast.aggressive",
+          "winner": "red",
+          "redScore": 1,
+          "blueScore": 0,
+          "redRatingBefore": 1000,
+          "blueRatingBefore": 985.4387739660466,
+          "redRatingAfter": 1015.3298231018226,
+          "blueRatingAfter": 970.108950864224,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 985.4387739660466,
+          "redBattleTypeRatingAfter": 1015.3298231018226,
+          "blueBattleTypeRatingAfter": 970.108950864224,
+          "finalStateHash": "252817ea2a880fe4e2154e946d429d33ebb2d485132802a406ea59d7becedcfa",
+          "llmDecisions": 7,
+          "estimatedCostUsd": 0.00260455
+        }
+      ],
+      "progress": {
+        "seasonId": "llm-actual-action-surge-verify-v1",
+        "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control Fighter Action Surge as a concrete stepwise class-feature action.",
+        "status": "complete",
+        "llmActionSpace": "actual-actions-v1",
+        "startedAt": "2026-06-22T13:24:53.220Z",
+        "updatedAt": "2026-06-22T13:25:21.576Z",
+        "concurrency": 4,
+        "maxRounds": 1,
+        "totalMatches": 4,
+        "completedMatches": 4,
+        "failedMatches": 0,
+        "runningMatches": 0,
+        "costSummary": {
+          "totalDecisions": 20,
+          "promptTokens": 74650,
+          "completionTokens": 4211,
+          "totalTokens": 78861,
+          "estimatedCostUsd": 0.0072535,
+          "byModel": [
+            {
+              "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+              "model": "qwen/qwen3.5-flash-02-23",
+              "decisions": 7,
+              "promptTokens": 25698,
+              "completionTokens": 3593,
+              "totalTokens": 29291,
+              "estimatedCostUsd": 0.00260455
+            },
+            {
+              "agentId": "openrouter:mistralai/ministral-8b-2512",
+              "model": "mistralai/ministral-8b-2512",
+              "decisions": 4,
+              "promptTokens": 14993,
+              "completionTokens": 191,
+              "totalTokens": 15184,
+              "estimatedCostUsd": 0.0022776
+            },
+            {
+              "agentId": "openrouter:deepseek/deepseek-v4-flash",
+              "model": "deepseek/deepseek-v4-flash",
+              "decisions": 6,
+              "promptTokens": 23288,
+              "completionTokens": 328,
+              "totalTokens": 23616,
+              "estimatedCostUsd": 0.00215496
+            },
+            {
+              "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+              "model": "meta-llama/llama-3.1-8b-instruct",
+              "decisions": 3,
+              "promptTokens": 10671,
+              "completionTokens": 99,
+              "totalTokens": 10770,
+              "estimatedCostUsd": 0.00021639
+            }
+          ]
+        },
+        "activeMatches": [],
+        "recentMatches": [
+          {
+            "index": 3,
+            "status": "completed",
+            "scenarioId": "hidden.llm-action-surge-fighter-duel.v1",
+            "battleType": "action-surge-smoke",
+            "seed": 1,
+            "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+            "blueAgent": "battlecast.aggressive",
+            "startedAt": "2026-06-22T13:24:53.404Z",
+            "completedAt": "2026-06-22T13:25:21.573Z",
+            "durationMs": 28169,
+            "matchId": "hidden.llm-action-surge-fighter-duel.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+            "winner": "red",
+            "llmDecisions": 7,
+            "estimatedCostUsd": 0.00260455,
+            "finalStateHash": "252817ea2a880fe4e2154e946d429d33ebb2d485132802a406ea59d7becedcfa"
+          },
+          {
+            "index": 0,
+            "status": "completed",
+            "scenarioId": "hidden.llm-action-surge-fighter-duel.v1",
+            "battleType": "action-surge-smoke",
+            "seed": 1,
+            "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+            "blueAgent": "battlecast.aggressive",
+            "startedAt": "2026-06-22T13:24:53.404Z",
+            "completedAt": "2026-06-22T13:25:05.474Z",
+            "durationMs": 12070,
+            "matchId": "hidden.llm-action-surge-fighter-duel.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+            "winner": "red",
+            "llmDecisions": 6,
+            "estimatedCostUsd": 0.00215496,
+            "finalStateHash": "0a4b3231932d7cd2f2a4170d8acefc3956708a2cb94a57e95ca70951e2f37db1"
+          },
+          {
+            "index": 1,
+            "status": "completed",
+            "scenarioId": "hidden.llm-action-surge-fighter-duel.v1",
+            "battleType": "action-surge-smoke",
+            "seed": 1,
+            "redAgent": "openrouter:mistralai/ministral-8b-2512",
+            "blueAgent": "battlecast.aggressive",
+            "startedAt": "2026-06-22T13:24:53.404Z",
+            "completedAt": "2026-06-22T13:24:58.021Z",
+            "durationMs": 4617,
+            "matchId": "hidden.llm-action-surge-fighter-duel.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+            "winner": "draw",
+            "llmDecisions": 4,
+            "estimatedCostUsd": 0.0022776,
+            "finalStateHash": "f2a8db2ca18f6ab17833f76ef40feb80b3667229f18722117533a5d7778fa6da"
+          },
+          {
+            "index": 2,
+            "status": "completed",
+            "scenarioId": "hidden.llm-action-surge-fighter-duel.v1",
+            "battleType": "action-surge-smoke",
+            "seed": 1,
+            "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+            "blueAgent": "battlecast.aggressive",
+            "startedAt": "2026-06-22T13:24:53.404Z",
+            "completedAt": "2026-06-22T13:24:56.212Z",
+            "durationMs": 2808,
+            "matchId": "hidden.llm-action-surge-fighter-duel.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+            "winner": "draw",
+            "llmDecisions": 3,
+            "estimatedCostUsd": 0.00021639,
+            "finalStateHash": "9eb2a9b20a90fa77367d8b5bcd63c8ed318813cc2e1813e408de0ec58241dd1d"
+          }
+        ],
+        "failures": []
+      },
+      "sourcePath": "results/seasons/llm-actual-action-surge-verify-v1/standings.json",
+      "progressPath": "results/seasons/llm-actual-action-surge-verify-v1/progress.json"
+    },
     {
       "seasonId": "llm-actual-cutting-words-verify-v1",
       "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control trigger-time Bard Cutting Words attack-roll and damage-roll reactions.",

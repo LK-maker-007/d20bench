@@ -662,6 +662,9 @@ function classFeatureDescription(action: Extract<LegalAction, { type: 'class_fea
   if (action.feature === 'steady_aim') {
     return 'Spend a bonus action without moving to gain Advantage on the next weapon attack this turn.';
   }
+  if (action.feature === 'action_surge') {
+    return 'Spend one Action Surge use to regain a main action this turn. After this resolves, choose the next concrete action from a fresh legal-action list.';
+  }
   if (action.feature === 'flurry_of_blows') {
     return action.resourceCost
       ? 'Spend 1 ki and the bonus action to make the first Flurry of Blows unarmed strike. Remaining Flurry strikes are chosen as later concrete actions after seeing results.'

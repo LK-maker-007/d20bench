@@ -409,6 +409,63 @@ describe('agent matches', () => {
     expect(movedCatalogue.actions.some((action) => action.id === 'class_feature:steady-aim')).toBe(false);
   });
 
+  it('exposes Fighter Action Surge only after the current action is spent', () => {
+    const state = initBattle(createBattlecastCreatures(adjacentFighterDuelScenario().combatants, true), 8);
+    const fighter = state.creatures.find((creature) => creature.team === 'red');
+    if (!fighter) throw new Error('expected red fighter');
+
+    const beforeAction = generateLegalActions(state, fighter, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    expect(beforeAction.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'action_surge'
+    )).toBe(false);
+
+    fighter.hasActed = true;
+    const afterAction = generateLegalActions(state, fighter, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 0,
+        attackActionStarted: true,
+      },
+    });
+    const actionSurge = afterAction.actions.find((action) =>
+      action.type === 'class_feature' && action.feature === 'action_surge'
+    );
+    const observation = buildLlmBattleObservation(state, fighter, afterAction);
+
+    expect(actionSurge).toEqual(expect.objectContaining({
+      id: 'class_feature:action-surge',
+      type: 'class_feature',
+      feature: 'action_surge',
+      isBonusAction: false,
+      resourceCost: { key: 'action-surge', amount: 1 },
+    }));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'class_feature:action-surge',
+        feature: 'action_surge',
+        description: expect.stringContaining('regain a main action'),
+      }),
+    ]));
+
+    fighter.resources['action-surge'] = 0;
+    const spentCatalogue = generateLegalActions(state, fighter, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 0,
+        attackActionStarted: true,
+      },
+    });
+    expect(spentCatalogue.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'action_surge'
+    )).toBe(false);
+  });
+
   it('exposes Druid Wild Shape beast forms as concrete class feature actions', () => {
     const state = initBattle(createBattlecastCreatures(druidWildShapeScenario().combatants, true), 8);
     const druid = state.creatures.find((creature) => creature.team === 'red');
@@ -618,6 +675,72 @@ describe('agent matches', () => {
       ? `R${firstAttackLog.round} T${firstAttackLog.turn} ${firstAttackLog.actor} ${firstAttackLog.action}: ${firstAttackLog.details}`
       : '';
     expect(observedPrompts[1]?.recentLogs).toContain(formattedFirstAttackLog);
+  });
+
+  it('lets an actual-action Fighter use Action Surge and then choose more attacks', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let attacksChosen = 0;
+    let actionSurged = false;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const attack = actionIds.find((id) => id.startsWith('attack:'));
+      let actionId: string;
+      if (attack && (attacksChosen < 2 || actionSurged)) {
+        actionId = attack;
+        attacksChosen += 1;
+      } else if (!actionSurged && actionIds.includes('class_feature:action-surge')) {
+        actionId = 'class_feature:action-surge';
+        actionSurged = true;
+      } else {
+        actionId = 'end_turn';
+      }
+      return jsonResponse({
+        id: `gen-${attacksChosen}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Attack, spend Action Surge, then attack again.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: adjacentFighterDuelScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const llmActions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model'
+    );
+    const actionSurgeResolution = llmActions.find((event) =>
+      event.acceptedAction.type === 'class_feature' &&
+      event.acceptedAction.feature === 'action_surge'
+    );
+    const attackResolutions = llmActions.filter((event) => event.acceptedAction.type === 'attack');
+    const fighter = match.state.creatures.find((creature) => creature.team === 'red');
+
+    expect(actionSurgeResolution?.type).toBe('action_resolved');
+    expect(actionSurgeResolution?.turnStep).toBe(2);
+    expect(actionSurgeResolution?.logs.some((log) => log.action === 'Action Surge')).toBe(true);
+    expect(attackResolutions).toHaveLength(4);
+    expect(attackResolutions.map((event) => event.turnStep)).toEqual([0, 1, 3, 4]);
+    expect(fighter?.resources['action-surge']).toBe(0);
+    expect(fighter?.stats.actionUsage['Action Surge']).toBe(1);
   });
 
   it('asks an OpenRouter Warlock again after the first Eldritch Blast beam', async () => {

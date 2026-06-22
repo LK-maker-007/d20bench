@@ -1855,6 +1855,11 @@ function applyClassFeatureAction(
     return;
   }
 
+  if (action.feature === 'action_surge') {
+    applyActionSurgeAction(state, active, action, agent, actualTurn);
+    return;
+  }
+
   if (action.feature === 'wild_shape') {
     applyWildShapeAction(state, active, action, agent);
     return;
@@ -1873,6 +1878,45 @@ function applyClassFeatureAction(
   if (action.feature === 'flurry_of_blows') {
     applyMonkBonusStrike(state, active, action, agent, actualTurn, 'flurry_of_blows');
   }
+}
+
+function applyActionSurgeAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'class_feature' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  if (
+    active.monsterData.heroClass !== 'Fighter' ||
+    (active.monsterData.heroLevel ?? 0) < 2 ||
+    !hasResource(active, 'action-surge') ||
+    (!active.hasActed && !actualTurn.attackActionStarted)
+  ) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  consumeResource(active, 'action-surge');
+  active.hasActed = false;
+  actualTurn.attackActionStarted = false;
+  actualTurn.attackRollsRemaining = estimateAttackRollBudget(active);
+  active.stats.actionUsage['Action Surge'] = (active.stats.actionUsage['Action Surge'] || 0) + 1;
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Action Surge',
+    details: `${active.displayName} uses Action Surge for an extra action.`,
+    type: 'special',
+  });
+  state.events.push({
+    kind: 'effect',
+    creatureId: active.id,
+    label: 'Action Surge',
+    tone: 'success',
+    durationMs: BASE_DURATIONS.effect,
+  });
 }
 
 function applyWildShapeAction(

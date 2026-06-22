@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isFatalSeasonError,
+  llmActualActionSurgeVerifySeason,
   llmActualCheapVerifyModelAgents,
   llmActualCheapVerifySeason,
   llmActualCheapVerifyV2Season,
@@ -285,6 +286,16 @@ describe('LLM seasons', () => {
     expect(llmActualCuttingWordsVerifySeason.pairings?.every((pairing) =>
       pairing.redAgent === 'battlecast.aggressive' &&
       pairing.blueAgent.startsWith('openrouter:')
+    )).toBe(true);
+    expect(llmActualActionSurgeVerifySeason.id).toBe('llm-actual-action-surge-verify-v1');
+    expect(llmActualActionSurgeVerifySeason.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualActionSurgeVerifySeason.scenarios.map((scenario) => scenario.id)).toEqual([
+      'hidden.llm-action-surge-fighter-duel.v1',
+    ]);
+    expect(llmActualActionSurgeVerifySeason.pairings).toHaveLength(4);
+    expect(llmActualActionSurgeVerifySeason.pairings?.every((pairing) =>
+      pairing.redAgent.startsWith('openrouter:') &&
+      pairing.blueAgent === 'battlecast.aggressive'
     )).toBe(true);
   });
 
