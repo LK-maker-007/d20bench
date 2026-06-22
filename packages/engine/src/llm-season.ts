@@ -8,11 +8,14 @@ import {
   type AgentId,
   type OpenRouterAgentId,
 } from './agents.js';
+import type { LegalAction } from './legal-actions.js';
 import { loadLocalEnv } from './env.js';
 import type { EloStanding } from './ratings.js';
 import type { BattleType, D20benchScenario } from './scenario.js';
 import type { OpenRouterRawDecisionTrace } from './openrouter-agent.js';
+import type { ReplayEventController } from './replay.js';
 import { buildHero } from './battlecast/data/heroes.js';
+import { getMonsterByName } from './battlecast/data/monsters.js';
 import { goblinDuelScenario } from './scenarios/public/goblin-duel.js';
 import { goblinWarbandMirrorScenario } from './scenarios/public/goblin-squad.js';
 import {
@@ -74,6 +77,25 @@ export interface LlmSeasonCostSummary {
   totalTokens: number;
   estimatedCostUsd: number;
   byModel: LlmModelCostSummary[];
+}
+
+export interface LlmAcceptedActionCount {
+  actionKey: string;
+  count: number;
+}
+
+export interface LlmSeasonHarnessAudit {
+  modelTurnStarts: number;
+  modelActionResolutions: number;
+  modelDelegateLegalActionExposures: number;
+  modelDelegateSelections: number;
+  modelStepwiseTurns: number;
+  modelStepwiseContinuations: number;
+  maxModelActionsInTurn: number;
+  modelToolCallDecisions: number;
+  modelJsonFallbackDecisions: number;
+  modelRepairAttempts: number;
+  acceptedActionCounts: LlmAcceptedActionCount[];
 }
 
 export type LlmSeasonProgressStatus = 'running' | 'complete' | 'failed' | 'stopped';
@@ -149,6 +171,7 @@ export interface LlmSeasonResult {
     standings: EloStanding[];
   }>;
   costSummary: LlmSeasonCostSummary;
+  harnessAudit: LlmSeasonHarnessAudit;
   failures: LlmSeasonFailure[];
   matches: Array<{
     matchId: string;
@@ -366,6 +389,159 @@ function noActionSurgeFighter(level: number) {
     initialResources: resources,
   };
 }
+
+function inertHero(heroClass: Parameters<typeof buildHero>[0], level: number, hp = 80) {
+  const hero = buildHero(heroClass, level);
+  return {
+    ...hero,
+    name: `${hero.name} Inert`,
+    hp,
+    hpFormula: String(hp),
+    actions: [],
+    speed: { ...hero.speed, walk: 0 },
+    initialResources: {},
+  };
+}
+
+function actionSubsetHero(heroClass: Parameters<typeof buildHero>[0], level: number, actionNames: string[]) {
+  const hero = buildHero(heroClass, level);
+  const allowed = new Set(actionNames);
+  return {
+    ...hero,
+    name: `${hero.name} ${actionNames.join('-')}`,
+    actions: hero.actions.filter((action) => allowed.has(action.name)),
+  };
+}
+
+function purpleWormSwallowOnly() {
+  const worm = getMonsterByName('Purple Worm');
+  if (!worm) throw new Error('expected Purple Worm monster data');
+  return {
+    ...worm,
+    name: 'Purple Worm Swallow Only',
+    actions: worm.actions.filter((action) => action.name === 'Swallow'),
+  };
+}
+
+export const llmActualLinkedDamageVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-linked-damage-witch-bolt.v1',
+  name: 'LLM Linked Damage Witch Bolt',
+  description: 'An OpenRouter-controlled Warlock starts with an existing Witch Bolt link and should choose the concrete later-turn bonus-action damage.',
+  battleType: 'spell-followup-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 20,
+  tacticalTags: ['spell-followup', 'witch-bolt', 'bonus-action'],
+  designNotes: [
+    'Designed as a live-model harness validation for maintained linked spell damage.',
+    'The setup starts on round 2 with Witch Bolt already linked so the first model turn exposes linked_bonus_damage without asking the model to create the setup state.',
+  ],
+  combatants: [
+    { monster: inertHero('Warlock', 5), team: 'red', position: { x: 2, y: 2 } },
+    { monster: inertHero('Fighter', 1, 40), team: 'blue', position: { x: 8, y: 8 } },
+  ],
+  setupBattleState: (state) => {
+    const warlock = state.creatures.find((creature) => creature.team === 'red');
+    const target = state.creatures.find((creature) => creature.team === 'blue');
+    if (!warlock || !target) throw new Error('linked damage setup expected Warlock and target');
+    state.round = 2;
+    state.initiativeOrder = [warlock.id, ...state.initiativeOrder.filter((id) => id !== warlock.id)];
+    warlock.initiative = 30;
+    warlock.concentratingOn = 'witch-bolt';
+    target.activeBuffs.push({
+      name: 'Witch Bolt',
+      key: 'witch-bolt',
+      casterId: warlock.id,
+      appliedRound: 1,
+      endRound: 11,
+      requiresConcentration: true,
+      bonusActionDamage: '1d12',
+      bonusActionDamageType: 'lightning',
+      bonusActionDamageRange: 60,
+      endsWhenTargetDies: true,
+    });
+  },
+};
+
+export const llmActualHexRetargetVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-hex-retarget.v1',
+  name: 'LLM Hex Retarget',
+  description: 'An OpenRouter-controlled Warlock starts with Hex on a dead target and should move it to a living enemy as a concrete bonus action.',
+  battleType: 'spell-followup-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 20,
+  tacticalTags: ['spell-followup', 'hex', 'retarget', 'bonus-action'],
+  designNotes: [
+    'Designed as a live-model harness validation for Hex retargeting.',
+    'The setup seeds a dead Hex target and removes Warlock spell slots so retargeting is the concrete follow-up rather than recasting Hex.',
+  ],
+  combatants: [
+    { monster: { ...actionSubsetHero('Warlock', 5, ['Hex']), initialResources: {} }, team: 'red', position: { x: 2, y: 2 } },
+    { monster: inertHero('Fighter', 1, 1), team: 'blue', position: { x: 8, y: 8 } },
+    { monster: inertHero('Fighter', 1, 40), team: 'blue', position: { x: 9, y: 8 } },
+  ],
+  setupBattleState: (state) => {
+    const warlock = state.creatures.find((creature) => creature.team === 'red');
+    const oldTarget = state.creatures.find((creature) => creature.team === 'blue' && creature.position.x === 8);
+    const newTarget = state.creatures.find((creature) => creature.team === 'blue' && creature.position.x === 9);
+    if (!warlock || !oldTarget || !newTarget) throw new Error('Hex retarget setup expected Warlock and targets');
+    state.initiativeOrder = [warlock.id, ...state.initiativeOrder.filter((id) => id !== warlock.id)];
+    warlock.initiative = 30;
+    warlock.concentratingOn = 'hex';
+    oldTarget.isAlive = false;
+    oldTarget.currentHp = 0;
+    oldTarget.activeBuffs.push({
+      name: 'Hex',
+      key: 'hex',
+      casterId: warlock.id,
+      appliedRound: 1,
+      endRound: 30,
+      requiresConcentration: true,
+      damageRider: '1d6 necrotic',
+    });
+  },
+};
+
+export const llmActualSwallowVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-swallow-purple-worm.v1',
+  name: 'LLM Swallow Purple Worm',
+  description: 'An OpenRouter-controlled Purple Worm starts with a grappled target and should choose concrete Swallow.',
+  battleType: 'special-action-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-monsters',
+  scenarioVersion: '1.0.0',
+  gridSize: 20,
+  tacticalTags: ['special-action', 'swallow', 'grapple'],
+  designNotes: [
+    'Designed as a live-model harness validation for grapple-gated monster special actions.',
+    'The setup starts with one target grappled by the worm and removes other worm attacks so Swallow is the concrete non-delegate action under test.',
+  ],
+  combatants: [
+    { monster: purpleWormSwallowOnly(), team: 'red', position: { x: 3, y: 3 } },
+    { monster: inertHero('Fighter', 5, 80), team: 'blue', position: { x: 4, y: 3 } },
+    { monster: inertHero('Fighter', 5, 80), team: 'blue', position: { x: 7, y: 3 } },
+  ],
+  setupBattleState: (state) => {
+    const worm = state.creatures.find((creature) => creature.team === 'red');
+    const grappled = state.creatures.find((creature) => creature.team === 'blue' && creature.position.x === 4);
+    if (!worm || !grappled) throw new Error('Swallow setup expected Purple Worm and grappled target');
+    state.initiativeOrder = [worm.id, ...state.initiativeOrder.filter((id) => id !== worm.id)];
+    worm.initiative = 30;
+    grappled.conditions.push('grappled');
+    grappled.conditionTimers.push({
+      condition: 'grappled',
+      duration: 'end_of_next_turn',
+      appliedRound: state.round,
+      sourceId: worm.id,
+    });
+  },
+};
 
 export const llmActualCuttingWordsAttackVerifyScenario: D20benchScenario = {
   id: 'hidden.llm-cutting-words-attack-party.v1',
@@ -1062,7 +1238,32 @@ export const llmActualStabiliseVerifyV3Season: LlmSeasonConfig = {
   seeds: [2],
 };
 
+export const llmActualSpellFollowupVerifySeason: LlmSeasonConfig = {
+  id: 'llm-actual-spell-followup-verify-v1',
+  description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control maintained Witch Bolt damage, Hex retargeting, and Swallow as concrete follow-up actions from seeded hidden states.',
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    'battlecast.aggressive',
+  ],
+  scenarios: [
+    llmActualLinkedDamageVerifyScenario,
+    llmActualHexRetargetVerifyScenario,
+    llmActualSwallowVerifyScenario,
+  ],
+  seeds: [1],
+  maxRounds: 2,
+  pairings: llmActualCheapVerifyModelAgents.map((model) => ({
+    redAgent: model,
+    blueAgent: 'battlecast.aggressive' as const,
+  })),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
 export const llmSeasons = [
+  llmActualSpellFollowupVerifySeason,
   llmActualStabiliseVerifyV3Season,
   llmActualStabiliseVerifyV2Season,
   llmActualStabiliseVerifySeason,
@@ -1328,9 +1529,11 @@ export async function runLlmSeason(
   const overallPool = createRatingPool(config.agents, initialRating);
   const battleTypePools = new Map<BattleType, RatingPool>();
   const matches: LlmSeasonResult['matches'] = [];
+  const completedAgentMatches: AgentMatchResult[] = [];
 
   for (const outcome of outcomes) {
     if (!outcome || outcome.status !== 'completed') continue;
+    completedAgentMatches.push(outcome.match);
     const battleTypePool = getBattleTypePool(battleTypePools, outcome.fixture.scenario.battleType, config.agents, initialRating);
     const overallRatings = applyMatchRating({
       pool: overallPool,
@@ -1396,6 +1599,7 @@ export async function runLlmSeason(
       standings: finalizeStandings(pool),
     })),
     costSummary: finalizeCostSummary(costAccumulators),
+    harnessAudit: summarizeLlmHarnessAudit(completedAgentMatches),
     failures,
     matches,
   };
@@ -1438,6 +1642,21 @@ export function renderLlmSeasonMarkdown(result: LlmSeasonResult): string {
     '| --- | ---: | ---: | ---: | ---: | ---: |',
     ...result.costSummary.byModel.map((entry) =>
       `| ${entry.agentId} | ${entry.decisions} | ${entry.promptTokens} | ${entry.completionTokens} | ${entry.totalTokens} | $${entry.estimatedCostUsd.toFixed(6)} |`
+    ),
+    '',
+    '## Harness Audit',
+    '',
+    `Model turn starts: ${result.harnessAudit.modelTurnStarts}`,
+    `Model action resolutions: ${result.harnessAudit.modelActionResolutions}`,
+    `Model delegate legal-action exposures: ${result.harnessAudit.modelDelegateLegalActionExposures}`,
+    `Model delegate selections: ${result.harnessAudit.modelDelegateSelections}`,
+    `Stepwise model turns: ${result.harnessAudit.modelStepwiseTurns} (${result.harnessAudit.modelStepwiseContinuations} post-action continuations, max ${result.harnessAudit.maxModelActionsInTurn} actions in one turn)`,
+    `Tool-call decisions: ${result.harnessAudit.modelToolCallDecisions} (${result.harnessAudit.modelJsonFallbackDecisions} JSON fallbacks, ${result.harnessAudit.modelRepairAttempts} repair attempts)`,
+    '',
+    '| Accepted Action Key | Count |',
+    '| --- | ---: |',
+    ...result.harnessAudit.acceptedActionCounts.slice(0, 20).map((entry) =>
+      `| ${entry.actionKey} | ${entry.count} |`
     ),
     '',
     ...(result.failures.length ? [
@@ -1771,6 +1990,101 @@ function summarizeMatchCost(
   }
 
   return { decisions, estimatedCostUsd };
+}
+
+export function summarizeLlmHarnessAudit(matches: AgentMatchResult[]): LlmSeasonHarnessAudit {
+  const modelActionsByTurn = new Map<string, number>();
+  const acceptedActionCounts = new Map<string, number>();
+  let modelTurnStarts = 0;
+  let modelActionResolutions = 0;
+  let modelDelegateLegalActionExposures = 0;
+  let modelDelegateSelections = 0;
+  let modelToolCallDecisions = 0;
+  let modelJsonFallbackDecisions = 0;
+  let modelRepairAttempts = 0;
+
+  for (const match of matches) {
+    for (const event of match.replay) {
+      if (event.type === 'turn_started' && isOpenRouterController(event.controller)) {
+        modelTurnStarts += 1;
+        if (event.legalActions.some((action) => action.type === 'battlecast_tactic')) {
+          modelDelegateLegalActionExposures += 1;
+        }
+        continue;
+      }
+
+      if (event.type !== 'action_resolved' || !isOpenRouterAgentId(event.agentId)) {
+        continue;
+      }
+
+      modelActionResolutions += 1;
+      if (event.acceptedAction.type === 'battlecast_tactic') {
+        modelDelegateSelections += 1;
+      }
+
+      const actionKey = acceptedActionAuditKey(event.acceptedAction);
+      acceptedActionCounts.set(actionKey, (acceptedActionCounts.get(actionKey) ?? 0) + 1);
+      const turnKey = `${match.matchId}:${event.round}:${event.turnIndex}:${event.activeCreatureId}`;
+      modelActionsByTurn.set(turnKey, (modelActionsByTurn.get(turnKey) ?? 0) + 1);
+
+      if (event.llmTrace) {
+        if (event.llmTrace.toolCall) {
+          modelToolCallDecisions += 1;
+        } else {
+          modelJsonFallbackDecisions += 1;
+        }
+        modelRepairAttempts += Math.max(0, event.llmTrace.attempts - 1);
+      }
+    }
+  }
+
+  const actionCountsByTurn = [...modelActionsByTurn.values()];
+  return {
+    modelTurnStarts,
+    modelActionResolutions,
+    modelDelegateLegalActionExposures,
+    modelDelegateSelections,
+    modelStepwiseTurns: actionCountsByTurn.filter((count) => count > 1).length,
+    modelStepwiseContinuations: actionCountsByTurn.reduce((sum, count) => sum + Math.max(0, count - 1), 0),
+    maxModelActionsInTurn: actionCountsByTurn.reduce((max, count) => Math.max(max, count), 0),
+    modelToolCallDecisions,
+    modelJsonFallbackDecisions,
+    modelRepairAttempts,
+    acceptedActionCounts: [...acceptedActionCounts.entries()]
+      .map(([actionKey, count]) => ({ actionKey, count }))
+      .sort((left, right) => right.count - left.count || left.actionKey.localeCompare(right.actionKey)),
+  };
+}
+
+function isOpenRouterController(controller: ReplayEventController | undefined): boolean {
+  return controller?.mode === 'openrouter-llm' || isOpenRouterAgentId(controller?.agentId);
+}
+
+function isOpenRouterAgentId(agentId: string | undefined): boolean {
+  return typeof agentId === 'string' && agentId.startsWith('openrouter:');
+}
+
+function acceptedActionAuditKey(action: LegalAction): string {
+  switch (action.type) {
+    case 'attack':
+    case 'random_ray':
+    case 'spell':
+      return `${action.type}:${action.actionName}`;
+    case 'linked_bonus_damage':
+      return `linked_bonus_damage:${action.buffKey}`;
+    case 'spell_retarget':
+      return `spell_retarget:${action.buffKey}`;
+    case 'smite':
+      return `smite:${action.smite}`;
+    case 'reaction':
+      return `reaction:${action.reaction}`;
+    case 'class_feature':
+      return `class_feature:${action.feature}`;
+    case 'battlecast_tactic':
+      return `battlecast_tactic:${action.tactic}`;
+    default:
+      return action.type;
+  }
 }
 
 function finalizeCostSummary(accumulators: Map<string, LlmModelCostSummary>): LlmSeasonCostSummary {

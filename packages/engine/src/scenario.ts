@@ -27,6 +27,7 @@ export interface D20benchScenario {
   tacticalTags?: string[];
   designNotes?: string[];
   combatants: BattlecastCombatantSpec[];
+  setupBattleState?: (state: BattleState) => void;
 }
 
 export interface D20benchScenarioRun {

@@ -63,6 +63,8 @@ For each active creature:
    - latency
    - logs, animation events, and state hash
 
+Each LLM season result also includes `harnessAudit`, a model-only summary of delegate legal-action exposures, delegate selections, concrete action resolutions, stepwise same-turn continuations, tool-call decisions, JSON fallbacks, repair attempts, and accepted action-key counts. This makes fairness checks visible in `standings.json`, `standings.md`, and the results site instead of requiring ad hoc replay parsing.
+
 ## Tool-Call Reliability And Raw Preservation
 
 The OpenRouter adapter uses tools rather than freeform JSON as the primary contract. Each request includes a single `choose_d20bench_action` function whose `actionId` field is constrained to the current legal-action ids. When a model/provider supports forced tool choice, the request forces that tool. If OpenRouter reports that no route supports the forced `tool_choice` value, D20bench records that HTTP error, remembers that provider limitation for the model, and immediately retries the same decision with the tool schema still present but without forced `tool_choice`.
@@ -169,6 +171,7 @@ The first implementation is deliberately narrow:
 - `llm-actual-cheap-verify-v3` repeats that scope after tightening repair instructions so models must copy exact action ids rather than action labels such as `Longbow`.
 - `llm-actual-cheap-verify-v4` repeats that scope after adding Rogue Steady Aim as a concrete class-feature action.
 - `llm-actual-cheap-verify-v5` repeats that scope after widening `actual-actions-v1` with stepwise class features, line/cone AoE directions, and target-level random monster rays.
+- `llm-actual-spell-followup-verify-v1` is a focused hidden validation season for cheap models controlling seeded maintained Witch Bolt damage, Hex retargeting, and Swallow as concrete actual actions.
 - `llm-actual-cheap-verify-v6` repeats that scope after tightening repair retries to show only exact currently legal action ids.
 - `llm-actual-cheap-verify-v7` repeats that scope after adding concrete Dodge and Help actions.
 - `llm-actual-cheap-verify-v8` repeats that scope after making Paladin Divine Smite an explicit post-hit action choice instead of an automatic resource spend.

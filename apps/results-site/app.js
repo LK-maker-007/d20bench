@@ -192,17 +192,27 @@
     const battleTypeCount = battleTypes(currentSeason).length;
     const totalDecisions = matches.filter((match) => match.winner && match.winner !== "draw").length;
     const topWinRate = top ? formatPercent(recordWinRate(top)) : "0%";
+    const audit = currentSeason.harnessAudit;
+    const metrics = [
+      metric("Matches", formatInteger(matches.length), `${formatInteger(totalDecisions)} decisions`),
+      metric("Agents", formatInteger(agents.length), top ? `${shortName(top.agentId)} leads` : "No leader"),
+      metric("Battle Types", formatInteger(battleTypeCount || 1), currentSeason.kFactor ? `K ${currentSeason.kFactor}` : "Single board"),
+      metric("Top Rating", top ? formatRating(top.rating) : "0", top ? `${topWinRate} win rate` : "No standings"),
+    ];
+
+    if (audit) {
+      metrics.push(
+        metric("LLM Actions", formatInteger(audit.modelActionResolutions || 0), `${formatInteger(audit.modelToolCallDecisions || 0)} tool calls`),
+        metric("Delegates", formatInteger(audit.modelDelegateSelections || 0), `${formatInteger(audit.modelDelegateLegalActionExposures || 0)} exposed`),
+        metric("Stepwise", formatInteger(audit.modelStepwiseTurns || 0), `max ${formatInteger(audit.maxModelActionsInTurn || 0)} actions`),
+      );
+    }
 
     el.seasonGenerated.textContent = formatDate(currentSeason.generatedAt);
     el.seasonTitle.textContent = currentSeason.seasonId || "Benchmark Results";
     el.seasonDescription.textContent = currentSeason.description || "Deterministic benchmark season results.";
     el.ratingSpread.textContent = `${formatRating(spread)} Elo`;
-    el.metricGrid.innerHTML = [
-      metric("Matches", formatInteger(matches.length), `${formatInteger(totalDecisions)} decisions`),
-      metric("Agents", formatInteger(agents.length), top ? `${shortName(top.agentId)} leads` : "No leader"),
-      metric("Battle Types", formatInteger(battleTypeCount || 1), currentSeason.kFactor ? `K ${currentSeason.kFactor}` : "Single board"),
-      metric("Top Rating", top ? formatRating(top.rating) : "0", top ? `${topWinRate} win rate` : "No standings"),
-    ].join("");
+    el.metricGrid.innerHTML = metrics.join("");
 
     renderRatingChart(standings);
   }
@@ -777,6 +787,7 @@
     ids.add("llm-frontier-smart-v1");
     ids.add("llm-frontier-smart-top3-10x-v1");
     ids.add("llm-frontier-smart-glm-10x-v1");
+    ids.add("llm-actual-spell-followup-verify-v1");
     ids.add("llm-actual-retaliation-verify-v1");
     ids.add("llm-actual-class-feature-verify-v2");
     ids.add("llm-actual-class-feature-verify-v1");

@@ -442,6 +442,7 @@ function initAgentBattleState(scenario: D20benchScenario): BattleState {
   state.teamTactics = scenario.teamTactics ?? DEFAULT_TACTICS;
   state.terrainBlocked = buildMovementBlockedSet(map?.terrain);
   state.terrainSightBlocked = buildSightBlockedSet(map?.terrain);
+  scenario.setupBattleState?.(state);
   return state;
 }
 

@@ -1,0 +1,526 @@
+{
+  "seasonId": "llm-actual-spell-followup-verify-v1",
+  "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control maintained Witch Bolt damage, Hex retargeting, and Swallow as concrete follow-up actions from seeded hidden states.",
+  "generatedAt": "2026-06-22T16:10:16.879Z",
+  "startedAt": "2026-06-22T16:10:16.880Z",
+  "completedAt": "2026-06-22T16:10:17.032Z",
+  "llmActionSpace": "actual-actions-v1",
+  "initialRating": 1000,
+  "kFactor": 32,
+  "maxRounds": 2,
+  "concurrency": 4,
+  "totalMatches": 12,
+  "completedMatches": 12,
+  "failedMatches": 0,
+  "standings": [
+    {
+      "agentId": "openrouter:deepseek/deepseek-v4-flash",
+      "rating": 1013.3107839643094,
+      "matches": 3,
+      "wins": 2,
+      "losses": 1,
+      "draws": 0,
+      "score": 2
+    },
+    {
+      "agentId": "openrouter:mistralai/ministral-8b-2512",
+      "rating": 1012.692790239659,
+      "matches": 3,
+      "wins": 2,
+      "losses": 1,
+      "draws": 0,
+      "score": 2
+    },
+    {
+      "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "rating": 1012.1210582136945,
+      "matches": 3,
+      "wins": 2,
+      "losses": 1,
+      "draws": 0,
+      "score": 2
+    },
+    {
+      "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+      "rating": 1011.5918509344376,
+      "matches": 3,
+      "wins": 2,
+      "losses": 1,
+      "draws": 0,
+      "score": 2
+    },
+    {
+      "agentId": "battlecast.aggressive",
+      "rating": 950.2835166478995,
+      "matches": 12,
+      "wins": 4,
+      "losses": 8,
+      "draws": 0,
+      "score": 4
+    }
+  ],
+  "battleTypeStandings": [
+    {
+      "battleType": "spell-followup-smoke",
+      "standings": [
+        {
+          "agentId": "battlecast.aggressive",
+          "rating": 1012.735396866131,
+          "matches": 8,
+          "wins": 4,
+          "losses": 4,
+          "draws": 0,
+          "score": 4
+        },
+        {
+          "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+          "rating": 997.0737808307969,
+          "matches": 2,
+          "wins": 1,
+          "losses": 1,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "rating": 996.8974434515108,
+          "matches": 2,
+          "wins": 1,
+          "losses": 1,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:mistralai/ministral-8b-2512",
+          "rating": 996.7266526272253,
+          "matches": 2,
+          "wins": 1,
+          "losses": 1,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:deepseek/deepseek-v4-flash",
+          "rating": 996.566726224336,
+          "matches": 2,
+          "wins": 1,
+          "losses": 1,
+          "draws": 0,
+          "score": 1
+        }
+      ]
+    },
+    {
+      "battleType": "special-action-smoke",
+      "standings": [
+        {
+          "agentId": "openrouter:deepseek/deepseek-v4-flash",
+          "rating": 1016,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:mistralai/ministral-8b-2512",
+          "rating": 1015.263693206478,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "rating": 1014.5641271217237,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+          "rating": 1013.9017057911524,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "battlecast.aggressive",
+          "rating": 940.2704738806459,
+          "matches": 4,
+          "wins": 0,
+          "losses": 4,
+          "draws": 0,
+          "score": 0
+        }
+      ]
+    }
+  ],
+  "costSummary": {
+    "totalDecisions": 61,
+    "promptTokens": 216764,
+    "completionTokens": 15110,
+    "totalTokens": 231874,
+    "estimatedCostUsd": 0.022113445,
+    "byModel": [
+      {
+        "agentId": "openrouter:mistralai/ministral-8b-2512",
+        "model": "mistralai/ministral-8b-2512",
+        "decisions": 17,
+        "promptTokens": 63227,
+        "completionTokens": 438,
+        "totalTokens": 63665,
+        "estimatedCostUsd": 0.009549750000000001
+      },
+      {
+        "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "decisions": 22,
+        "promptTokens": 78815,
+        "completionTokens": 13823,
+        "totalTokens": 92638,
+        "estimatedCostUsd": 0.008716954999999998
+      },
+      {
+        "agentId": "openrouter:deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-flash",
+        "decisions": 9,
+        "promptTokens": 32049,
+        "completionTokens": 556,
+        "totalTokens": 32605,
+        "estimatedCostUsd": 0.00298449
+      },
+      {
+        "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "decisions": 13,
+        "promptTokens": 42673,
+        "completionTokens": 293,
+        "totalTokens": 42966,
+        "estimatedCostUsd": 0.00086225
+      }
+    ]
+  },
+  "harnessAudit": {
+    "modelTurnStarts": 64,
+    "modelActionResolutions": 64,
+    "modelDelegateLegalActionExposures": 0,
+    "modelDelegateSelections": 0,
+    "modelStepwiseTurns": 18,
+    "modelStepwiseContinuations": 44,
+    "maxModelActionsInTurn": 8,
+    "modelToolCallDecisions": 57,
+    "modelJsonFallbackDecisions": 4,
+    "modelRepairAttempts": 1,
+    "acceptedActionCounts": [
+      {
+        "actionKey": "move_to",
+        "count": 23
+      },
+      {
+        "actionKey": "end_turn",
+        "count": 17
+      },
+      {
+        "actionKey": "move_toward",
+        "count": 6
+      },
+      {
+        "actionKey": "spell_retarget:hex",
+        "count": 4
+      },
+      {
+        "actionKey": "dash",
+        "count": 3
+      },
+      {
+        "actionKey": "dodge",
+        "count": 3
+      },
+      {
+        "actionKey": "linked_bonus_damage:witch-bolt",
+        "count": 3
+      },
+      {
+        "actionKey": "spell:Swallow",
+        "count": 3
+      },
+      {
+        "actionKey": "help",
+        "count": 2
+      }
+    ]
+  },
+  "failures": [],
+  "matches": [
+    {
+      "matchId": "hidden.llm-linked-damage-witch-bolt.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+      "scenarioId": "hidden.llm-linked-damage-witch-bolt.v1",
+      "battleType": "spell-followup-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1000,
+      "redRatingAfter": 1016,
+      "blueRatingAfter": 984,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1000,
+      "redBattleTypeRatingAfter": 1016,
+      "blueBattleTypeRatingAfter": 984,
+      "finalStateHash": "4b0741917e0d2b1108c991390b821edfec0cbe46b005fefc629aac49870d592b",
+      "llmDecisions": 2,
+      "estimatedCostUsd": 0.00046728
+    },
+    {
+      "matchId": "hidden.llm-linked-damage-witch-bolt.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+      "scenarioId": "hidden.llm-linked-damage-witch-bolt.v1",
+      "battleType": "spell-followup-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 984,
+      "redRatingAfter": 1015.263693206478,
+      "blueRatingAfter": 968.736306793522,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 984,
+      "redBattleTypeRatingAfter": 1015.263693206478,
+      "blueBattleTypeRatingAfter": 968.736306793522,
+      "finalStateHash": "f8052a780f1ffb52b8a7694dcb50dd29171d674991ecddd1749eb7f52067bed6",
+      "llmDecisions": 2,
+      "estimatedCostUsd": 0.0007034999999999999
+    },
+    {
+      "matchId": "hidden.llm-linked-damage-witch-bolt.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+      "scenarioId": "hidden.llm-linked-damage-witch-bolt.v1",
+      "battleType": "spell-followup-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 968.736306793522,
+      "redRatingAfter": 1014.5641271217237,
+      "blueRatingAfter": 954.1721796717983,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 968.736306793522,
+      "redBattleTypeRatingAfter": 1014.5641271217237,
+      "blueBattleTypeRatingAfter": 954.1721796717983,
+      "finalStateHash": "52277ef23b5aaf8a48d460427ee9d4ab90d1771d6bd96cf198518fd74132df28",
+      "llmDecisions": 2,
+      "estimatedCostUsd": 0.00009292999999999999
+    },
+    {
+      "matchId": "hidden.llm-linked-damage-witch-bolt.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+      "scenarioId": "hidden.llm-linked-damage-witch-bolt.v1",
+      "battleType": "spell-followup-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 954.1721796717983,
+      "redRatingAfter": 1013.9017057911524,
+      "blueRatingAfter": 940.2704738806459,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 954.1721796717983,
+      "redBattleTypeRatingAfter": 1013.9017057911524,
+      "blueBattleTypeRatingAfter": 940.2704738806459,
+      "finalStateHash": "f8052a780f1ffb52b8a7694dcb50dd29171d674991ecddd1749eb7f52067bed6",
+      "llmDecisions": 2,
+      "estimatedCostUsd": 0.000562835
+    },
+    {
+      "matchId": "hidden.llm-hex-retarget.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+      "scenarioId": "hidden.llm-hex-retarget.v1",
+      "battleType": "spell-followup-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1016,
+      "blueRatingBefore": 940.2704738806459,
+      "redRatingAfter": 996.566726224336,
+      "blueRatingAfter": 959.7037476563099,
+      "redBattleTypeRatingBefore": 1016,
+      "blueBattleTypeRatingBefore": 940.2704738806459,
+      "redBattleTypeRatingAfter": 996.566726224336,
+      "blueBattleTypeRatingAfter": 959.7037476563099,
+      "finalStateHash": "b18ed22a468eaf33c12f4735bb9f2e85d68ffc3b595e6ab80c40fbba5df9dcbe",
+      "llmDecisions": 4,
+      "estimatedCostUsd": 0.00142362
+    },
+    {
+      "matchId": "hidden.llm-hex-retarget.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+      "scenarioId": "hidden.llm-hex-retarget.v1",
+      "battleType": "spell-followup-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1015.263693206478,
+      "blueRatingBefore": 959.7037476563099,
+      "redRatingAfter": 996.7266526272253,
+      "blueRatingAfter": 978.2407882355626,
+      "redBattleTypeRatingBefore": 1015.263693206478,
+      "blueBattleTypeRatingBefore": 959.7037476563099,
+      "redBattleTypeRatingAfter": 996.7266526272253,
+      "blueBattleTypeRatingAfter": 978.2407882355626,
+      "finalStateHash": "c9d739d0f6da30f854c7162d787d5ba24bade6400c6117b2fd1b44a1fa3e26c1",
+      "llmDecisions": 7,
+      "estimatedCostUsd": 0.0040961999999999995
+    },
+    {
+      "matchId": "hidden.llm-hex-retarget.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+      "scenarioId": "hidden.llm-hex-retarget.v1",
+      "battleType": "spell-followup-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1014.5641271217237,
+      "blueRatingBefore": 978.2407882355626,
+      "redRatingAfter": 996.8974434515108,
+      "blueRatingAfter": 995.9074719057755,
+      "redBattleTypeRatingBefore": 1014.5641271217237,
+      "blueBattleTypeRatingBefore": 978.2407882355626,
+      "redBattleTypeRatingAfter": 996.8974434515108,
+      "blueBattleTypeRatingAfter": 995.9074719057755,
+      "finalStateHash": "0a202d6e558934a566534b7c999e26565bdb03927981751d194d86f8273e1455",
+      "llmDecisions": 5,
+      "estimatedCostUsd": 0.00034912999999999996
+    },
+    {
+      "matchId": "hidden.llm-hex-retarget.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+      "scenarioId": "hidden.llm-hex-retarget.v1",
+      "battleType": "spell-followup-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1013.9017057911524,
+      "blueRatingBefore": 995.9074719057755,
+      "redRatingAfter": 997.0737808307969,
+      "blueRatingAfter": 1012.735396866131,
+      "redBattleTypeRatingBefore": 1013.9017057911524,
+      "blueBattleTypeRatingBefore": 995.9074719057755,
+      "redBattleTypeRatingAfter": 997.0737808307969,
+      "blueBattleTypeRatingAfter": 1012.735396866131,
+      "finalStateHash": "ba80b7b36ff46d08331cf069ae14471eaabbaa2937cde29ba42e6c4a35facb77",
+      "llmDecisions": 6,
+      "estimatedCostUsd": 0.002617095
+    },
+    {
+      "matchId": "hidden.llm-swallow-purple-worm.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+      "scenarioId": "hidden.llm-swallow-purple-worm.v1",
+      "battleType": "special-action-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 996.566726224336,
+      "blueRatingBefore": 1012.735396866131,
+      "redRatingAfter": 1013.3107839643094,
+      "blueRatingAfter": 995.9913391261576,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1000,
+      "redBattleTypeRatingAfter": 1016,
+      "blueBattleTypeRatingAfter": 984,
+      "finalStateHash": "003a45a10b87f9dc7bcc8bd658df9eaf727a355b3b985f614aa83f3b8abfb02b",
+      "llmDecisions": 3,
+      "estimatedCostUsd": 0.00109359
+    },
+    {
+      "matchId": "hidden.llm-swallow-purple-worm.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+      "scenarioId": "hidden.llm-swallow-purple-worm.v1",
+      "battleType": "special-action-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 996.7266526272253,
+      "blueRatingBefore": 995.9913391261576,
+      "redRatingAfter": 1012.692790239659,
+      "blueRatingAfter": 980.025201513724,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 984,
+      "redBattleTypeRatingAfter": 1015.263693206478,
+      "blueBattleTypeRatingAfter": 968.736306793522,
+      "finalStateHash": "7c6705ec05dbace8c864f3f8c7c88d3e548b4a87edaee055ae9629cd18555be1",
+      "llmDecisions": 8,
+      "estimatedCostUsd": 0.0047500500000000005
+    },
+    {
+      "matchId": "hidden.llm-swallow-purple-worm.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+      "scenarioId": "hidden.llm-swallow-purple-worm.v1",
+      "battleType": "special-action-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 996.8974434515108,
+      "blueRatingBefore": 980.025201513724,
+      "redRatingAfter": 1012.1210582136945,
+      "blueRatingAfter": 964.8015867515403,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 968.736306793522,
+      "redBattleTypeRatingAfter": 1014.5641271217237,
+      "blueBattleTypeRatingAfter": 954.1721796717983,
+      "finalStateHash": "7e86ca58d3ae3af8c17747db85278ff6ba823c40429cec03c4895d1edbb7cc0f",
+      "llmDecisions": 6,
+      "estimatedCostUsd": 0.00042019000000000003
+    },
+    {
+      "matchId": "hidden.llm-swallow-purple-worm.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+      "scenarioId": "hidden.llm-swallow-purple-worm.v1",
+      "battleType": "special-action-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 997.0737808307969,
+      "blueRatingBefore": 964.8015867515403,
+      "redRatingAfter": 1011.5918509344376,
+      "blueRatingAfter": 950.2835166478995,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 954.1721796717983,
+      "redBattleTypeRatingAfter": 1013.9017057911524,
+      "blueBattleTypeRatingAfter": 940.2704738806459,
+      "finalStateHash": "78c08abfa19943924ff6f81f8b5a7760d43f0066f90da0f348848a0ea4236987",
+      "llmDecisions": 14,
+      "estimatedCostUsd": 0.005537025
+    }
+  ]
+}

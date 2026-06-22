@@ -22,6 +22,7 @@ import {
   llmActualReactionVerifySeason,
   llmActualRecklessVerifySeason,
   llmActualRetaliationVerifySeason,
+  llmActualSpellFollowupVerifySeason,
   llmFrontierModelAgents,
   llmFrontierSmartGlmTenXSeason,
   llmFrontierSmartSeason,
@@ -34,6 +35,8 @@ import {
   llmToolcallGlmSmartTwentySeason,
   llmToolcallVerifyModelAgents,
   sanitizeBenchmarkErrorForArtifacts,
+  summarizeLlmHarnessAudit,
+  type AgentMatchResult,
 } from '../src/index.js';
 
 describe('LLM seasons', () => {
@@ -328,6 +331,22 @@ describe('LLM seasons', () => {
     expect(llmActualClassFeatureVerifyV2Season.id).toBe('llm-actual-class-feature-verify-v2');
     expect(llmActualClassFeatureVerifyV2Season.llmActionSpace).toBe('actual-actions-v1');
     expect(llmActualClassFeatureVerifyV2Season.pairings).toEqual(llmActualClassFeatureVerifySeason.pairings);
+    expect(llmActualSpellFollowupVerifySeason.id).toBe('llm-actual-spell-followup-verify-v1');
+    expect(llmActualSpellFollowupVerifySeason.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualSpellFollowupVerifySeason.maxRounds).toBe(2);
+    expect(llmActualSpellFollowupVerifySeason.scenarios.map((scenario) => scenario.id)).toEqual([
+      'hidden.llm-linked-damage-witch-bolt.v1',
+      'hidden.llm-hex-retarget.v1',
+      'hidden.llm-swallow-purple-worm.v1',
+    ]);
+    expect(llmActualSpellFollowupVerifySeason.scenarios.every((scenario) =>
+      typeof scenario.setupBattleState === 'function'
+    )).toBe(true);
+    expect(llmActualSpellFollowupVerifySeason.pairings).toHaveLength(4);
+    expect(llmActualSpellFollowupVerifySeason.pairings?.every((pairing) =>
+      pairing.redAgent.startsWith('openrouter:') &&
+      pairing.blueAgent === 'battlecast.aggressive'
+    )).toBe(true);
   });
 
   it('defines a twenty-match GLM post-toolcall verification season', () => {
@@ -395,5 +414,126 @@ describe('LLM seasons', () => {
 
     expect(pairings).toHaveLength(llmToolcallFrontierVerifyModelAgents.length * 2);
     expect([...matchesByModel.values()]).toEqual(llmToolcallFrontierVerifyModelAgents.map(() => 16));
+  });
+
+  it('summarizes model-only harness audit counters from replay events', () => {
+    const match = {
+      matchId: 'audit-match',
+      replay: [
+        {
+          type: 'turn_started',
+          matchId: 'audit-match',
+          round: 1,
+          turnIndex: 0,
+          turnStep: 0,
+          activeCreatureId: 'fighter-red',
+          activeCreatureName: 'Fighter',
+          controller: { mode: 'openrouter-llm', agentId: 'openrouter:test/model', model: 'test/model' },
+          legalActions: [
+            { id: 'attack:longsword:goblin-blue', type: 'attack', actionName: 'Longsword', targetId: 'goblin-blue', targetName: 'Goblin', expectedDamage: 7 },
+            { id: 'end_turn', type: 'end_turn' },
+          ],
+          stateHash: 'before-0',
+        },
+        {
+          type: 'action_resolved',
+          matchId: 'audit-match',
+          round: 1,
+          turnIndex: 0,
+          turnStep: 0,
+          activeCreatureId: 'fighter-red',
+          agentId: 'openrouter:test/model',
+          requestedActionId: 'attack:longsword:goblin-blue',
+          acceptedAction: { id: 'attack:longsword:goblin-blue', type: 'attack', actionName: 'Longsword', targetId: 'goblin-blue', targetName: 'Goblin', expectedDamage: 7 },
+          llmTrace: {
+            provider: 'openrouter',
+            model: 'test/model',
+            requestedActionId: 'attack:longsword:goblin-blue',
+            acceptedActionId: 'attack:longsword:goblin-blue',
+            latencyMs: 10,
+            structuredOutput: false,
+            repairedJson: false,
+            toolCall: true,
+            attempts: 2,
+            rawTraceIds: ['trace-1'],
+          },
+          logs: [],
+          events: [],
+          stateHash: 'after-0',
+        },
+        {
+          type: 'turn_started',
+          matchId: 'audit-match',
+          round: 1,
+          turnIndex: 0,
+          turnStep: 1,
+          activeCreatureId: 'fighter-red',
+          activeCreatureName: 'Fighter',
+          controller: { mode: 'openrouter-llm', agentId: 'openrouter:test/model', model: 'test/model' },
+          legalActions: [
+            { id: 'battlecast_tactic:smart', type: 'battlecast_tactic', tactic: 'smart' },
+            { id: 'end_turn', type: 'end_turn' },
+          ],
+          stateHash: 'before-1',
+        },
+        {
+          type: 'action_resolved',
+          matchId: 'audit-match',
+          round: 1,
+          turnIndex: 0,
+          turnStep: 1,
+          activeCreatureId: 'fighter-red',
+          agentId: 'openrouter:test/model',
+          requestedActionId: 'battlecast_tactic:smart',
+          acceptedAction: { id: 'battlecast_tactic:smart', type: 'battlecast_tactic', tactic: 'smart' },
+          llmTrace: {
+            provider: 'openrouter',
+            model: 'test/model',
+            requestedActionId: 'battlecast_tactic:smart',
+            acceptedActionId: 'battlecast_tactic:smart',
+            latencyMs: 10,
+            structuredOutput: false,
+            repairedJson: true,
+            toolCall: false,
+            attempts: 1,
+            rawTraceIds: ['trace-2'],
+          },
+          logs: [],
+          events: [],
+          stateHash: 'after-1',
+        },
+        {
+          type: 'action_resolved',
+          matchId: 'audit-match',
+          round: 1,
+          turnIndex: 0,
+          turnStep: 1,
+          activeCreatureId: 'fighter-red',
+          agentId: 'battlecast.smart',
+          requestedActionId: 'battlecast_tactic:smart',
+          acceptedAction: { id: 'battlecast_tactic:smart', type: 'battlecast_tactic', tactic: 'smart' },
+          logs: [],
+          events: [],
+          stateHash: 'ignored-baseline-action',
+        },
+      ],
+    } as unknown as AgentMatchResult;
+
+    expect(summarizeLlmHarnessAudit([match])).toEqual({
+      modelTurnStarts: 2,
+      modelActionResolutions: 2,
+      modelDelegateLegalActionExposures: 1,
+      modelDelegateSelections: 1,
+      modelStepwiseTurns: 1,
+      modelStepwiseContinuations: 1,
+      maxModelActionsInTurn: 2,
+      modelToolCallDecisions: 1,
+      modelJsonFallbackDecisions: 1,
+      modelRepairAttempts: 1,
+      acceptedActionCounts: [
+        { actionKey: 'attack:Longsword', count: 1 },
+        { actionKey: 'battlecast_tactic:smart', count: 1 },
+      ],
+    });
   });
 });
