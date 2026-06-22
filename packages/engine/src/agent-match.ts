@@ -5,8 +5,10 @@ import {
   creatureDistance,
   distance,
   executeSpell,
+  getActiveSpeed,
   getFootprintSize,
   getEffectiveMoveSpeed,
+  getHydraHeadCount,
   getAoETargets,
   hasResource,
   initBattle,
@@ -26,8 +28,14 @@ import {
 import type { Creature } from './battlecast/types/monster.js';
 import { BASE_DURATIONS } from './battlecast/types/animation.js';
 import { moveToDestination, moveToward } from './battlecast/engine/ai-movement.js';
-import { beginBattlecastControlledTurn, executeTurn, runOpportunityAttacks } from './battlecast/engine/ai-turn.js';
-import { canSee, estimateActionDamage, getActiveActions } from './battlecast/engine/ai-targeting.js';
+import {
+  beginBattlecastControlledTurn,
+  executeTurn,
+  runOpportunityAttacks,
+  type OpportunityAttackDecisionContext,
+  type OpportunityAttackHooks,
+} from './battlecast/engine/ai-turn.js';
+import { canSee, estimateActionDamage, getActiveActions, getMeleeActions } from './battlecast/engine/ai-targeting.js';
 import { abilityModifier, battlecastRandom, withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
 import { getEligibleWildShapeBeasts } from './battlecast/data/heroes.js';
 import { maps } from './battlecast/data/maps.js';
@@ -39,6 +47,7 @@ import {
   estimateAttackRollBudget,
   findLegalAction,
   generateLegalActions,
+  generateOpportunityReactionActions,
   type LegalAction,
   type LegalActionCatalogue,
 } from './legal-actions.js';
@@ -234,6 +243,7 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
             state,
             active,
             agent,
+            controllers: { red, blue },
             agentRng,
             turnStart,
             replay,
@@ -241,6 +251,58 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
             traceSink: spec.llmDecisionTraceSink,
           });
           checkBattleComplete(state);
+          continue;
+        }
+
+        if (agent.kind === 'battlecast-tactic' && (spec.llmActionSpace ?? 'primitive') === 'actual-actions-v1') {
+          const catalogue = createActionCatalogueForAgent(state, active, agent, spec.llmActionSpace ?? 'primitive');
+          replay.push({
+            type: 'turn_started',
+            matchId,
+            round: state.round,
+            turnIndex: state.turnIndex,
+            activeCreatureId: active.id,
+            activeCreatureName: active.displayName,
+            controller: describeAgentController(agent),
+            legalActions: catalogue.actions,
+            stateHash: hashBattlecastState(state),
+          });
+
+          const logsBefore = turnStart.logsBefore;
+          const eventsBefore = turnStart.eventsBefore;
+          const reactions = await prepareOpportunityReactionChoicesForBattlecastTurn({
+            state,
+            active,
+            tactic: agent.tactic,
+            controllers: { red, blue },
+            agentRng,
+            matchId,
+            traceSink: spec.llmDecisionTraceSink,
+          });
+          const opportunityAttacks = createOpportunityAttackHooks({
+            state,
+            replay,
+            matchId,
+            controllers: { red, blue },
+            decisions: reactions,
+          });
+          applyBattlecastTacticTurn(state, active, agent.tactic, turnStart.turnStartAlreadyProcessed, opportunityAttacks);
+          checkBattleComplete(state);
+
+          const acceptedAction = createBattlecastTacticAction(agent.tactic);
+          replay.push({
+            type: 'action_resolved',
+            matchId,
+            round: state.round,
+            turnIndex: state.turnIndex,
+            activeCreatureId: active.id,
+            agentId: agent.id,
+            requestedActionId: acceptedAction.id,
+            acceptedAction,
+            logs: state.logs.slice(logsBefore),
+            events: state.events.slice(eventsBefore),
+            stateHash: hashBattlecastState(state),
+          });
           continue;
         }
 
@@ -411,6 +473,21 @@ interface ActualActionApplyResult {
   ended: boolean;
 }
 
+interface MatchControllers {
+  red: Agent;
+  blue: Agent;
+}
+
+interface PreparedOpportunityReaction {
+  agent: Extract<Agent, { kind: 'openrouter-llm' }>;
+  catalogue: LegalActionCatalogue;
+  requestedActionId: string;
+  acceptedAction: Extract<LegalAction, { type: 'reaction' }>;
+  llmTrace: OpenRouterDecisionTrace;
+}
+
+type OpportunityReactionMap = Map<string, PreparedOpportunityReaction>;
+
 function processManualAgentTurnStart(input: {
   state: BattleState;
   active: Creature;
@@ -521,6 +598,7 @@ async function runStepwiseOpenRouterTurn(input: {
   state: BattleState;
   active: Creature;
   agent: Extract<Agent, { kind: 'openrouter-llm' }>;
+  controllers: MatchControllers;
   agentRng: ReturnType<typeof createRng>;
   turnStart: ManualTurnStartResult;
   replay: ReplayEvent[];
@@ -563,7 +641,19 @@ async function runStepwiseOpenRouterTurn(input: {
       const acceptedAction: LegalAction = { id: 'end_turn', type: 'end_turn' };
       const logsBefore = step === 0 ? input.turnStart.logsBefore : input.state.logs.length;
       const eventsBefore = step === 0 ? input.turnStart.eventsBefore : input.state.events.length;
-      applyActualLegalAction(input.state, input.active, acceptedAction, input.agent, actualTurn);
+      await applyActualLegalAction({
+        state: input.state,
+        active: input.active,
+        action: acceptedAction,
+        agent: input.agent,
+        actualTurn,
+        controllers: input.controllers,
+        agentRng: input.agentRng,
+        replay: input.replay,
+        matchId: input.matchId,
+        turnStep: step,
+        traceSink: input.traceSink,
+      });
       input.replay.push({
         type: 'action_resolved',
         matchId: input.matchId,
@@ -600,7 +690,19 @@ async function runStepwiseOpenRouterTurn(input: {
       },
       traceSink: input.traceSink,
     });
-    const applyResult = applyActualLegalAction(input.state, input.active, selection.acceptedAction, input.agent, actualTurn);
+    const applyResult = await applyActualLegalAction({
+      state: input.state,
+      active: input.active,
+      action: selection.acceptedAction,
+      agent: input.agent,
+      actualTurn,
+      controllers: input.controllers,
+      agentRng: input.agentRng,
+      replay: input.replay,
+      matchId: input.matchId,
+      turnStep: step,
+      traceSink: input.traceSink,
+    });
     checkBattleComplete(input.state);
     input.replay.push({
       type: 'action_resolved',
@@ -640,13 +742,14 @@ function applyBattlecastTacticTurn(
   active: Creature,
   tactic: TacticType,
   turnStartAlreadyProcessed = false,
+  opportunityAttacks?: OpportunityAttackHooks,
 ): void {
   state.teamTactics = {
     ...state.teamTactics,
     [active.team]: tactic,
   };
   active.stats.roundsSurvived = state.round;
-  executeTurn(state, active, { turnStartAlreadyProcessed });
+  executeTurn(state, active, { turnStartAlreadyProcessed, opportunityAttacks });
 }
 
 function createActionCatalogueForAgent(
@@ -670,13 +773,26 @@ function createActionCatalogueForAgent(
       });
 }
 
-function applyActualLegalAction(
-  state: BattleState,
-  active: Creature,
-  action: LegalAction,
-  agent: Agent,
-  actualTurn: ActualTurnContext,
-): ActualActionApplyResult {
+async function applyActualLegalAction(input: {
+  state: BattleState;
+  active: Creature;
+  action: LegalAction;
+  agent: Agent;
+  actualTurn: ActualTurnContext;
+  controllers: MatchControllers;
+  agentRng: ReturnType<typeof createRng>;
+  replay: ReplayEvent[];
+  matchId: string;
+  turnStep: number;
+  traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
+}): Promise<ActualActionApplyResult> {
+  const {
+    state,
+    active,
+    action,
+    agent,
+    actualTurn,
+  } = input;
   if (action.type === 'end_turn') {
     applyLegalAction(state, active, action, agent, true);
     actualTurn.ended = true;
@@ -686,7 +802,7 @@ function applyActualLegalAction(
   if (action.type === 'move_toward') {
     const before = { ...active.position };
     applyLegalAction(state, active, action, agent, true);
-    processPostMoveEffects(state, active, before, actualTurn);
+    await processPostMoveEffects(input, before);
     return { ended: false };
   }
 
@@ -704,7 +820,7 @@ function applyActualLegalAction(
         type: 'move',
       });
     }
-    processPostMoveEffects(state, active, before, actualTurn);
+    await processPostMoveEffects(input, before);
     return { ended: false };
   }
 
@@ -953,19 +1069,270 @@ function applyHelpAction(
   });
 }
 
-function processPostMoveEffects(
-  state: BattleState,
-  active: Creature,
+async function processPostMoveEffects(
+  input: {
+    state: BattleState;
+    active: Creature;
+    actualTurn: ActualTurnContext;
+    controllers: MatchControllers;
+    agentRng: ReturnType<typeof createRng>;
+    replay: ReplayEvent[];
+    matchId: string;
+    turnStep: number;
+    traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
+  },
   before: { x: number; y: number },
-  actualTurn: ActualTurnContext,
-): void {
+): Promise<void> {
+  const { state, active, actualTurn } = input;
   if (before.x === active.position.x && before.y === active.position.y) return;
   if (!actualTurn.disengaged) {
-    runOpportunityAttacks(state, active, before);
+    const reactions = await prepareOpportunityReactionChoicesForMove(input, before);
+    const hooks = createOpportunityAttackHooks({
+      state,
+      replay: input.replay,
+      matchId: input.matchId,
+      controllers: input.controllers,
+      decisions: reactions,
+    });
+    runOpportunityAttacks(state, active, before, hooks);
   }
   if (active.isAlive && !state.isComplete) {
     checkAuraEntry(state, active, before);
   }
+}
+
+async function prepareOpportunityReactionChoicesForMove(
+  input: {
+    state: BattleState;
+    active: Creature;
+    controllers: MatchControllers;
+    agentRng: ReturnType<typeof createRng>;
+    matchId: string;
+    turnStep?: number;
+    traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
+  },
+  before: { x: number; y: number },
+): Promise<OpportunityReactionMap> {
+  const triggers = opportunityReactionTriggers(input.state, input.active, before);
+  const decisions: OpportunityReactionMap = new Map();
+  for (const trigger of triggers) {
+    const agent = controllerForCreature(trigger.reactor, input.controllers);
+    if (agent.kind !== 'openrouter-llm') continue;
+    const decision = await chooseOpportunityReaction({
+      state: input.state,
+      reactor: trigger.reactor,
+      mover: input.active,
+      triggerCell: trigger.triggerCell,
+      agent,
+      agentRng: input.agentRng,
+      matchId: input.matchId,
+      turnStep: input.turnStep,
+      traceSink: input.traceSink,
+    });
+    if (decision) decisions.set(opportunityReactionKey(trigger.reactor, input.active), decision);
+  }
+  return decisions;
+}
+
+async function prepareOpportunityReactionChoicesForBattlecastTurn(input: {
+  state: BattleState;
+  active: Creature;
+  tactic: TacticType;
+  controllers: MatchControllers;
+  agentRng: ReturnType<typeof createRng>;
+  matchId: string;
+  traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
+}): Promise<OpportunityReactionMap> {
+  const decisions: OpportunityReactionMap = new Map();
+  if (!shouldPredeclareBattlecastOpportunityReactions(input.active, input.tactic)) {
+    return decisions;
+  }
+  for (const reactor of input.state.creatures) {
+    if (reactor.team === input.active.team) continue;
+    if (!canMakeOpportunityAttack(reactor, input.active)) continue;
+    const agent = controllerForCreature(reactor, input.controllers);
+    if (agent.kind !== 'openrouter-llm') continue;
+    const decision = await chooseOpportunityReaction({
+      state: input.state,
+      reactor,
+      mover: input.active,
+      triggerCell: { ...input.active.position },
+      agent,
+      agentRng: input.agentRng,
+      matchId: input.matchId,
+      traceSink: input.traceSink,
+    });
+    if (decision) decisions.set(opportunityReactionKey(reactor, input.active), decision);
+  }
+  return decisions;
+}
+
+function shouldPredeclareBattlecastOpportunityReactions(active: Creature, tactic: TacticType): boolean {
+  if (tactic === 'kiting') return true;
+  const hasMelee = getMeleeActions(active).length > 0;
+  const hasRanged = getActiveActions(active).some((action) =>
+    action.attackBonus !== undefined &&
+    action.legendaryOnly !== true &&
+    (action.type === 'ranged' || action.range)
+  );
+  return !hasMelee && hasRanged;
+}
+
+async function chooseOpportunityReaction(input: {
+  state: BattleState;
+  reactor: Creature;
+  mover: Creature;
+  triggerCell: { x: number; y: number };
+  agent: Extract<Agent, { kind: 'openrouter-llm' }>;
+  agentRng: ReturnType<typeof createRng>;
+  matchId: string;
+  turnStep?: number;
+  traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
+}): Promise<PreparedOpportunityReaction | undefined> {
+  const originalPosition = { ...input.mover.position };
+  input.mover.position = { ...input.triggerCell };
+  try {
+    const catalogue = generateOpportunityReactionActions(input.reactor, input.mover);
+    let selection: Awaited<ReturnType<typeof chooseOpenRouterAction>>;
+    try {
+      selection = await chooseOpenRouterAction(input.agent, {
+        state: input.state,
+        activeCreature: input.reactor,
+        catalogue,
+        rng: input.agentRng,
+        traceMeta: {
+          matchId: input.matchId,
+          round: input.state.round,
+          turnIndex: input.state.turnIndex,
+          turnStep: input.turnStep,
+          activeCreatureId: input.reactor.id,
+          activeCreatureName: input.reactor.displayName,
+          agentId: input.agent.id,
+        },
+        traceSink: input.traceSink,
+      });
+    } catch {
+      return undefined;
+    }
+    if (selection.acceptedAction.type !== 'reaction') return undefined;
+    return {
+      agent: input.agent,
+      catalogue,
+      requestedActionId: selection.requestedActionId,
+      acceptedAction: selection.acceptedAction,
+      llmTrace: selection.trace,
+    };
+  } finally {
+    input.mover.position = originalPosition;
+  }
+}
+
+function createOpportunityAttackHooks(input: {
+  state: BattleState;
+  replay: ReplayEvent[];
+  matchId: string;
+  controllers: MatchControllers;
+  decisions: OpportunityReactionMap;
+}): OpportunityAttackHooks {
+  const started = new WeakSet<OpportunityAttackDecisionContext>();
+  return {
+    chooseOpportunityAttack: (context) => {
+      const controller = controllerForCreature(context.reactor, input.controllers);
+      if (controller.kind !== 'openrouter-llm') return undefined;
+      const decision = input.decisions.get(opportunityReactionKey(context.reactor, context.mover));
+      if (!decision) return 'decline';
+      if (decision.acceptedAction.reaction === 'decline') return 'decline';
+      return context.meleeActions.find((action) => action.name === decision.acceptedAction.actionName) ?? 'decline';
+    },
+    beforeOpportunityAttack: (context, _action) => {
+      const decision = input.decisions.get(opportunityReactionKey(context.reactor, context.mover));
+      if (!decision || started.has(context)) return undefined;
+      started.add(context);
+      input.replay.push({
+        type: 'turn_started',
+        matchId: input.matchId,
+        round: input.state.round,
+        turnIndex: input.state.turnIndex,
+        activeCreatureId: context.reactor.id,
+        activeCreatureName: context.reactor.displayName,
+        controller: describeAgentController(decision.agent),
+        legalActions: decision.catalogue.actions,
+        stateHash: hashBattlecastState(input.state),
+      });
+      return {
+        logsBefore: input.state.logs.length,
+        eventsBefore: input.state.events.length,
+      };
+    },
+    afterOpportunityAttack: (context, _action, before) => {
+      const decision = input.decisions.get(opportunityReactionKey(context.reactor, context.mover));
+      if (!decision || !before) return;
+      input.replay.push({
+        type: 'action_resolved',
+        matchId: input.matchId,
+        round: input.state.round,
+        turnIndex: input.state.turnIndex,
+        activeCreatureId: context.reactor.id,
+        agentId: decision.agent.id,
+        requestedActionId: decision.requestedActionId,
+        acceptedAction: decision.acceptedAction,
+        llmTrace: decision.llmTrace,
+        logs: input.state.logs.slice(before.logsBefore),
+        events: input.state.events.slice(before.eventsBefore),
+        stateHash: hashBattlecastState(input.state),
+      });
+    },
+  };
+}
+
+function opportunityReactionTriggers(
+  state: BattleState,
+  mover: Creature,
+  oldPos: { x: number; y: number },
+): Array<{ reactor: Creature; triggerCell: { x: number; y: number } }> {
+  const moveEvent = [...state.events].reverse().find((event) =>
+    event.kind === 'move' && event.creatureId === mover.id
+  );
+  const movePath = moveEvent?.kind === 'move' && moveEvent.path
+    ? moveEvent.path
+    : [oldPos, mover.position];
+  return state.creatures.flatMap((reactor) => {
+    if (reactor.team === mover.team || !canMakeOpportunityAttack(reactor, mover)) return [];
+    const meleeActions = getMeleeActions(reactor);
+    const reach = meleeActions.reduce((max, action) => Math.max(max, action.reach || 5), 5);
+    let triggerCell: { x: number; y: number } | null = null;
+    for (const cell of movePath) {
+      const cellDistance = Math.max(
+        Math.abs(reactor.position.x - cell.x),
+        Math.abs(reactor.position.y - cell.y),
+      ) * 5;
+      if (cellDistance <= reach) triggerCell = cell;
+    }
+    if (!triggerCell || creatureDistance(reactor, mover) <= reach) return [];
+    const moverIsAirborne = !!mover.airborne;
+    const reactorIsFlyer = (getActiveSpeed(reactor).fly ?? 0) > 0;
+    if (moverIsAirborne && !reactorIsFlyer) return [];
+    return [{ reactor, triggerCell }];
+  });
+}
+
+function canMakeOpportunityAttack(reactor: Creature, mover: Creature): boolean {
+  if (!reactor.isAlive || reactor.dying || reactor.team === mover.team) return false;
+  if (reactor.activeBuffs?.some((buff) => buff.preventsOpportunityAttacks)) return false;
+  const reactionLimit = getHydraHeadCount(reactor) ?? 1;
+  const reactionsUsed = reactor.reactionsUsed ?? (reactor.reactionUsed ? 1 : 0);
+  if (reactionsUsed >= reactionLimit) return false;
+  if (reactor.conditions.includes('incapacitated') || reactor.conditions.includes('stunned') ||
+      reactor.conditions.includes('paralyzed') || reactor.conditions.includes('unconscious')) return false;
+  return getMeleeActions(reactor).length > 0;
+}
+
+function opportunityReactionKey(reactor: Creature, mover: Creature): string {
+  return `${reactor.id}->${mover.id}`;
+}
+
+function controllerForCreature(creature: Creature, controllers: MatchControllers): Agent {
+  return creature.team === 'red' ? controllers.red : controllers.blue;
 }
 
 function applySpellAction(

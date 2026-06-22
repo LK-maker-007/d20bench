@@ -84,6 +84,15 @@ export type LegalAction =
       isCritical?: boolean;
     }
   | {
+      id: string;
+      type: 'reaction';
+      reaction: 'opportunity_attack' | 'decline';
+      actionName?: string;
+      targetId: string;
+      targetName: string;
+      expectedDamage?: number;
+    }
+  | {
       id: 'dash';
       type: 'dash';
       extraMovement: number;
@@ -305,6 +314,14 @@ export function divineSmiteActionId(resourceKey: string): string {
   return `smite:divine-smite:${resourceKey}`;
 }
 
+export function opportunityAttackActionId(actionName: string, targetId: string): string {
+  return `reaction:opportunity-attack:${slugActionName(actionName)}:${targetId}`;
+}
+
+export function declineOpportunityAttackActionId(targetId: string): string {
+  return `reaction:decline-opportunity-attack:${targetId}`;
+}
+
 export function battlecastTacticActionId(tactic: TacticType): string {
   return `battlecast_tactic:${tactic}`;
 }
@@ -322,6 +339,40 @@ export function createBattlecastTacticAction(tactic: TacticType): LegalAction {
     id: battlecastTacticActionId(tactic),
     type: 'battlecast_tactic',
     tactic,
+  };
+}
+
+export function generateOpportunityReactionActions(
+  reactor: Creature,
+  target: Creature,
+): LegalActionCatalogue {
+  const actions: LegalAction[] = getActiveActions(reactor)
+    .filter((action) =>
+      action.type === 'melee' &&
+      action.attackBonus !== undefined &&
+      action.legendaryOnly !== true
+    )
+    .map((action) => ({
+      id: opportunityAttackActionId(action.name, target.id),
+      type: 'reaction' as const,
+      reaction: 'opportunity_attack' as const,
+      actionName: action.name,
+      targetId: target.id,
+      targetName: target.displayName,
+      expectedDamage: estimateActionDamage(action),
+    }));
+  actions.push({
+    id: declineOpportunityAttackActionId(target.id),
+    type: 'reaction',
+    reaction: 'decline',
+    targetId: target.id,
+    targetName: target.displayName,
+  });
+  return {
+    activeCreatureId: reactor.id,
+    activeCreatureName: reactor.displayName,
+    actionSpace: 'actual-actions-v1',
+    actions,
   };
 }
 

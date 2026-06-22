@@ -11,6 +11,8 @@ import {
   llmActualCheapVerifyV6Season,
   llmActualCheapVerifyV7Season,
   llmActualCheapVerifyV8Season,
+  llmActualCheapVerifyV9Season,
+  llmActualReactionVerifySeason,
   llmFrontierModelAgents,
   llmFrontierSmartGlmTenXSeason,
   llmFrontierSmartSeason,
@@ -231,6 +233,17 @@ describe('LLM seasons', () => {
     expect(llmActualCheapVerifyV8Season.id).toBe('llm-actual-cheap-verify-v8');
     expect(llmActualCheapVerifyV8Season.llmActionSpace).toBe('actual-actions-v1');
     expect(llmActualCheapVerifyV8Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
+    expect(llmActualCheapVerifyV9Season.id).toBe('llm-actual-cheap-verify-v9');
+    expect(llmActualCheapVerifyV9Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapVerifyV9Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
+    expect(llmActualReactionVerifySeason.id).toBe('llm-actual-reaction-verify-v1');
+    expect(llmActualReactionVerifySeason.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualReactionVerifySeason.scenarios.map((scenario) => scenario.battleType)).toEqual(['reaction-smoke']);
+    expect(llmActualReactionVerifySeason.pairings).toHaveLength(4);
+    expect(llmActualReactionVerifySeason.pairings?.every((pairing) =>
+      pairing.redAgent === 'battlecast.kiting' &&
+      pairing.blueAgent.startsWith('openrouter:')
+    )).toBe(true);
   });
 
   it('defines a twenty-match GLM post-toolcall verification season', () => {

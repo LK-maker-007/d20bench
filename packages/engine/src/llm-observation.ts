@@ -280,6 +280,7 @@ export interface LlmActionView {
   isBonusAction?: boolean;
   possibleEffects?: string[];
   smite?: Extract<LegalAction, { type: 'smite' }>['smite'];
+  reaction?: Extract<LegalAction, { type: 'reaction' }>['reaction'];
   isCritical?: boolean;
   spellLevel?: number;
   resourceCost?: { key: string; amount: number };
@@ -500,6 +501,27 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
     };
   }
 
+  if (action.type === 'reaction') {
+    const target = creatureById.get(action.targetId);
+    return {
+      id: action.id,
+      type: action.type,
+      label: action.reaction === 'decline'
+        ? `Decline opportunity attack against ${target?.label ?? action.targetName}`
+        : `Opportunity attack ${target?.label ?? action.targetName} with ${action.actionName}`,
+      targetId: action.targetId,
+      targetName: action.targetName,
+      targetLabel: target?.label,
+      targetRelation: target?.relation,
+      targetTeam: target?.team,
+      reaction: action.reaction,
+      expectedDamage: action.expectedDamage === undefined ? undefined : Number(action.expectedDamage.toFixed(2)),
+      description: action.reaction === 'decline'
+        ? 'Do not spend this reaction on the opportunity attack trigger.'
+        : 'Spend the reaction now to make the listed melee opportunity attack against the creature leaving reach.',
+    };
+  }
+
   if (action.type === 'random_ray') {
     const target = creatureById.get(action.targetId);
     return {
@@ -631,7 +653,7 @@ function objectiveForActionSpace(actionSpace: LegalActionSpace): string {
     return 'Choose exactly one legal action id for the active creature. Full-turn Battlecast delegate actions execute movement, spells, healing, buffs, AoE, and attacks through the copied Battlecast rules. Use creature actions, defenses, resources, recharges, buffs, condition timers, and tacticReference to choose the best delegate.';
   }
   if (actionSpace === 'actual-actions-v1') {
-    return 'Choose exactly one concrete legal action id for the active creature. Delegates and strategy labels are not available. The engine applies the chosen action through Battlecast rules, shows the result in logs, and if this creature still has movement, attacks, or a bonus action remaining, you will be asked to choose the next concrete action from a fresh legal-action list.';
+    return 'Choose exactly one concrete legal action id for the active creature. Delegates and strategy labels are not available. The engine applies the chosen action through Battlecast rules, shows the result in logs, and if this creature still has movement, attacks, a bonus action, a reaction trigger, or a post-hit choice remaining, you will be asked to choose the next concrete action from a fresh legal-action list.';
   }
   return 'Choose exactly one legal action id for the active creature. The engine applies the chosen action through Battlecast rules and rejects any action id not present in legalActions.';
 }

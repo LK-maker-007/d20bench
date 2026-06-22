@@ -608,6 +608,7 @@ export function runOpportunityAttacks(
   state: BattleState,
   creature: Creature,
   oldPos: { x: number; y: number },
+  hooks: OpportunityAttackHooks = {},
 ): boolean {
   // Flying-OA exemption (flying step 2): a creature that's currently
   // airborne is above ground melee reach, so leaving "reach" doesn't
@@ -725,6 +726,36 @@ export function runOpportunityAttacks(
       continue;
     }
 
+    const context: OpportunityAttackDecisionContext = {
+      reactor: enemy,
+      mover: creature,
+      meleeActions: oaMelee,
+      defaultAction: oaMelee[0],
+      reach,
+      triggerCell: { ...lastInReachCell! },
+    };
+    const chosen = hooks.chooseOpportunityAttack?.(context);
+    const chosenAction = chosen === 'decline'
+      ? 'decline'
+      : chosen
+        ? oaMelee.find((action) => action.name === chosen.name) ?? oaMelee[0]
+        : oaMelee[0];
+    if (chosenAction === 'decline') {
+      const before = hooks.beforeOpportunityAttack?.(context, chosenAction);
+      state.events.push({
+        kind: 'oaAvoided', moverId: creature.id, enemyId: enemy.id,
+        reason: 'declined', durationMs: BASE_DURATIONS.oaAvoided,
+      });
+      pushLog(state, {
+        round: state.round, turn: state.turnIndex,
+        actor: enemy.displayName, action: 'Opportunity Attack Declined',
+        details: `${enemy.displayName} does not spend a reaction as ${creature.displayName} leaves reach.`,
+        type: 'info',
+      });
+      hooks.afterOpportunityAttack?.(context, chosenAction, before);
+      continue;
+    }
+
     // Real OA fires. Split the move event so the replay animates the
     // mover from their start cell to the OA cell, then pauses on the
     // OA swing, then animates the continuation to the final cell. This
@@ -750,14 +781,16 @@ export function runOpportunityAttacks(
         // against the mover at oaCell. After they're emitted (below),
         // we push a continuation move event if the mover survived.
         creature.position = oaCell;
+        const before = hooks.beforeOpportunityAttack?.(context, chosenAction);
         pushLog(state, {
           round: state.round, turn: state.turnIndex,
           actor: enemy.displayName, action: 'Opportunity Attack',
           details: `${enemy.displayName} makes an opportunity attack against ${creature.displayName} (leaving ${reach} ft reach)!`,
           type: 'info',
         });
-        resolveAttack(state, enemy, creature, oaMelee[0], { cause: 'opportunity' });
+        resolveAttack(state, enemy, creature, chosenAction, { cause: 'opportunity' });
         moveSplit = true;
+        hooks.afterOpportunityAttack?.(context, chosenAction, before);
 
         if (!creature.isAlive) {
           // Dead at oaCell - body stays there. The truncated move event
@@ -789,13 +822,15 @@ export function runOpportunityAttacks(
     // show this OA at the final destination, which is imperfect but
     // matches the visuals of the existing single-OA-per-move case.
     creature.position = oaCell;
+    const before = hooks.beforeOpportunityAttack?.(context, chosenAction);
     pushLog(state, {
       round: state.round, turn: state.turnIndex,
       actor: enemy.displayName, action: 'Opportunity Attack',
       details: `${enemy.displayName} makes an opportunity attack against ${creature.displayName} (leaving ${reach} ft reach)!`,
       type: 'info',
     });
-    resolveAttack(state, enemy, creature, oaMelee[0], { cause: 'opportunity' });
+    resolveAttack(state, enemy, creature, chosenAction, { cause: 'opportunity' });
+    hooks.afterOpportunityAttack?.(context, chosenAction, before);
     if (!creature.isAlive) {
       creature.position = oaCell;
       if (moveSplit) {
@@ -1449,10 +1484,32 @@ export function beginBattlecastControlledTurn(state: BattleState, creature: Crea
   return true;
 }
 
+export interface OpportunityAttackDecisionContext {
+  reactor: Creature;
+  mover: Creature;
+  meleeActions: MonsterAction[];
+  defaultAction: MonsterAction;
+  reach: number;
+  triggerCell: { x: number; y: number };
+}
+
+export interface OpportunityAttackHooks {
+  chooseOpportunityAttack?: (context: OpportunityAttackDecisionContext) => MonsterAction | 'decline' | undefined;
+  beforeOpportunityAttack?: (
+    context: OpportunityAttackDecisionContext,
+    action: MonsterAction | 'decline',
+  ) => { logsBefore: number; eventsBefore: number } | undefined;
+  afterOpportunityAttack?: (
+    context: OpportunityAttackDecisionContext,
+    action: MonsterAction | 'decline',
+    before: { logsBefore: number; eventsBefore: number } | undefined,
+  ) => void;
+}
+
 export function executeTurn(
   state: BattleState,
   creature: Creature,
-  options: { turnStartAlreadyProcessed?: boolean } = {},
+  options: { turnStartAlreadyProcessed?: boolean; opportunityAttacks?: OpportunityAttackHooks } = {},
 ): void {
   if (!options.turnStartAlreadyProcessed && !beginBattlecastControlledTurn(state, creature)) return;
   if (!creature.isAlive || state.isComplete) return;
@@ -1792,7 +1849,7 @@ export function executeTurn(
   // you're still adjacent. runOpportunityAttacks rewinds the position,
   // resolves each OA, then restores the final position on survivors.
   if (didMove && !disengagedThisTurn && !hasNimbleEscape) {
-    if (runOpportunityAttacks(state, creature, oldPosBeforeMove)) return;
+    if (runOpportunityAttacks(state, creature, oldPosBeforeMove, options.opportunityAttacks)) return;
   }
   // Log the Nimble Escape disengage (only if we actually left an adjacent
   // enemy's reach - movement that doesn't leave melee doesn't use it).

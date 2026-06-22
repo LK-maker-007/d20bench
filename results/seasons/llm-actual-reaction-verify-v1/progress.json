@@ -1,0 +1,131 @@
+{
+  "seasonId": "llm-actual-reaction-verify-v1",
+  "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control opportunity-attack reactions against a Battlecast Kiting mover.",
+  "status": "complete",
+  "llmActionSpace": "actual-actions-v1",
+  "startedAt": "2026-06-22T12:04:45.672Z",
+  "updatedAt": "2026-06-22T12:05:07.621Z",
+  "concurrency": 4,
+  "maxRounds": 1,
+  "totalMatches": 4,
+  "completedMatches": 4,
+  "failedMatches": 0,
+  "runningMatches": 0,
+  "costSummary": {
+    "totalDecisions": 20,
+    "promptTokens": 74099,
+    "completionTokens": 3586,
+    "totalTokens": 77685,
+    "estimatedCostUsd": 0.006657545,
+    "byModel": [
+      {
+        "agentId": "openrouter:mistralai/ministral-8b-2512",
+        "model": "mistralai/ministral-8b-2512",
+        "decisions": 4,
+        "promptTokens": 15349,
+        "completionTokens": 196,
+        "totalTokens": 15545,
+        "estimatedCostUsd": 0.0023317499999999996
+      },
+      {
+        "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "decisions": 6,
+        "promptTokens": 21947,
+        "completionTokens": 2939,
+        "totalTokens": 24886,
+        "estimatedCostUsd": 0.002190695
+      },
+      {
+        "agentId": "openrouter:deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-flash",
+        "decisions": 5,
+        "promptTokens": 19208,
+        "completionTokens": 273,
+        "totalTokens": 19481,
+        "estimatedCostUsd": 0.00177786
+      },
+      {
+        "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "decisions": 5,
+        "promptTokens": 17595,
+        "completionTokens": 178,
+        "totalTokens": 17773,
+        "estimatedCostUsd": 0.00035724000000000004
+      }
+    ]
+  },
+  "activeMatches": [],
+  "recentMatches": [
+    {
+      "index": 3,
+      "status": "completed",
+      "scenarioId": "hidden.llm-reaction-kiting-duel.v1",
+      "battleType": "reaction-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.kiting",
+      "blueAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "startedAt": "2026-06-22T12:04:45.807Z",
+      "completedAt": "2026-06-22T12:05:07.619Z",
+      "durationMs": 21812,
+      "matchId": "hidden.llm-reaction-kiting-duel.v1__actual-actions-v1__1__battlecast.kiting__openrouter_qwen_qwen3.5-flash-02-23",
+      "winner": "blue",
+      "llmDecisions": 6,
+      "estimatedCostUsd": 0.002190695,
+      "finalStateHash": "dc098b52fc0ffab3b5e8ac239e820e0b27e6bf68f8fca504fe124eb768dd5b63"
+    },
+    {
+      "index": 0,
+      "status": "completed",
+      "scenarioId": "hidden.llm-reaction-kiting-duel.v1",
+      "battleType": "reaction-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.kiting",
+      "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "startedAt": "2026-06-22T12:04:45.807Z",
+      "completedAt": "2026-06-22T12:05:03.197Z",
+      "durationMs": 17390,
+      "matchId": "hidden.llm-reaction-kiting-duel.v1__actual-actions-v1__1__battlecast.kiting__openrouter_deepseek_deepseek-v4-flash",
+      "winner": "blue",
+      "llmDecisions": 5,
+      "estimatedCostUsd": 0.00177786,
+      "finalStateHash": "7dc34790120cfd3e907ecd4a2eb20fe7f3b7c735fe7f3cf45f999558a1438ea7"
+    },
+    {
+      "index": 1,
+      "status": "completed",
+      "scenarioId": "hidden.llm-reaction-kiting-duel.v1",
+      "battleType": "reaction-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.kiting",
+      "blueAgent": "openrouter:mistralai/ministral-8b-2512",
+      "startedAt": "2026-06-22T12:04:45.807Z",
+      "completedAt": "2026-06-22T12:04:52.361Z",
+      "durationMs": 6554,
+      "matchId": "hidden.llm-reaction-kiting-duel.v1__actual-actions-v1__1__battlecast.kiting__openrouter_mistralai_ministral-8b-2512",
+      "winner": "red",
+      "llmDecisions": 4,
+      "estimatedCostUsd": 0.0023317499999999996,
+      "finalStateHash": "0a179e9b43ac4cd0d7fc1c6cd4b8c602b8f96af1700306224826e0c12912d86f"
+    },
+    {
+      "index": 2,
+      "status": "completed",
+      "scenarioId": "hidden.llm-reaction-kiting-duel.v1",
+      "battleType": "reaction-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.kiting",
+      "blueAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "startedAt": "2026-06-22T12:04:45.807Z",
+      "completedAt": "2026-06-22T12:04:49.701Z",
+      "durationMs": 3894,
+      "matchId": "hidden.llm-reaction-kiting-duel.v1__actual-actions-v1__1__battlecast.kiting__openrouter_meta-llama_llama-3.1-8b-instruct",
+      "winner": "draw",
+      "llmDecisions": 5,
+      "estimatedCostUsd": 0.00035724000000000004,
+      "finalStateHash": "aee8e29daa8fd5c6bd2ddafbbba5ac7204bd6c7d2b4778eb6176019d106e0b9c"
+    }
+  ],
+  "failures": []
+}

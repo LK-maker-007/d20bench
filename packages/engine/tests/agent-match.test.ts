@@ -1094,6 +1094,107 @@ describe('agent matches', () => {
     expect(match.state.logs.some((log) => log.action === 'Opportunity Attack')).toBe(false);
   });
 
+  it('asks an OpenRouter reactor to choose an opportunity attack after an actual-action move trigger', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    const observedReactionIds: string[][] = [];
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const reaction = actionIds.find((id) => id.startsWith('reaction:opportunity-attack:'));
+      if (reaction) observedReactionIds.push([...actionIds]);
+      const actionId = reaction
+        ?? (actionIds.includes('move_to:2,0') ? 'move_to:2,0' : actionIds.find((id) => id.startsWith('move_to:')))
+        ?? 'end_turn';
+      return jsonResponse({
+        id: `gen-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Use the concrete legal action.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: adjacentFighterDuelScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'openrouter:test/tool-model',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const reactionResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.acceptedAction.type === 'reaction' &&
+      event.acceptedAction.reaction === 'opportunity_attack'
+    );
+
+    expect(observedReactionIds).toHaveLength(1);
+    expect(reactionResolution?.type).toBe('action_resolved');
+    expect(reactionResolution?.agentId).toBe('openrouter:test/tool-model');
+    expect(reactionResolution?.logs.some((log) => log.action === 'Opportunity Attack')).toBe(true);
+    expect(reactionResolution?.events.some((event) => event.kind === 'attack' && event.cause === 'opportunity')).toBe(true);
+  });
+
+  it('predeclares OpenRouter opportunity reactions during synchronous Battlecast tactic turns', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    const observedReactionIds: string[][] = [];
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const reaction = actionIds.find((id) => id.startsWith('reaction:opportunity-attack:'));
+      if (reaction) observedReactionIds.push([...actionIds]);
+      const actionId = reaction ?? 'end_turn';
+      return jsonResponse({
+        id: `gen-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Spend the reaction when the enemy leaves reach.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: adjacentRangerKitesFighterScenario(),
+      seed: 1,
+      redAgent: 'battlecast.kiting',
+      blueAgent: 'openrouter:test/tool-model',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const reactionResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.acceptedAction.type === 'reaction' &&
+      event.acceptedAction.reaction === 'opportunity_attack'
+    );
+
+    expect(observedReactionIds.length).toBeGreaterThanOrEqual(1);
+    expect(reactionResolution?.type).toBe('action_resolved');
+    expect(reactionResolution?.agentId).toBe('openrouter:test/tool-model');
+    expect(reactionResolution?.logs.some((log) => log.action === 'Opportunity Attack')).toBe(true);
+  });
+
   it('lets an actual-action LLM Dodge and keep the defensive flag until its next turn', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     let callIndex = 0;
@@ -1428,6 +1529,26 @@ function adjacentThreatWithFarTargetScenario(): D20benchScenario {
       { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 8 } },
+    ],
+  };
+}
+
+function adjacentRangerKitesFighterScenario(): D20benchScenario {
+  return {
+    id: 'test.adjacent-ranger-kites-fighter.v1',
+    name: 'Adjacent Ranger Kites Fighter',
+    description: 'A Battlecast kiting ranger backs away from an OpenRouter-controlled fighter, triggering a model-owned opportunity reaction.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Ranger', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
     ],
   };
 }

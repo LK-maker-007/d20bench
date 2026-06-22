@@ -38,6 +38,7 @@ export type OaAvoidedReason =
   | 'nimble'         // Nimble Escape: Disengage (Goblins etc., bonus action)
   | 'flying'         // mover is airborne, grounded enemy can't reach
   | 'reactionUsed'   // enemy already spent its reaction this round
+  | 'declined'       // controller chose not to spend the reaction
   | 'stunned'        // enemy is stunned/paralyzed/incapacitated/unconscious
   ;
 

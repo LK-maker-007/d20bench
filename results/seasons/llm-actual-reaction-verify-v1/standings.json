@@ -1,0 +1,250 @@
+{
+  "seasonId": "llm-actual-reaction-verify-v1",
+  "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control opportunity-attack reactions against a Battlecast Kiting mover.",
+  "generatedAt": "2026-06-22T12:04:45.672Z",
+  "startedAt": "2026-06-22T12:04:45.672Z",
+  "completedAt": "2026-06-22T12:05:07.621Z",
+  "llmActionSpace": "actual-actions-v1",
+  "initialRating": 1000,
+  "kFactor": 32,
+  "maxRounds": 1,
+  "concurrency": 4,
+  "totalMatches": 4,
+  "completedMatches": 4,
+  "failedMatches": 0,
+  "standings": [
+    {
+      "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+      "rating": 1016.0323466097632,
+      "matches": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "score": 1
+    },
+    {
+      "agentId": "openrouter:deepseek/deepseek-v4-flash",
+      "rating": 1016,
+      "matches": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "score": 1
+    },
+    {
+      "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "rating": 1000.0339081301692,
+      "matches": 1,
+      "wins": 0,
+      "losses": 0,
+      "draws": 1,
+      "score": 0.5
+    },
+    {
+      "agentId": "battlecast.kiting",
+      "rating": 984.6700520535896,
+      "matches": 4,
+      "wins": 1,
+      "losses": 2,
+      "draws": 1,
+      "score": 1.5
+    },
+    {
+      "agentId": "openrouter:mistralai/ministral-8b-2512",
+      "rating": 983.263693206478,
+      "matches": 1,
+      "wins": 0,
+      "losses": 1,
+      "draws": 0,
+      "score": 0
+    }
+  ],
+  "battleTypeStandings": [
+    {
+      "battleType": "reaction-smoke",
+      "standings": [
+        {
+          "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+          "rating": 1016.0323466097632,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:deepseek/deepseek-v4-flash",
+          "rating": 1016,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "rating": 1000.0339081301692,
+          "matches": 1,
+          "wins": 0,
+          "losses": 0,
+          "draws": 1,
+          "score": 0.5
+        },
+        {
+          "agentId": "battlecast.kiting",
+          "rating": 984.6700520535896,
+          "matches": 4,
+          "wins": 1,
+          "losses": 2,
+          "draws": 1,
+          "score": 1.5
+        },
+        {
+          "agentId": "openrouter:mistralai/ministral-8b-2512",
+          "rating": 983.263693206478,
+          "matches": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "score": 0
+        }
+      ]
+    }
+  ],
+  "costSummary": {
+    "totalDecisions": 20,
+    "promptTokens": 74099,
+    "completionTokens": 3586,
+    "totalTokens": 77685,
+    "estimatedCostUsd": 0.006657545,
+    "byModel": [
+      {
+        "agentId": "openrouter:mistralai/ministral-8b-2512",
+        "model": "mistralai/ministral-8b-2512",
+        "decisions": 4,
+        "promptTokens": 15349,
+        "completionTokens": 196,
+        "totalTokens": 15545,
+        "estimatedCostUsd": 0.0023317499999999996
+      },
+      {
+        "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "decisions": 6,
+        "promptTokens": 21947,
+        "completionTokens": 2939,
+        "totalTokens": 24886,
+        "estimatedCostUsd": 0.002190695
+      },
+      {
+        "agentId": "openrouter:deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-flash",
+        "decisions": 5,
+        "promptTokens": 19208,
+        "completionTokens": 273,
+        "totalTokens": 19481,
+        "estimatedCostUsd": 0.00177786
+      },
+      {
+        "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "decisions": 5,
+        "promptTokens": 17595,
+        "completionTokens": 178,
+        "totalTokens": 17773,
+        "estimatedCostUsd": 0.00035724000000000004
+      }
+    ]
+  },
+  "failures": [],
+  "matches": [
+    {
+      "matchId": "hidden.llm-reaction-kiting-duel.v1__actual-actions-v1__1__battlecast.kiting__openrouter_deepseek_deepseek-v4-flash",
+      "scenarioId": "hidden.llm-reaction-kiting-duel.v1",
+      "battleType": "reaction-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.kiting",
+      "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1000,
+      "redRatingAfter": 984,
+      "blueRatingAfter": 1016,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1000,
+      "redBattleTypeRatingAfter": 984,
+      "blueBattleTypeRatingAfter": 1016,
+      "finalStateHash": "7dc34790120cfd3e907ecd4a2eb20fe7f3b7c735fe7f3cf45f999558a1438ea7",
+      "llmDecisions": 5,
+      "estimatedCostUsd": 0.00177786
+    },
+    {
+      "matchId": "hidden.llm-reaction-kiting-duel.v1__actual-actions-v1__1__battlecast.kiting__openrouter_mistralai_ministral-8b-2512",
+      "scenarioId": "hidden.llm-reaction-kiting-duel.v1",
+      "battleType": "reaction-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.kiting",
+      "blueAgent": "openrouter:mistralai/ministral-8b-2512",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 984,
+      "blueRatingBefore": 1000,
+      "redRatingAfter": 1000.736306793522,
+      "blueRatingAfter": 983.263693206478,
+      "redBattleTypeRatingBefore": 984,
+      "blueBattleTypeRatingBefore": 1000,
+      "redBattleTypeRatingAfter": 1000.736306793522,
+      "blueBattleTypeRatingAfter": 983.263693206478,
+      "finalStateHash": "0a179e9b43ac4cd0d7fc1c6cd4b8c602b8f96af1700306224826e0c12912d86f",
+      "llmDecisions": 4,
+      "estimatedCostUsd": 0.0023317499999999996
+    },
+    {
+      "matchId": "hidden.llm-reaction-kiting-duel.v1__actual-actions-v1__1__battlecast.kiting__openrouter_meta-llama_llama-3.1-8b-instruct",
+      "scenarioId": "hidden.llm-reaction-kiting-duel.v1",
+      "battleType": "reaction-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.kiting",
+      "blueAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "winner": "draw",
+      "redScore": 0.5,
+      "blueScore": 0.5,
+      "redRatingBefore": 1000.736306793522,
+      "blueRatingBefore": 1000,
+      "redRatingAfter": 1000.7023986633528,
+      "blueRatingAfter": 1000.0339081301692,
+      "redBattleTypeRatingBefore": 1000.736306793522,
+      "blueBattleTypeRatingBefore": 1000,
+      "redBattleTypeRatingAfter": 1000.7023986633528,
+      "blueBattleTypeRatingAfter": 1000.0339081301692,
+      "finalStateHash": "aee8e29daa8fd5c6bd2ddafbbba5ac7204bd6c7d2b4778eb6176019d106e0b9c",
+      "llmDecisions": 5,
+      "estimatedCostUsd": 0.00035724000000000004
+    },
+    {
+      "matchId": "hidden.llm-reaction-kiting-duel.v1__actual-actions-v1__1__battlecast.kiting__openrouter_qwen_qwen3.5-flash-02-23",
+      "scenarioId": "hidden.llm-reaction-kiting-duel.v1",
+      "battleType": "reaction-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.kiting",
+      "blueAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1000.7023986633528,
+      "blueRatingBefore": 1000,
+      "redRatingAfter": 984.6700520535896,
+      "blueRatingAfter": 1016.0323466097632,
+      "redBattleTypeRatingBefore": 1000.7023986633528,
+      "blueBattleTypeRatingBefore": 1000,
+      "redBattleTypeRatingAfter": 984.6700520535896,
+      "blueBattleTypeRatingAfter": 1016.0323466097632,
+      "finalStateHash": "dc098b52fc0ffab3b5e8ac239e820e0b27e6bf68f8fca504fe124eb768dd5b63",
+      "llmDecisions": 6,
+      "estimatedCostUsd": 0.002190695
+    }
+  ]
+}

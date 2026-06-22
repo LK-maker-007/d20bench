@@ -12,6 +12,7 @@ import { loadLocalEnv } from './env.js';
 import type { EloStanding } from './ratings.js';
 import type { BattleType, D20benchScenario } from './scenario.js';
 import type { OpenRouterRawDecisionTrace } from './openrouter-agent.js';
+import { buildHero } from './battlecast/data/heroes.js';
 import { goblinDuelScenario } from './scenarios/public/goblin-duel.js';
 import { goblinWarbandMirrorScenario } from './scenarios/public/goblin-squad.js';
 import {
@@ -222,6 +223,27 @@ export const llmActualCheapVerifyModelAgents: OpenRouterAgentId[] = [
   createOpenRouterAgentId('deepseek/deepseek-v4-flash'),
   ...llmSmartTop3ModelAgents,
 ];
+
+export const llmActualReactionVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-reaction-kiting-duel.v1',
+  name: 'LLM Reaction Kiting Duel',
+  description: 'A Battlecast Kiting Ranger starts adjacent to an OpenRouter Fighter and should trigger an explicit opportunity-attack reaction choice.',
+  battleType: 'reaction-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['reaction', 'opportunity-attack', 'kiting'],
+  designNotes: [
+    'Designed as a live-model harness validation, not a leaderboard battle.',
+    'The Ranger is controlled by battlecast.kiting and backs away from the adjacent Fighter, giving the OpenRouter-controlled Fighter an opportunity-attack reaction window.',
+  ],
+  combatants: [
+    { monster: buildHero('Ranger', 5), team: 'red', position: { x: 2, y: 2 } },
+    { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+  ],
+};
 
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
@@ -448,7 +470,35 @@ export const llmActualCheapVerifyV8Season: LlmSeasonConfig = {
   description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after making Paladin Divine Smite an explicit post-hit action choice.',
 };
 
+export const llmActualCheapVerifyV9Season: LlmSeasonConfig = {
+  ...llmActualCheapVerifySeason,
+  id: 'llm-actual-cheap-verify-v9',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after exposing opportunity attacks as explicit reaction choices.',
+};
+
+export const llmActualReactionVerifySeason: LlmSeasonConfig = {
+  id: 'llm-actual-reaction-verify-v1',
+  description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control opportunity-attack reactions against a Battlecast Kiting mover.',
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    'battlecast.kiting',
+  ],
+  scenarios: [llmActualReactionVerifyScenario],
+  seeds: [1],
+  maxRounds: 1,
+  pairings: llmActualCheapVerifyModelAgents.map((model) => ({
+    redAgent: 'battlecast.kiting' as const,
+    blueAgent: model,
+  })),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
 export const llmSeasons = [
+  llmActualReactionVerifySeason,
+  llmActualCheapVerifyV9Season,
   llmActualCheapVerifyV8Season,
   llmActualCheapVerifyV7Season,
   llmActualCheapVerifyV6Season,
