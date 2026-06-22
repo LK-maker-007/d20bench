@@ -87,8 +87,8 @@ export type LegalAction =
   | {
       id: string;
       type: 'reaction';
-      reaction: 'opportunity_attack' | 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'decline';
-      reactionFeature?: 'opportunity_attack' | 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense';
+      reaction: 'opportunity_attack' | 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'retaliation' | 'decline';
+      reactionFeature?: 'opportunity_attack' | 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'retaliation';
       reactionTrigger?: 'opportunity_attack' | 'attack_damage';
       actionName?: string;
       targetId: string;
@@ -353,6 +353,14 @@ export function declineSuperiorHuntersDefenseActionId(attackerId: string): strin
   return `reaction:decline-superior-hunters-defense:${attackerId}`;
 }
 
+export function retaliationActionId(actionName: string, attackerId: string): string {
+  return `reaction:retaliation:${slugActionName(actionName)}:${attackerId}`;
+}
+
+export function declineRetaliationActionId(attackerId: string): string {
+  return `reaction:decline-retaliation:${attackerId}`;
+}
+
 export function battlecastTacticActionId(tactic: TacticType): string {
   return `battlecast_tactic:${tactic}`;
 }
@@ -422,7 +430,7 @@ export function generateUncannyDodgeReactionActions(
 export function generateDamageReactionActions(
   defender: Creature,
   attacker: Creature,
-  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense',
+  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'retaliation',
   trigger?: { incomingDamage: number; damageType: string },
 ): LegalActionCatalogue {
   const expectedDamageReduction = trigger
@@ -430,8 +438,20 @@ export function generateDamageReactionActions(
     : undefined;
   const useActionId = damageReactionActionId(reaction, attacker.id);
   const declineActionId = declineDamageReactionActionId(reaction, attacker.id);
-  const actions: LegalAction[] = [
-    {
+  const retaliationAction = reaction === 'retaliation' ? retaliationMeleeAction(defender) : undefined;
+  const useAction: LegalAction = reaction === 'retaliation' && retaliationAction ? {
+    id: retaliationActionId(retaliationAction.name, attacker.id),
+    type: 'reaction',
+    reaction,
+    reactionFeature: reaction,
+    reactionTrigger: 'attack_damage',
+    actionName: retaliationAction.name,
+    targetId: attacker.id,
+    targetName: attacker.displayName,
+    expectedDamage: estimateActionDamage(retaliationAction),
+    incomingDamage: trigger?.incomingDamage,
+    damageType: trigger?.damageType,
+  } : {
       id: useActionId,
       type: 'reaction',
       reaction,
@@ -442,7 +462,9 @@ export function generateDamageReactionActions(
       incomingDamage: trigger?.incomingDamage,
       damageType: trigger?.damageType,
       expectedDamageReduction,
-    },
+    };
+  const actions: LegalAction[] = [
+    useAction,
     {
       id: declineActionId,
       type: 'reaction',
@@ -605,34 +627,46 @@ function smiteActionForResource(
 }
 
 function damageReactionActionId(
-  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense',
+  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'retaliation',
   attackerId: string,
 ): string {
   if (reaction === 'monk_deflect') return monkDeflectActionId(attackerId);
   if (reaction === 'superior_hunters_defense') return superiorHuntersDefenseActionId(attackerId);
+  if (reaction === 'retaliation') return retaliationActionId('retaliation', attackerId);
   return uncannyDodgeActionId(attackerId);
 }
 
 function declineDamageReactionActionId(
-  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense',
+  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'retaliation',
   attackerId: string,
 ): string {
   if (reaction === 'monk_deflect') return declineMonkDeflectActionId(attackerId);
   if (reaction === 'superior_hunters_defense') return declineSuperiorHuntersDefenseActionId(attackerId);
+  if (reaction === 'retaliation') return declineRetaliationActionId(attackerId);
   return declineUncannyDodgeActionId(attackerId);
 }
 
 function expectedDamageReactionReduction(
   defender: Creature,
-  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense',
+  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'retaliation',
   incomingDamage: number,
 ): number {
+  if (reaction === 'retaliation') return 0;
   if (reaction === 'monk_deflect') {
     const dexMod = abilityModifier(getEffectiveAbilityScore(defender, 'dex'));
     const level = defender.monsterData.heroLevel ?? 0;
     return Math.min(incomingDamage, averageDamage('1d10') + dexMod + level);
   }
   return incomingDamage - Math.floor(incomingDamage / 2);
+}
+
+function retaliationMeleeAction(defender: Creature): MonsterAction | undefined {
+  return defender.monsterData.actions
+    .filter((action) => action.type === 'melee' && action.damage && action.attackBonus !== undefined && action.legendaryOnly !== true)
+    .sort((left, right) =>
+      estimateActionDamage(right) - estimateActionDamage(left) ||
+      left.name.localeCompare(right.name)
+    )[0];
 }
 
 function movementAllowance(active: Creature, state: BattleState): number {

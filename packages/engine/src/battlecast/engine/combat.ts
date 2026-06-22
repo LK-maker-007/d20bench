@@ -38,7 +38,7 @@ export interface ResolveAttackResult {
 }
 
 export interface DamageReactionDecisionContext {
-  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense';
+  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'retaliation';
   target: Creature;
   attacker: Creature | null;
   incomingDamage: number;
@@ -3043,6 +3043,65 @@ function applyUncannyDodgeReaction(
   return reduced;
 }
 
+function canUseRetaliation(target: Creature, attacker: Creature | null, damage: number): boolean {
+  if (damage <= 0 || !target.isAlive || target.currentHp <= 0 || !attacker?.isAlive) return false;
+  if (target.monsterData.heroClass !== 'Barbarian' || (target.monsterData.heroLevel ?? 0) < 10) return false;
+  if (target.reactionUsed || creatureDistance(target, attacker) > 5) return false;
+  if (target.conditions.includes('incapacitated') || target.conditions.includes('stunned') ||
+      target.conditions.includes('paralyzed') || target.conditions.includes('petrified') ||
+      target.conditions.includes('unconscious')) return false;
+  return target.monsterData.actions.some(a => a.type === 'melee' && a.damage);
+}
+
+function applyRetaliationReaction(
+  state: BattleState,
+  target: Creature,
+  attacker: Creature | null,
+  damage: number,
+  damageType: string,
+  isAttack: boolean,
+  isCritical: boolean,
+): void {
+  if (!canUseRetaliation(target, attacker, damage)) return;
+  const context: DamageReactionDecisionContext = {
+    reaction: 'retaliation',
+    target,
+    attacker,
+    incomingDamage: damage,
+    damageType,
+    isAttack,
+    isCritical,
+  };
+  const decision = state.damageReactionHooks?.chooseDamageReaction?.(context);
+  if (decision === 'decline') {
+    const beforeHook = state.damageReactionHooks?.beforeDamageReaction?.(context, decision);
+    pushLog(state, {
+      round: state.round,
+      turn: state.turnIndex,
+      actor: target.displayName,
+      action: 'Retaliation Declined',
+      details: `${target.displayName} does not spend a reaction to retaliate against ${attacker?.displayName}.`,
+      type: 'info',
+    });
+    state.damageReactionHooks?.afterDamageReaction?.(context, decision, beforeHook);
+    return;
+  }
+
+  const meleeAction = target.monsterData.actions.find(a => a.type === 'melee' && a.damage);
+  if (!meleeAction || !attacker) return;
+  const beforeHook = state.damageReactionHooks?.beforeDamageReaction?.(context, 'use');
+  target.reactionUsed = true;
+  pushLog(state, {
+    round: state.round, turn: state.turnIndex,
+    actor: target.displayName, action: 'Retaliation',
+    details: `${target.displayName} retaliates against ${attacker.displayName}!`,
+    type: 'special'
+  });
+  resolveAttack(state, target, attacker, meleeAction);
+  target.stats.actionUsage['Retaliation'] = (target.stats.actionUsage['Retaliation'] || 0) + 1;
+  state.damageReactionHooks?.afterDamageReaction?.(context, 'use', beforeHook);
+}
+
 function applyDamage(state: BattleState, target: Creature, damage: number, damageType: string, attacker: Creature | null, isAttack: boolean = false, isMagical: boolean = false, isCritical: boolean = false): number {
   const resisted = resolveDamageResistance(state, target, damage, damageType, isMagical, attacker);
   if (resisted.immune) return 0;
@@ -3225,23 +3284,7 @@ function applyDamage(state: BattleState, target: Creature, damage: number, damag
     tryRelentlessRage(state, target);
   }
 
-  // Retaliation (Barbarian L10): reaction melee attack when damaged by adjacent creature
-  if (damage > 0 && target.isAlive && target.currentHp > 0 && attacker && attacker.isAlive
-      && target.monsterData.heroClass === 'Barbarian' && (target.monsterData.heroLevel ?? 0) >= 10
-      && !target.reactionUsed && creatureDistance(target, attacker) <= 5) {
-    target.reactionUsed = true;
-    const meleeAction = target.monsterData.actions.find(a => a.type === 'melee' && a.damage);
-    if (meleeAction) {
-      pushLog(state, {
-        round: state.round, turn: state.turnIndex,
-        actor: target.displayName, action: 'Retaliation',
-        details: `${target.displayName} retaliates against ${attacker.displayName}!`,
-        type: 'special'
-      });
-      resolveAttack(state, target, attacker, meleeAction);
-      target.stats.actionUsage['Retaliation'] = (target.stats.actionUsage['Retaliation'] || 0) + 1;
-    }
-  }
+  applyRetaliationReaction(state, target, attacker, damage, damageType, isAttack, isCritical);
 
   const regeneration = getRegenerationRuntime(target);
   // Suppress regeneration if the damage type matches the suppression clause.

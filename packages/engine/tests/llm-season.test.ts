@@ -15,6 +15,7 @@ import {
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
+  llmActualRetaliationVerifySeason,
   llmFrontierModelAgents,
   llmFrontierSmartGlmTenXSeason,
   llmFrontierSmartSeason,
@@ -262,6 +263,14 @@ describe('LLM seasons', () => {
     ]);
     expect(llmActualDeflectVerifySeason.pairings).toHaveLength(4);
     expect(llmActualDeflectVerifySeason.pairings?.every((pairing) =>
+      pairing.redAgent === 'battlecast.aggressive' &&
+      pairing.blueAgent.startsWith('openrouter:')
+    )).toBe(true);
+    expect(llmActualRetaliationVerifySeason.id).toBe('llm-actual-retaliation-verify-v1');
+    expect(llmActualRetaliationVerifySeason.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualRetaliationVerifySeason.scenarios.map((scenario) => scenario.battleType)).toEqual(['retaliation-smoke']);
+    expect(llmActualRetaliationVerifySeason.pairings).toHaveLength(4);
+    expect(llmActualRetaliationVerifySeason.pairings?.every((pairing) =>
       pairing.redAgent === 'battlecast.aggressive' &&
       pairing.blueAgent.startsWith('openrouter:')
     )).toBe(true);

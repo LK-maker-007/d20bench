@@ -308,6 +308,27 @@ export const llmActualSuperiorHunterDefenseVerifyScenario: D20benchScenario = {
   ],
 };
 
+export const llmActualRetaliationVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-retaliation-barbarian-duel.v1',
+  name: 'LLM Retaliation Barbarian Duel',
+  description: 'A Battlecast Aggressive Fighter damages an adjacent OpenRouter Barbarian that should choose whether to spend Retaliation.',
+  battleType: 'retaliation-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['reaction', 'retaliation', 'counterattack'],
+  designNotes: [
+    'Designed as a live-model harness validation for Barbarian Retaliation.',
+    'The Fighter is intentionally high level so at least one adjacent hit should trigger the Retaliation window.',
+  ],
+  combatants: [
+    { monster: buildHero('Fighter', 20), team: 'red', position: { x: 2, y: 2 } },
+    { monster: buildHero('Barbarian', 10), team: 'blue', position: { x: 2, y: 3 } },
+  ],
+};
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -602,7 +623,28 @@ export const llmActualDeflectVerifySeason: LlmSeasonConfig = {
   concurrency: 4,
 };
 
+export const llmActualRetaliationVerifySeason: LlmSeasonConfig = {
+  id: 'llm-actual-retaliation-verify-v1',
+  description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control trigger-time Barbarian Retaliation reactions.',
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    'battlecast.aggressive',
+  ],
+  scenarios: [llmActualRetaliationVerifyScenario],
+  seeds: [1],
+  maxRounds: 1,
+  pairings: llmActualCheapVerifyModelAgents.map((model) => ({
+    redAgent: 'battlecast.aggressive' as const,
+    blueAgent: model,
+  })),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
 export const llmSeasons = [
+  llmActualRetaliationVerifySeason,
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,

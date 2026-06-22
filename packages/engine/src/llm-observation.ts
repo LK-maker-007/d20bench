@@ -692,6 +692,9 @@ function reactionActionLabel(
   if (action.reactionTrigger === 'attack_damage') {
     const name = damageReactionName(action.reactionFeature ?? action.reaction);
     if (action.reaction === 'decline') return `Decline ${name} against ${targetLabel}`;
+    if ((action.reactionFeature ?? action.reaction) === 'retaliation') {
+      return `Use Retaliation against ${targetLabel} with ${action.actionName}`;
+    }
     return `Use ${name} against ${targetLabel}`;
   }
   if (action.reaction === 'decline') return `Decline opportunity attack against ${targetLabel}`;
@@ -701,6 +704,7 @@ function reactionActionLabel(
 function damageReactionName(reaction: Extract<LegalAction, { type: 'reaction' }>['reaction'] | NonNullable<Extract<LegalAction, { type: 'reaction' }>['reactionFeature']>): string {
   if (reaction === 'monk_deflect') return 'Deflect Attacks';
   if (reaction === 'superior_hunters_defense') return "Superior Hunter's Defense";
+  if (reaction === 'retaliation') return 'Retaliation';
   if (reaction === 'opportunity_attack') return 'opportunity attack';
   return 'Uncanny Dodge';
 }
@@ -708,7 +712,13 @@ function damageReactionName(reaction: Extract<LegalAction, { type: 'reaction' }>
 function damageReactionDescription(action: Extract<LegalAction, { type: 'reaction' }>): string {
   const name = damageReactionName(action.reactionFeature ?? action.reaction);
   if (action.reaction === 'decline') {
+    if ((action.reactionFeature ?? action.reaction) === 'retaliation') {
+      return 'Do not spend this reaction on the Retaliation trigger from this adjacent attacker.';
+    }
     return `Do not spend this reaction on this ${name} attack-damage mitigation trigger from this attacker.`;
+  }
+  if ((action.reactionFeature ?? action.reaction) === 'retaliation') {
+    return 'Spend the reaction to make the listed melee Retaliation attack against the adjacent creature that damaged this Barbarian.';
   }
   if ((action.reactionFeature ?? action.reaction) === 'monk_deflect') {
     return 'Spend the reaction to reduce the incoming attack damage with Deflect Attacks or Deflect Energy. Battlecast redirect behavior is applied if the blow is fully deflected.';

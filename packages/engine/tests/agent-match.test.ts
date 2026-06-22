@@ -1475,6 +1475,66 @@ describe('agent matches', () => {
     expect(reactionResolution?.logs.some((log) => log.action === "Superior Hunter's Defense")).toBe(true);
   });
 
+  it('asks OpenRouter for Barbarian Retaliation after adjacent Battlecast damage', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let observedPrompt: { legalActions?: Array<{ id: string; reactionFeature?: string; expectedDamage?: number }> } | undefined;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const retaliation = actionIds.find((id) => id.startsWith('reaction:retaliation:'));
+      if (retaliation) {
+        const userMessage = body.messages.find((message: { role: string }) => message.role === 'user');
+        observedPrompt = JSON.parse(String(userMessage.content));
+      }
+      const actionId = retaliation ?? 'end_turn';
+      return jsonResponse({
+        id: `gen-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Spend the reaction to retaliate.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: fighterThreatensHeroScenario('Barbarian', 10),
+      seed: 1,
+      redAgent: 'battlecast.aggressive',
+      blueAgent: 'openrouter:test/tool-model',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const reactionResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.acceptedAction.type === 'reaction' &&
+      event.acceptedAction.reaction === 'retaliation'
+    );
+
+    expect(observedPrompt?.legalActions?.some((action) =>
+      action.id.startsWith('reaction:retaliation:') &&
+      action.reactionFeature === 'retaliation' &&
+      typeof action.expectedDamage === 'number'
+    )).toBe(true);
+    expect(reactionResolution?.type).toBe('action_resolved');
+    expect(reactionResolution?.acceptedAction).toEqual(expect.objectContaining({
+      reaction: 'retaliation',
+      reactionFeature: 'retaliation',
+      incomingDamage: expect.any(Number),
+    }));
+    expect(reactionResolution?.logs.some((log) => log.action === 'Retaliation')).toBe(true);
+  });
+
   it('lets an actual-action LLM Dodge and keep the defensive flag until its next turn', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     let callIndex = 0;

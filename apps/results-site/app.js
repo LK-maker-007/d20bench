@@ -777,6 +777,7 @@
     ids.add("llm-frontier-smart-v1");
     ids.add("llm-frontier-smart-top3-10x-v1");
     ids.add("llm-frontier-smart-glm-10x-v1");
+    ids.add("llm-actual-retaliation-verify-v1");
     ids.add("llm-actual-deflect-verify-v3");
     ids.add("llm-actual-mitigation-verify-v3");
     ids.add("llm-actual-reaction-verify-v1");
