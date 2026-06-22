@@ -200,9 +200,9 @@ The first implementation is deliberately narrow:
 
 Latest broad cheap audit:
 
-- `llm-actual-cheap-verify-v10` finished 16/16, 0 failed, estimated cost `$0.772367`.
-- Completed checkpoints contained 554 LLM action resolutions across 676 OpenRouter turn prompts, with 0 `battlecast_tactic` legal-action exposures and 0 delegate selections.
-- Stepwise control was exercised: max within-turn step was 11, and 132 LLM-controlled turns required multiple decisions after observing intermediate results.
+- `llm-actual-cheap-verify-v11` finished 16/16, 0 failed, estimated cost `$0.905720`.
+- Its result-level harness audit recorded 732 model concrete action resolutions, 0 model `battlecast_tactic` legal-action exposures, and 0 model delegate selections.
+- Stepwise control was exercised: 150 model-controlled turns required multiple decisions after observing intermediate results, with a max of 12 model actions in one turn.
 - The action mix included attacks, spells, reactions, class features, movement, Dash, Dodge, and end-turn actions, confirming models are executing concrete actions rather than selecting strategy delegates.
 
 This gives us a safe, auditable harness before we spend significant model budget.

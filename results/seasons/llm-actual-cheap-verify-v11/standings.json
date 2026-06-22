@@ -1,0 +1,746 @@
+{
+  "seasonId": "llm-actual-cheap-verify-v11",
+  "description": "Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after exposing non-geometric multi-target saving throws such as Paladin Abjure Foes.",
+  "generatedAt": "2026-06-22T16:17:33.788Z",
+  "startedAt": "2026-06-22T16:17:33.788Z",
+  "completedAt": "2026-06-22T16:33:22.560Z",
+  "llmActionSpace": "actual-actions-v1",
+  "initialRating": 1000,
+  "kFactor": 32,
+  "maxRounds": 3,
+  "concurrency": 4,
+  "totalMatches": 16,
+  "completedMatches": 16,
+  "failedMatches": 0,
+  "standings": [
+    {
+      "agentId": "battlecast.smart",
+      "rating": 1070.3336348646185,
+      "matches": 16,
+      "wins": 11,
+      "losses": 3,
+      "draws": 2,
+      "score": 12
+    },
+    {
+      "agentId": "openrouter:deepseek/deepseek-v4-flash",
+      "rating": 1011.7176881359507,
+      "matches": 4,
+      "wins": 2,
+      "losses": 2,
+      "draws": 0,
+      "score": 2
+    },
+    {
+      "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+      "rating": 986.8590598796129,
+      "matches": 4,
+      "wins": 1,
+      "losses": 3,
+      "draws": 0,
+      "score": 1
+    },
+    {
+      "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "rating": 966.9661314347821,
+      "matches": 4,
+      "wins": 0,
+      "losses": 3,
+      "draws": 1,
+      "score": 0.5
+    },
+    {
+      "agentId": "openrouter:mistralai/ministral-8b-2512",
+      "rating": 964.1234856850361,
+      "matches": 4,
+      "wins": 0,
+      "losses": 3,
+      "draws": 1,
+      "score": 0.5
+    }
+  ],
+  "battleTypeStandings": [
+    {
+      "battleType": "hero-party-chokepoint",
+      "standings": [
+        {
+          "agentId": "battlecast.smart",
+          "rating": 1107.2755311276462,
+          "matches": 8,
+          "wins": 8,
+          "losses": 0,
+          "draws": 0,
+          "score": 8
+        },
+        {
+          "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+          "rating": 976.6229352052767,
+          "matches": 2,
+          "wins": 0,
+          "losses": 2,
+          "draws": 0,
+          "score": 0
+        },
+        {
+          "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "rating": 974.5059627584434,
+          "matches": 2,
+          "wins": 0,
+          "losses": 2,
+          "draws": 0,
+          "score": 0
+        },
+        {
+          "agentId": "openrouter:mistralai/ministral-8b-2512",
+          "rating": 972.1260693796585,
+          "matches": 2,
+          "wins": 0,
+          "losses": 2,
+          "draws": 0,
+          "score": 0
+        },
+        {
+          "agentId": "openrouter:deepseek/deepseek-v4-flash",
+          "rating": 969.4695015289755,
+          "matches": 2,
+          "wins": 0,
+          "losses": 2,
+          "draws": 0,
+          "score": 0
+        }
+      ]
+    },
+    {
+      "battleType": "hero-party-status",
+      "standings": [
+        {
+          "agentId": "openrouter:deepseek/deepseek-v4-flash",
+          "rating": 1030.5304984710244,
+          "matches": 2,
+          "wins": 2,
+          "losses": 0,
+          "draws": 0,
+          "score": 2
+        },
+        {
+          "agentId": "battlecast.smart",
+          "rating": 1003.2640260661495,
+          "matches": 8,
+          "wins": 3,
+          "losses": 3,
+          "draws": 2,
+          "score": 4
+        },
+        {
+          "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+          "rating": 1001.9231286610101,
+          "matches": 2,
+          "wins": 1,
+          "losses": 1,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "rating": 982.9588350108146,
+          "matches": 2,
+          "wins": 0,
+          "losses": 1,
+          "draws": 1,
+          "score": 0.5
+        },
+        {
+          "agentId": "openrouter:mistralai/ministral-8b-2512",
+          "rating": 981.3235117910012,
+          "matches": 2,
+          "wins": 0,
+          "losses": 1,
+          "draws": 1,
+          "score": 0.5
+        }
+      ]
+    }
+  ],
+  "costSummary": {
+    "totalDecisions": 606,
+    "promptTokens": 9409903,
+    "completionTokens": 193149,
+    "totalTokens": 9603052,
+    "estimatedCostUsd": 0.9057204700000002,
+    "byModel": [
+      {
+        "agentId": "openrouter:mistralai/ministral-8b-2512",
+        "model": "mistralai/ministral-8b-2512",
+        "decisions": 197,
+        "promptTokens": 3174553,
+        "completionTokens": 6574,
+        "totalTokens": 3181127,
+        "estimatedCostUsd": 0.47716905000000015
+      },
+      {
+        "agentId": "openrouter:deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-flash",
+        "decisions": 138,
+        "promptTokens": 2208235,
+        "completionTokens": 8378,
+        "totalTokens": 2216613,
+        "estimatedCostUsd": 0.20024918999999997
+      },
+      {
+        "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "decisions": 148,
+        "promptTokens": 2272448,
+        "completionTokens": 174582,
+        "totalTokens": 2447030,
+        "estimatedCostUsd": 0.19310043999999998
+      },
+      {
+        "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "decisions": 123,
+        "promptTokens": 1754667,
+        "completionTokens": 3615,
+        "totalTokens": 1758282,
+        "estimatedCostUsd": 0.035201790000000004
+      }
+    ]
+  },
+  "harnessAudit": {
+    "modelTurnStarts": 732,
+    "modelActionResolutions": 732,
+    "modelDelegateLegalActionExposures": 0,
+    "modelDelegateSelections": 0,
+    "modelStepwiseTurns": 150,
+    "modelStepwiseContinuations": 526,
+    "maxModelActionsInTurn": 12,
+    "modelToolCallDecisions": 560,
+    "modelJsonFallbackDecisions": 46,
+    "modelRepairAttempts": 3,
+    "acceptedActionCounts": [
+      {
+        "actionKey": "end_turn",
+        "count": 156
+      },
+      {
+        "actionKey": "move_toward",
+        "count": 122
+      },
+      {
+        "actionKey": "move_to",
+        "count": 93
+      },
+      {
+        "actionKey": "attack:Javelin",
+        "count": 55
+      },
+      {
+        "actionKey": "spell:Healing Word",
+        "count": 36
+      },
+      {
+        "actionKey": "attack:Eldritch Blast",
+        "count": 32
+      },
+      {
+        "actionKey": "attack:Longbow",
+        "count": 22
+      },
+      {
+        "actionKey": "spell:Hunter's Mark",
+        "count": 18
+      },
+      {
+        "actionKey": "attack:Longsword",
+        "count": 15
+      },
+      {
+        "actionKey": "dash",
+        "count": 15
+      },
+      {
+        "actionKey": "reaction:cutting_words_attack",
+        "count": 12
+      },
+      {
+        "actionKey": "spell:Scorching Ray",
+        "count": 12
+      },
+      {
+        "actionKey": "spell:Cure Wounds",
+        "count": 11
+      },
+      {
+        "actionKey": "spell:Hex",
+        "count": 11
+      },
+      {
+        "actionKey": "spell:Shield of Faith",
+        "count": 11
+      },
+      {
+        "actionKey": "attack:Shortbow",
+        "count": 10
+      },
+      {
+        "actionKey": "reaction:cutting_words_damage",
+        "count": 9
+      },
+      {
+        "actionKey": "spell:Lay on Hands",
+        "count": 9
+      },
+      {
+        "actionKey": "class_feature:action_surge",
+        "count": 8
+      },
+      {
+        "actionKey": "spell:Aid",
+        "count": 7
+      },
+      {
+        "actionKey": "spell:Guiding Bolt",
+        "count": 7
+      },
+      {
+        "actionKey": "spell:Innate Sorcery",
+        "count": 7
+      },
+      {
+        "actionKey": "class_feature:wild_shape",
+        "count": 5
+      },
+      {
+        "actionKey": "spell:Bardic Inspiration",
+        "count": 5
+      },
+      {
+        "actionKey": "spell:Hold Person",
+        "count": 5
+      },
+      {
+        "actionKey": "spell:Land's Aid",
+        "count": 5
+      },
+      {
+        "actionKey": "spell:Second Wind",
+        "count": 4
+      },
+      {
+        "actionKey": "spell:Spiritual Weapon",
+        "count": 4
+      },
+      {
+        "actionKey": "attack:Fire Bolt",
+        "count": 3
+      },
+      {
+        "actionKey": "reaction:decline",
+        "count": 3
+      },
+      {
+        "actionKey": "spell:Channel Divinity: Preserve Life",
+        "count": 3
+      },
+      {
+        "actionKey": "spell:Dissonant Whispers",
+        "count": 3
+      },
+      {
+        "actionKey": "spell:Vicious Mockery",
+        "count": 3
+      },
+      {
+        "actionKey": "spell:Bless",
+        "count": 2
+      },
+      {
+        "actionKey": "spell:Channel Divinity: Divine Spark Harm",
+        "count": 2
+      },
+      {
+        "actionKey": "attack:Produce Flame",
+        "count": 1
+      },
+      {
+        "actionKey": "spell:Bane",
+        "count": 1
+      },
+      {
+        "actionKey": "spell:Channel Divinity: Divine Spark Heal",
+        "count": 1
+      },
+      {
+        "actionKey": "spell:Fireball",
+        "count": 1
+      },
+      {
+        "actionKey": "spell:Shatter",
+        "count": 1
+      },
+      {
+        "actionKey": "spell:Shining Smite",
+        "count": 1
+      },
+      {
+        "actionKey": "stabilise",
+        "count": 1
+      }
+    ]
+  },
+  "failures": [],
+  "matches": [
+    {
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.smart",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.smart",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1000,
+      "redRatingAfter": 984,
+      "blueRatingAfter": 1016,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1000,
+      "redBattleTypeRatingAfter": 984,
+      "blueBattleTypeRatingAfter": 1016,
+      "finalStateHash": "3f28fd3518c2dfcfb58ec635b0300ccae65a6bf1c940b7c148aad74b6545d3a7",
+      "llmDecisions": 25,
+      "estimatedCostUsd": 0.036329669999999994
+    },
+    {
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_deepseek_deepseek-v4-flash",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1016,
+      "blueRatingBefore": 984,
+      "redRatingAfter": 1030.5304984710244,
+      "blueRatingAfter": 969.4695015289755,
+      "redBattleTypeRatingBefore": 1016,
+      "blueBattleTypeRatingBefore": 984,
+      "redBattleTypeRatingAfter": 1030.5304984710244,
+      "blueBattleTypeRatingAfter": 969.4695015289755,
+      "finalStateHash": "7bb478d73dc11a3f62ce303a0dbf900a581686181894bc6a1ec59554faa4c8bc",
+      "llmDecisions": 30,
+      "estimatedCostUsd": 0.04877712
+    },
+    {
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.smart",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "battlecast.smart",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1030.5304984710244,
+      "redRatingAfter": 985.4023736484061,
+      "blueRatingAfter": 1045.1281248226185,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1030.5304984710244,
+      "redBattleTypeRatingAfter": 985.4023736484061,
+      "blueBattleTypeRatingAfter": 1045.1281248226185,
+      "finalStateHash": "ec6fa58bf9d93d5a55976a81f68d0d01e43d956b94621141d0ad3236948d6a96",
+      "llmDecisions": 42,
+      "estimatedCostUsd": 0.10349355
+    },
+    {
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_mistralai_ministral-8b-2512",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:mistralai/ministral-8b-2512",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1045.1281248226185,
+      "blueRatingBefore": 985.4023736484061,
+      "redRatingAfter": 1058.4044290913662,
+      "blueRatingAfter": 972.1260693796585,
+      "redBattleTypeRatingBefore": 1045.1281248226185,
+      "blueBattleTypeRatingBefore": 985.4023736484061,
+      "redBattleTypeRatingAfter": 1058.4044290913662,
+      "blueBattleTypeRatingAfter": 972.1260693796585,
+      "finalStateHash": "a115406997a585104db70557fa91b5dcf583eb2efe65714ce79ed3c281870f2a",
+      "llmDecisions": 51,
+      "estimatedCostUsd": 0.13054980000000002
+    },
+    {
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.smart",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "blueAgent": "battlecast.smart",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1058.4044290913662,
+      "redRatingAfter": 986.6645719307638,
+      "blueRatingAfter": 1071.7398571606025,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1058.4044290913662,
+      "redBattleTypeRatingAfter": 986.6645719307638,
+      "blueBattleTypeRatingAfter": 1071.7398571606025,
+      "finalStateHash": "65c56c85928969b5160b8bce99c2796a437a0383679b76aa40a594f30e22024f",
+      "llmDecisions": 23,
+      "estimatedCostUsd": 0.006891149999999999
+    },
+    {
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_meta-llama_llama-3.1-8b-instruct",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1071.7398571606025,
+      "blueRatingBefore": 986.6645719307638,
+      "redRatingAfter": 1083.898466332923,
+      "blueRatingAfter": 974.5059627584434,
+      "redBattleTypeRatingBefore": 1071.7398571606025,
+      "blueBattleTypeRatingBefore": 986.6645719307638,
+      "redBattleTypeRatingAfter": 1083.898466332923,
+      "blueBattleTypeRatingAfter": 974.5059627584434,
+      "finalStateHash": "69d450f840d2bdf0a18171a0a910d427e64106ba01b30350d72eb6d6af03b01b",
+      "llmDecisions": 20,
+      "estimatedCostUsd": 0.0056978
+    },
+    {
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.smart",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "blueAgent": "battlecast.smart",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1083.898466332923,
+      "redRatingAfter": 987.7902788108643,
+      "blueRatingAfter": 1096.1081875220586,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1083.898466332923,
+      "redBattleTypeRatingAfter": 987.7902788108643,
+      "blueBattleTypeRatingAfter": 1096.1081875220586,
+      "finalStateHash": "4154fada2026df9e8d7863af62f2c74d31d2f3c7013009b62ea480151908dd6a",
+      "llmDecisions": 25,
+      "estimatedCostUsd": 0.03500867499999999
+    },
+    {
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_qwen_qwen3.5-flash-02-23",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1096.1081875220586,
+      "blueRatingBefore": 987.7902788108643,
+      "redRatingAfter": 1107.2755311276462,
+      "blueRatingAfter": 976.6229352052767,
+      "redBattleTypeRatingBefore": 1096.1081875220586,
+      "blueBattleTypeRatingBefore": 987.7902788108643,
+      "redBattleTypeRatingAfter": 1107.2755311276462,
+      "blueBattleTypeRatingAfter": 976.6229352052767,
+      "finalStateHash": "37750e5ffdfb254b1413937b894f7010a41a8a2d061a348c228fa87aff10ccd2",
+      "llmDecisions": 22,
+      "estimatedCostUsd": 0.031042764999999993
+    },
+    {
+      "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.smart",
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.smart",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 969.4695015289755,
+      "blueRatingBefore": 1107.2755311276462,
+      "redRatingAfter": 991.502594724093,
+      "blueRatingAfter": 1085.2424379325287,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1000,
+      "redBattleTypeRatingAfter": 1016,
+      "blueBattleTypeRatingAfter": 984,
+      "finalStateHash": "cf9d38ac87956fea079dcbdf1e245bc2fe171f8a5e151d2dad486a3aaee0c879",
+      "llmDecisions": 42,
+      "estimatedCostUsd": 0.059319810000000014
+    },
+    {
+      "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_deepseek_deepseek-v4-flash",
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1085.2424379325287,
+      "blueRatingBefore": 991.502594724093,
+      "redRatingAfter": 1065.027344520671,
+      "blueRatingAfter": 1011.7176881359507,
+      "redBattleTypeRatingBefore": 984,
+      "blueBattleTypeRatingBefore": 1016,
+      "redBattleTypeRatingAfter": 969.4695015289755,
+      "blueBattleTypeRatingAfter": 1030.5304984710244,
+      "finalStateHash": "a6b80e2b307191185a4c320e39994007d951719c4585d0e5ffe22207a3b274e7",
+      "llmDecisions": 41,
+      "estimatedCostUsd": 0.05582259
+    },
+    {
+      "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.smart",
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "battlecast.smart",
+      "winner": "draw",
+      "redScore": 0.5,
+      "blueScore": 0.5,
+      "redRatingBefore": 972.1260693796585,
+      "blueRatingBefore": 1065.027344520671,
+      "redRatingAfter": 976.305202655605,
+      "blueRatingAfter": 1060.8482112447246,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 969.4695015289755,
+      "redBattleTypeRatingAfter": 998.5976263515939,
+      "blueBattleTypeRatingAfter": 970.8718751773815,
+      "finalStateHash": "2e70a1519bd55ada6839626562e5616f88be016a7f82640ea07b3e5017e26274",
+      "llmDecisions": 65,
+      "estimatedCostUsd": 0.15304589999999993
+    },
+    {
+      "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_mistralai_ministral-8b-2512",
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:mistralai/ministral-8b-2512",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1060.8482112447246,
+      "blueRatingBefore": 976.305202655605,
+      "redRatingAfter": 1073.0299282152935,
+      "blueRatingAfter": 964.1234856850361,
+      "redBattleTypeRatingBefore": 970.8718751773815,
+      "blueBattleTypeRatingBefore": 998.5976263515939,
+      "redBattleTypeRatingAfter": 988.1459897379742,
+      "blueBattleTypeRatingAfter": 981.3235117910012,
+      "finalStateHash": "49c7e6a54a571e1dbff77e32716d74a1859ccd887216986c5706afd632e036c5",
+      "llmDecisions": 39,
+      "estimatedCostUsd": 0.09007979999999999
+    },
+    {
+      "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.smart",
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "blueAgent": "battlecast.smart",
+      "winner": "draw",
+      "redScore": 0.5,
+      "blueScore": 0.5,
+      "redRatingBefore": 974.5059627584434,
+      "blueRatingBefore": 1073.0299282152935,
+      "redRatingAfter": 978.9253286946042,
+      "blueRatingAfter": 1068.6105622791326,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 988.1459897379742,
+      "redBattleTypeRatingAfter": 999.4543143773092,
+      "blueBattleTypeRatingAfter": 988.691675360665,
+      "finalStateHash": "2a096d5df69fe7c8d049aa784734a844e0ea63c9120aef8b5e47e8dd145fef2e",
+      "llmDecisions": 49,
+      "estimatedCostUsd": 0.013904589999999998
+    },
+    {
+      "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_meta-llama_llama-3.1-8b-instruct",
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1068.6105622791326,
+      "blueRatingBefore": 978.9253286946042,
+      "redRatingAfter": 1080.5697595389547,
+      "blueRatingAfter": 966.9661314347821,
+      "redBattleTypeRatingBefore": 988.691675360665,
+      "blueBattleTypeRatingBefore": 999.4543143773092,
+      "redBattleTypeRatingAfter": 1005.1871547271596,
+      "blueBattleTypeRatingAfter": 982.9588350108146,
+      "finalStateHash": "3e923d181a371ee53c1594b9eb91edd81a43ada2ab53bc98136966050bab29cb",
+      "llmDecisions": 31,
+      "estimatedCostUsd": 0.00870825
+    },
+    {
+      "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.smart",
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "blueAgent": "battlecast.smart",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 976.6229352052767,
+      "blueRatingBefore": 1080.5697595389547,
+      "redRatingAfter": 965.2719716386703,
+      "blueRatingAfter": 1091.9207231055611,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1005.1871547271596,
+      "redBattleTypeRatingAfter": 984.2388595560055,
+      "blueBattleTypeRatingAfter": 1020.9482951711541,
+      "finalStateHash": "fd5cb78cace95b6b0c624ed5e95102e14ed0a2182b98874a2068bc4053598e5c",
+      "llmDecisions": 46,
+      "estimatedCostUsd": 0.05291286000000001
+    },
+    {
+      "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_qwen_qwen3.5-flash-02-23",
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1091.9207231055611,
+      "blueRatingBefore": 965.2719716386703,
+      "redRatingAfter": 1070.3336348646185,
+      "blueRatingAfter": 986.8590598796129,
+      "redBattleTypeRatingBefore": 1020.9482951711541,
+      "blueBattleTypeRatingBefore": 984.2388595560055,
+      "redBattleTypeRatingAfter": 1003.2640260661495,
+      "blueBattleTypeRatingAfter": 1001.9231286610101,
+      "finalStateHash": "be0cb6d04a8af1b3045ae077a0f4fc8456e1b59ff917b0905b59a42a9b5a3d9d",
+      "llmDecisions": 55,
+      "estimatedCostUsd": 0.07413613999999999
+    }
+  ]
+}
