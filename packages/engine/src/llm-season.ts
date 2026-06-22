@@ -466,6 +466,29 @@ export const llmActualSuperiorDefenseVerifyScenario: D20benchScenario = {
   ],
 };
 
+export const llmActualAbjureFoesVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-abjure-foes-paladin-party.v1',
+  name: 'LLM Abjure Foes Paladin Party',
+  description: 'An OpenRouter-controlled level-9 Paladin should be able to spend Channel Divinity on Abjure Foes and choose the exact enemy target group.',
+  battleType: 'class-feature-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 12,
+  tacticalTags: ['class-feature', 'abjure-foes', 'multi-target-save'],
+  designNotes: [
+    'Designed as a live-model harness validation for concrete non-geometric multi-target saving-throw choices.',
+    'The Paladin starts with three enemies inside 60 ft, so the legal-action catalogue should expose spell:abjure-foes:targets:<ids> options instead of a Battlecast tactic delegate.',
+  ],
+  combatants: [
+    { monster: buildHero('Paladin', 9), team: 'red', position: { x: 2, y: 2 } },
+    { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 5, y: 2 } },
+    { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 6, y: 3 } },
+    { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 7, y: 4 } },
+  ],
+};
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -703,6 +726,12 @@ export const llmActualCheapVerifyV10Season: LlmSeasonConfig = {
   description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after making OpenRouter rationale optional, retrying embedded provider errors, and accepting provider pseudo-tool JSON content.',
 };
 
+export const llmActualCheapVerifyV11Season: LlmSeasonConfig = {
+  ...llmActualCheapVerifySeason,
+  id: 'llm-actual-cheap-verify-v11',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after exposing non-geometric multi-target saving throws such as Paladin Abjure Foes.',
+};
+
 export const llmActualReactionVerifySeason: LlmSeasonConfig = {
   id: 'llm-actual-reaction-verify-v1',
   description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control opportunity-attack reactions against a Battlecast Kiting mover.',
@@ -878,7 +907,28 @@ export const llmActualClassFeatureVerifyV2Season: LlmSeasonConfig = {
   description: 'Focused delegate-free actual-action validation for Paladin Sacred Weapon and Monk Superior Defense after marking setup class-feature actions explicitly in the LLM observation.',
 };
 
+export const llmActualAbjureFoesVerifySeason: LlmSeasonConfig = {
+  id: 'llm-actual-abjure-foes-verify-v1',
+  description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control Paladin Abjure Foes as a concrete multi-target saving-throw action.',
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    'battlecast.aggressive',
+  ],
+  scenarios: [llmActualAbjureFoesVerifyScenario],
+  seeds: [1],
+  maxRounds: 1,
+  pairings: llmActualCheapVerifyModelAgents.map((model) => ({
+    redAgent: model,
+    blueAgent: 'battlecast.aggressive' as const,
+  })),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
 export const llmSeasons = [
+  llmActualAbjureFoesVerifySeason,
   llmActualClassFeatureVerifyV2Season,
   llmActualClassFeatureVerifySeason,
   llmActualRecklessVerifySeason,
@@ -888,6 +938,7 @@ export const llmSeasons = [
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
+  llmActualCheapVerifyV11Season,
   llmActualCheapVerifyV10Season,
   llmActualCheapVerifyV9Season,
   llmActualCheapVerifyV8Season,
