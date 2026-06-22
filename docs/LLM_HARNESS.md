@@ -178,6 +178,7 @@ The first implementation is deliberately narrow:
 - `llm-actual-cheap-verify-v9` repeats that scope after making opportunity attacks explicit reaction choices. Exact post-move triggers ask the reacting LLM at the trigger cell; synchronous Battlecast tactic turns can use predeclared LLM reactions for clear kiting/pure-ranged movement cases, and otherwise fail closed by declining LLM-owned OAs rather than auto-spending hidden reactions.
 - `llm-actual-cheap-verify-v10` repeats the same broad cheap scope after provider hardening: `rationale` is optional in the tool schema, OpenRouter 200 responses containing provider error bodies are retried as provider errors, and tool-call-shaped JSON content (`name` plus `arguments.actionId`) is accepted when the action id is exact and legal.
 - `llm-actual-cheap-verify-v11` repeats the broad cheap scope after exposing non-geometric multi-target saving throws such as Paladin Abjure Foes.
+- `llm-actual-cheap-verify-v12` repeats the broad cheap scope after filtering no-progress `move_toward` actions from `actual-actions-v1`, preventing models from spending stepwise turns on movement choices that cannot reduce distance or change position.
 - `llm-actual-reaction-verify-v1` is a focused hidden reaction smoke season: Battlecast Kiting controls a Ranger that starts adjacent to an OpenRouter-controlled Fighter, forcing a live opportunity-attack reaction choice in four cheap-model matches.
 - `llm-actual-mitigation-verify-v3` is a focused hidden mitigation smoke season: Battlecast Aggressive controls a high-level Fighter attacking an OpenRouter-controlled Rogue, forcing live trigger-time Uncanny Dodge choices in four cheap-model matches with isolated async Battlecast RNG. The model sees the hit log, incoming damage, damage type, and expected reduction before each mitigation choice.
 - `llm-actual-deflect-verify-v3` is a focused hidden mitigation smoke season for Monk Deflect Attacks and Ranger Superior Hunter's Defense. It uses the same cheap model set against Battlecast Aggressive on two one-round mitigation fixtures and covers movement-triggered opportunity-attack damage reactions.
@@ -200,9 +201,10 @@ The first implementation is deliberately narrow:
 
 Latest broad cheap audit:
 
-- `llm-actual-cheap-verify-v11` finished 16/16, 0 failed, estimated cost `$0.905720`.
-- Its result-level harness audit recorded 732 model concrete action resolutions, 0 model `battlecast_tactic` legal-action exposures, and 0 model delegate selections.
-- Stepwise control was exercised: 150 model-controlled turns required multiple decisions after observing intermediate results, with a max of 12 model actions in one turn.
+- `llm-actual-cheap-verify-v12` finished 16/16, 0 failed, estimated cost `$0.838062`.
+- Its result-level harness audit recorded 724 model concrete action resolutions, 0 model `battlecast_tactic` legal-action exposures, and 0 model delegate selections.
+- Stepwise control was exercised: 146 model-controlled turns required multiple decisions after observing intermediate results, with a max of 10 model actions in one turn.
+- The v12 replay audit found 0 no-log `move_toward` actions, compared with 32 in v11 before the movement-legality filter.
 - The action mix included attacks, spells, reactions, class features, movement, Dash, Dodge, and end-turn actions, confirming models are executing concrete actions rather than selecting strategy delegates.
 
 This gives us a safe, auditable harness before we spend significant model budget.

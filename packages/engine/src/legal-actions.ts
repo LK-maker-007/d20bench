@@ -352,10 +352,19 @@ export function generateLegalActions(
   }
 
   if (active.movementRemaining > 0) {
+    const reachableDestinations = options.includeActualActions
+      ? reachableMovementDestinations(active, state)
+      : undefined;
     if (options.includeActualActions) {
-      actions.push(...generateMoveToActions(state, active));
+      actions.push(...generateMoveToActions(state, active, reachableDestinations));
     }
     for (const target of enemies.filter((target) => creatureDistance(active, target) > 5)) {
+      if (
+        options.includeActualActions &&
+        !canActuallyMoveTowardTarget(active, target, reachableDestinations ?? [])
+      ) {
+        continue;
+      }
       actions.push({
         id: moveTowardActionId(target.id),
         type: 'move_toward',
@@ -1388,14 +1397,29 @@ function opportunityThreats(state: BattleState, active: Creature): Creature[] {
   });
 }
 
-function generateMoveToActions(state: BattleState, active: Creature): LegalAction[] {
-  return selectMovementDestinations(state, active, reachableMovementDestinations(active, state))
+function generateMoveToActions(
+  state: BattleState,
+  active: Creature,
+  reachable = reachableMovementDestinations(active, state),
+): LegalAction[] {
+  return selectMovementDestinations(state, active, reachable)
     .map((destination) => ({
       id: moveToActionId(destination),
       type: 'move_to' as const,
       destination: { x: destination.x, y: destination.y },
       distanceFt: destination.distanceFt,
     }));
+}
+
+function canActuallyMoveTowardTarget(
+  active: Creature,
+  target: Creature,
+  reachable: Array<{ x: number; y: number; distanceFt: number }>,
+): boolean {
+  const currentDistance = creatureDistance(active, target);
+  return reachable.some((destination) =>
+    creatureDistance({ ...active, position: destination }, target) < currentDistance
+  );
 }
 
 function selectMovementDestinations(

@@ -228,6 +228,25 @@ describe('agent matches', () => {
     expect(exhaustedMovementCatalogue.actions.some((action) => action.type === 'move_to')).toBe(false);
     expect(exhaustedMovementCatalogue.actions.some((action) => action.type === 'dash')).toBe(true);
 
+    const trappedState = initBattle(createBattlecastCreatures(adjacentThreatWithFarTargetScenario().combatants, true), 8);
+    const trappedActive = trappedState.creatures.find((creature) => creature.team === 'red');
+    if (!trappedActive) throw new Error('expected trapped red fighter');
+    trappedState.terrainBlocked = new Set([
+      '1,1', '1,2', '1,3',
+      '2,1',
+      '3,1', '3,2', '3,3',
+    ]);
+    trappedActive.movementRemaining = 30;
+    const trappedCatalogue = generateLegalActions(trappedState, trappedActive, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    expect(trappedCatalogue.actions.some((action) => action.type === 'move_to')).toBe(false);
+    expect(trappedCatalogue.actions.some((action) => action.type === 'move_toward')).toBe(false);
+
     active.hasActed = true;
     active.movementRemaining = 30;
     const spentActionCatalogue = generateLegalActions(state, active, {

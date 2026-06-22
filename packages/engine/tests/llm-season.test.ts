@@ -16,6 +16,8 @@ import {
   llmActualCheapVerifyV8Season,
   llmActualCheapVerifyV9Season,
   llmActualCheapVerifyV10Season,
+  llmActualCheapVerifyV11Season,
+  llmActualCheapVerifyV12Season,
   llmActualCuttingWordsVerifySeason,
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
@@ -251,6 +253,12 @@ describe('LLM seasons', () => {
     expect(llmActualCheapVerifyV10Season.id).toBe('llm-actual-cheap-verify-v10');
     expect(llmActualCheapVerifyV10Season.llmActionSpace).toBe('actual-actions-v1');
     expect(llmActualCheapVerifyV10Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
+    expect(llmActualCheapVerifyV11Season.id).toBe('llm-actual-cheap-verify-v11');
+    expect(llmActualCheapVerifyV11Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapVerifyV11Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
+    expect(llmActualCheapVerifyV12Season.id).toBe('llm-actual-cheap-verify-v12');
+    expect(llmActualCheapVerifyV12Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapVerifyV12Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
     expect(llmActualReactionVerifySeason.id).toBe('llm-actual-reaction-verify-v1');
     expect(llmActualReactionVerifySeason.llmActionSpace).toBe('actual-actions-v1');
     expect(llmActualReactionVerifySeason.scenarios.map((scenario) => scenario.battleType)).toEqual(['reaction-smoke']);

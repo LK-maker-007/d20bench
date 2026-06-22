@@ -1007,6 +1007,12 @@ export const llmActualCheapVerifyV11Season: LlmSeasonConfig = {
   description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after exposing non-geometric multi-target saving throws such as Paladin Abjure Foes.',
 };
 
+export const llmActualCheapVerifyV12Season: LlmSeasonConfig = {
+  ...llmActualCheapVerifySeason,
+  id: 'llm-actual-cheap-verify-v12',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after filtering no-progress move_toward actions from actual-actions-v1.',
+};
+
 export const llmActualReactionVerifySeason: LlmSeasonConfig = {
   id: 'llm-actual-reaction-verify-v1',
   description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control opportunity-attack reactions against a Battlecast Kiting mover.',
@@ -1277,6 +1283,7 @@ export const llmSeasons = [
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
+  llmActualCheapVerifyV12Season,
   llmActualCheapVerifyV11Season,
   llmActualCheapVerifyV10Season,
   llmActualCheapVerifyV9Season,
