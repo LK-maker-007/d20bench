@@ -205,6 +205,7 @@
         metric("LLM Actions", formatInteger(audit.modelActionResolutions || 0), `${formatInteger(audit.modelToolCallDecisions || 0)} tool calls`),
         metric("Delegates", formatInteger(audit.modelDelegateSelections || 0), `${formatInteger(audit.modelDelegateLegalActionExposures || 0)} exposed`),
         metric("Stepwise", formatInteger(audit.modelStepwiseTurns || 0), `max ${formatInteger(audit.maxModelActionsInTurn || 0)} actions`),
+        metric("Invalid", formatInteger(audit.modelInvalidActionApplications || 0), `${formatInteger(audit.modelNoLogMovementActions || 0)} no-effect moves`),
       );
     }
 
