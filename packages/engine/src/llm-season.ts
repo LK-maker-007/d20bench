@@ -266,6 +266,48 @@ export const llmActualMitigationVerifyScenario: D20benchScenario = {
   ],
 };
 
+export const llmActualMonkDeflectVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-mitigation-monk-duel.v1',
+  name: 'LLM Mitigation Monk Duel',
+  description: 'A Battlecast Aggressive high-level Monk attacks an OpenRouter Monk that should choose whether to spend Deflect Attacks.',
+  battleType: 'mitigation-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['reaction', 'monk-deflect', 'damage-mitigation'],
+  designNotes: [
+    'Designed as a live-model harness validation for Monk defensive reactions.',
+    'The attacking Monk is intentionally high level and high-initiative so the Deflect window occurs before the OpenRouter-controlled Monk can reposition.',
+  ],
+  combatants: [
+    { monster: buildHero('Monk', 20), team: 'red', position: { x: 2, y: 2 } },
+    { monster: buildHero('Monk', 5), team: 'blue', position: { x: 2, y: 3 } },
+  ],
+};
+
+export const llmActualSuperiorHunterDefenseVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-mitigation-ranger-duel.v1',
+  name: 'LLM Mitigation Ranger Duel',
+  description: "A Battlecast Aggressive Fighter attacks an OpenRouter Ranger that should choose whether to spend Superior Hunter's Defense.",
+  battleType: 'mitigation-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['reaction', 'superior-hunters-defense', 'damage-mitigation'],
+  designNotes: [
+    "Designed as a live-model harness validation for Ranger Hunter's defensive reaction.",
+    'The Fighter is intentionally high level so at least one attack should hit and trigger Superior Hunter\'s Defense.',
+  ],
+  combatants: [
+    { monster: buildHero('Fighter', 20), team: 'red', position: { x: 2, y: 2 } },
+    { monster: buildHero('Ranger', 15), team: 'blue', position: { x: 2, y: 3 } },
+  ],
+};
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -537,7 +579,31 @@ export const llmActualMitigationVerifySeason: LlmSeasonConfig = {
   concurrency: 4,
 };
 
+export const llmActualDeflectVerifySeason: LlmSeasonConfig = {
+  id: 'llm-actual-deflect-verify-v3',
+  description: "Focused delegate-free actual-action validation where cheap OpenRouter models control trigger-time Monk Deflect and Superior Hunter's Defense reactions.",
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    'battlecast.aggressive',
+  ],
+  scenarios: [
+    llmActualMonkDeflectVerifyScenario,
+    llmActualSuperiorHunterDefenseVerifyScenario,
+  ],
+  seeds: [1],
+  maxRounds: 1,
+  pairings: llmActualCheapVerifyModelAgents.map((model) => ({
+    redAgent: 'battlecast.aggressive' as const,
+    blueAgent: model,
+  })),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
 export const llmSeasons = [
+  llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
   llmActualCheapVerifyV9Season,

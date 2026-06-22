@@ -10,6 +10,7 @@ import {
   isInLine,
   isPositionBlocked,
   pickRangedSphereCenter,
+  getEffectiveAbilityScore,
 } from './battlecast/engine/combat.js';
 import type { Creature, MonsterAction } from './battlecast/types/monster.js';
 import {
@@ -19,7 +20,7 @@ import {
   getMultiattack,
 } from './battlecast/engine/ai-targeting.js';
 import { reachableMovementDestinations } from './battlecast/engine/ai-movement.js';
-import { averageDamage } from './battlecast/engine/dice.js';
+import { abilityModifier, averageDamage } from './battlecast/engine/dice.js';
 import { getEligibleWildShapeBeasts } from './battlecast/data/heroes.js';
 
 export type LegalActionSpace = 'primitive' | 'battlecast-full-turn' | 'actual-actions-v1';
@@ -86,7 +87,8 @@ export type LegalAction =
   | {
       id: string;
       type: 'reaction';
-      reaction: 'opportunity_attack' | 'uncanny_dodge' | 'decline';
+      reaction: 'opportunity_attack' | 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'decline';
+      reactionFeature?: 'opportunity_attack' | 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense';
       reactionTrigger?: 'opportunity_attack' | 'attack_damage';
       actionName?: string;
       targetId: string;
@@ -95,6 +97,7 @@ export type LegalAction =
       incomingDamage?: number;
       damageType?: string;
       expectedDamageReduction?: number;
+      actualDamageReduction?: number;
     }
   | {
       id: 'dash';
@@ -334,6 +337,22 @@ export function declineUncannyDodgeActionId(attackerId: string): string {
   return `reaction:decline-uncanny-dodge:${attackerId}`;
 }
 
+export function monkDeflectActionId(attackerId: string): string {
+  return `reaction:monk-deflect:${attackerId}`;
+}
+
+export function declineMonkDeflectActionId(attackerId: string): string {
+  return `reaction:decline-monk-deflect:${attackerId}`;
+}
+
+export function superiorHuntersDefenseActionId(attackerId: string): string {
+  return `reaction:superior-hunters-defense:${attackerId}`;
+}
+
+export function declineSuperiorHuntersDefenseActionId(attackerId: string): string {
+  return `reaction:decline-superior-hunters-defense:${attackerId}`;
+}
+
 export function battlecastTacticActionId(tactic: TacticType): string {
   return `battlecast_tactic:${tactic}`;
 }
@@ -368,6 +387,7 @@ export function generateOpportunityReactionActions(
       id: opportunityAttackActionId(action.name, target.id),
       type: 'reaction' as const,
       reaction: 'opportunity_attack' as const,
+      reactionFeature: 'opportunity_attack' as const,
       reactionTrigger: 'opportunity_attack' as const,
       actionName: action.name,
       targetId: target.id,
@@ -378,6 +398,7 @@ export function generateOpportunityReactionActions(
     id: declineOpportunityAttackActionId(target.id),
     type: 'reaction',
     reaction: 'decline',
+    reactionFeature: 'opportunity_attack',
     reactionTrigger: 'opportunity_attack',
     targetId: target.id,
     targetName: target.displayName,
@@ -395,14 +416,26 @@ export function generateUncannyDodgeReactionActions(
   attacker: Creature,
   trigger?: { incomingDamage: number; damageType: string },
 ): LegalActionCatalogue {
+  return generateDamageReactionActions(defender, attacker, 'uncanny_dodge', trigger);
+}
+
+export function generateDamageReactionActions(
+  defender: Creature,
+  attacker: Creature,
+  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense',
+  trigger?: { incomingDamage: number; damageType: string },
+): LegalActionCatalogue {
   const expectedDamageReduction = trigger
-    ? trigger.incomingDamage - Math.floor(trigger.incomingDamage / 2)
+    ? expectedDamageReactionReduction(defender, reaction, trigger.incomingDamage)
     : undefined;
+  const useActionId = damageReactionActionId(reaction, attacker.id);
+  const declineActionId = declineDamageReactionActionId(reaction, attacker.id);
   const actions: LegalAction[] = [
     {
-      id: uncannyDodgeActionId(attacker.id),
+      id: useActionId,
       type: 'reaction',
-      reaction: 'uncanny_dodge',
+      reaction,
+      reactionFeature: reaction,
       reactionTrigger: 'attack_damage',
       targetId: attacker.id,
       targetName: attacker.displayName,
@@ -411,9 +444,10 @@ export function generateUncannyDodgeReactionActions(
       expectedDamageReduction,
     },
     {
-      id: declineUncannyDodgeActionId(attacker.id),
+      id: declineActionId,
       type: 'reaction',
       reaction: 'decline',
+      reactionFeature: reaction,
       reactionTrigger: 'attack_damage',
       targetId: attacker.id,
       targetName: attacker.displayName,
@@ -568,6 +602,37 @@ function smiteActionForResource(
     expectedDamage: averageDamage(diceExpression),
     isCritical: pending.isCritical,
   };
+}
+
+function damageReactionActionId(
+  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense',
+  attackerId: string,
+): string {
+  if (reaction === 'monk_deflect') return monkDeflectActionId(attackerId);
+  if (reaction === 'superior_hunters_defense') return superiorHuntersDefenseActionId(attackerId);
+  return uncannyDodgeActionId(attackerId);
+}
+
+function declineDamageReactionActionId(
+  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense',
+  attackerId: string,
+): string {
+  if (reaction === 'monk_deflect') return declineMonkDeflectActionId(attackerId);
+  if (reaction === 'superior_hunters_defense') return declineSuperiorHuntersDefenseActionId(attackerId);
+  return declineUncannyDodgeActionId(attackerId);
+}
+
+function expectedDamageReactionReduction(
+  defender: Creature,
+  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense',
+  incomingDamage: number,
+): number {
+  if (reaction === 'monk_deflect') {
+    const dexMod = abilityModifier(getEffectiveAbilityScore(defender, 'dex'));
+    const level = defender.monsterData.heroLevel ?? 0;
+    return Math.min(incomingDamage, averageDamage('1d10') + dexMod + level);
+  }
+  return incomingDamage - Math.floor(incomingDamage / 2);
 }
 
 function movementAllowance(active: Creature, state: BattleState): number {

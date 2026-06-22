@@ -38,13 +38,14 @@ export interface ResolveAttackResult {
 }
 
 export interface DamageReactionDecisionContext {
-  reaction: 'uncanny_dodge';
+  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense';
   target: Creature;
   attacker: Creature | null;
   incomingDamage: number;
   damageType: string;
   isAttack: boolean;
   isCritical: boolean;
+  actualDamageReduction?: number;
 }
 
 export interface DamageReactionHooks {
@@ -1507,7 +1508,15 @@ function sameDamageType(a: string, b: string): boolean {
   return left.includes(right) || right.includes(left);
 }
 
-function applySuperiorHuntersDefense(state: BattleState, target: Creature, damage: number, damageType: string): number {
+function applySuperiorHuntersDefense(
+  state: BattleState,
+  target: Creature,
+  damage: number,
+  damageType: string,
+  attacker: Creature | null,
+  isAttack: boolean,
+  isCritical: boolean,
+): number {
   if (damage <= 0) return damage;
   const active = target.superiorHunterDefense;
   if (active && active.round === state.round && active.turnIndex === state.turnIndex && sameDamageType(active.damageType, damageType)) {
@@ -1525,10 +1534,35 @@ function applySuperiorHuntersDefense(state: BattleState, target: Creature, damag
   }
 
   if (!canUseSuperiorHuntersDefense(target)) return damage;
+  const context: DamageReactionDecisionContext = {
+    reaction: 'superior_hunters_defense',
+    target,
+    attacker,
+    incomingDamage: damage,
+    damageType,
+    isAttack,
+    isCritical,
+  };
+  const decision = state.damageReactionHooks?.chooseDamageReaction?.(context);
+  if (decision === 'decline') {
+    const beforeHook = state.damageReactionHooks?.beforeDamageReaction?.(context, decision);
+    pushLog(state, {
+      round: state.round,
+      turn: state.turnIndex,
+      actor: target.displayName,
+      action: "Superior Hunter's Defense Declined",
+      details: `${target.displayName} does not spend a reaction to resist the ${damageType} damage.`,
+      type: 'info',
+    });
+    state.damageReactionHooks?.afterDamageReaction?.(context, decision, beforeHook);
+    return damage;
+  }
+  const beforeHook = state.damageReactionHooks?.beforeDamageReaction?.(context, 'use');
   target.reactionUsed = true;
   target.superiorHunterDefense = { damageType, round: state.round, turnIndex: state.turnIndex };
   const before = damage;
   const reduced = Math.floor(damage / 2);
+  context.actualDamageReduction = before - reduced;
   pushLog(state, {
     round: state.round,
     turn: state.turnIndex,
@@ -1545,6 +1579,7 @@ function applySuperiorHuntersDefense(state: BattleState, target: Creature, damag
     tone: 'success',
     durationMs: BASE_DURATIONS.effect,
   });
+  state.damageReactionHooks?.afterDamageReaction?.(context, 'use', beforeHook);
   return reduced;
 }
 
@@ -2850,15 +2885,41 @@ function applyMonkDeflectDamage(
   attacker: Creature | null,
   damage: number,
   damageType: string,
+  isCritical: boolean,
 ): number {
   if (!canMonkDeflectDamage(target, damageType, true) || damage <= 0) return damage;
 
   const level = target.monsterData.heroLevel ?? 0;
+  const action = level >= 13 && !isPhysicalDamageType(damageType) ? 'Deflect Energy' : 'Deflect Attacks';
+  const context: DamageReactionDecisionContext = {
+    reaction: 'monk_deflect',
+    target,
+    attacker,
+    incomingDamage: damage,
+    damageType,
+    isAttack: true,
+    isCritical,
+  };
+  const decision = state.damageReactionHooks?.chooseDamageReaction?.(context);
+  if (decision === 'decline') {
+    const beforeHook = state.damageReactionHooks?.beforeDamageReaction?.(context, decision);
+    pushLog(state, {
+      round: state.round,
+      turn: state.turnIndex,
+      actor: target.displayName,
+      action: `${action} Declined`,
+      details: `${target.displayName} does not spend a reaction to reduce the ${damageType} attack damage.`,
+      type: 'info',
+    });
+    state.damageReactionHooks?.afterDamageReaction?.(context, decision, beforeHook);
+    return damage;
+  }
+  const beforeHook = state.damageReactionHooks?.beforeDamageReaction?.(context, 'use');
   const dexMod = abilityModifier(getEffectiveAbilityScore(target, 'dex'));
   const reduction = rollDice('1d10').total + dexMod + level;
   const reduced = Math.max(0, damage - reduction);
+  context.actualDamageReduction = damage - reduced;
   target.reactionUsed = true;
-  const action = level >= 13 && !isPhysicalDamageType(damageType) ? 'Deflect Energy' : 'Deflect Attacks';
   pushLog(state, {
     round: state.round,
     turn: state.turnIndex,
@@ -2917,6 +2978,7 @@ function applyMonkDeflectDamage(
     target.stats.actionUsage['Deflect Redirect'] = (target.stats.actionUsage['Deflect Redirect'] || 0) + 1;
   }
 
+  state.damageReactionHooks?.afterDamageReaction?.(context, 'use', beforeHook);
   return reduced;
 }
 
@@ -2969,6 +3031,7 @@ function applyUncannyDodgeReaction(
   target.reactionUsed = true;
   const before = damage;
   const reduced = Math.floor(damage / 2);
+  context.actualDamageReduction = before - reduced;
   pushLog(state, {
     round: state.round, turn: state.turnIndex,
     actor: target.displayName, action: 'Uncanny Dodge',
@@ -3050,11 +3113,11 @@ function applyDamage(state: BattleState, target: Creature, damage: number, damag
   }
 
   if (canMonkDeflectDamage(target, damageType, isAttack)) {
-    damage = applyMonkDeflectDamage(state, target, attacker, damage, damageType);
+    damage = applyMonkDeflectDamage(state, target, attacker, damage, damageType, isCritical);
     if (damage <= 0) return 0;
   }
 
-  damage = applySuperiorHuntersDefense(state, target, damage, damageType);
+  damage = applySuperiorHuntersDefense(state, target, damage, damageType, attacker, isAttack, isCritical);
 
   damage = applyUncannyDodgeReaction(state, target, attacker, damage, damageType, isAttack, isCritical);
 

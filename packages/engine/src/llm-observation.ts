@@ -279,11 +279,13 @@ export interface LlmActionView {
   incomingDamage?: number;
   damageType?: string;
   expectedDamageReduction?: number;
+  actualDamageReduction?: number;
   extraMovement?: number;
   isBonusAction?: boolean;
   possibleEffects?: string[];
   smite?: Extract<LegalAction, { type: 'smite' }>['smite'];
   reaction?: Extract<LegalAction, { type: 'reaction' }>['reaction'];
+  reactionFeature?: Extract<LegalAction, { type: 'reaction' }>['reactionFeature'];
   reactionTrigger?: Extract<LegalAction, { type: 'reaction' }>['reactionTrigger'];
   isCritical?: boolean;
   spellLevel?: number;
@@ -518,15 +520,15 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       targetRelation: target?.relation,
       targetTeam: target?.team,
       reaction: action.reaction,
+      reactionFeature: action.reactionFeature,
       reactionTrigger: action.reactionTrigger,
       expectedDamage: action.expectedDamage === undefined ? undefined : Number(action.expectedDamage.toFixed(2)),
       incomingDamage: action.incomingDamage,
       damageType: action.damageType,
       expectedDamageReduction: action.expectedDamageReduction,
+      actualDamageReduction: action.actualDamageReduction,
       description: isDamageMitigation
-        ? action.reaction === 'decline'
-          ? 'Do not spend this reaction on the next eligible attack-damage mitigation trigger from this attacker.'
-          : 'Spend the reaction on the next eligible attack damage from this attacker to halve the damage with Uncanny Dodge.'
+        ? damageReactionDescription(action)
         : action.reaction === 'decline'
           ? 'Do not spend this reaction on the opportunity attack trigger.'
           : 'Spend the reaction now to make the listed melee opportunity attack against the creature leaving reach.',
@@ -688,11 +690,33 @@ function reactionActionLabel(
   targetLabel: string,
 ): string {
   if (action.reactionTrigger === 'attack_damage') {
-    if (action.reaction === 'decline') return `Decline Uncanny Dodge against ${targetLabel}`;
-    return `Use Uncanny Dodge against ${targetLabel}`;
+    const name = damageReactionName(action.reactionFeature ?? action.reaction);
+    if (action.reaction === 'decline') return `Decline ${name} against ${targetLabel}`;
+    return `Use ${name} against ${targetLabel}`;
   }
   if (action.reaction === 'decline') return `Decline opportunity attack against ${targetLabel}`;
   return `Opportunity attack ${targetLabel} with ${action.actionName}`;
+}
+
+function damageReactionName(reaction: Extract<LegalAction, { type: 'reaction' }>['reaction'] | NonNullable<Extract<LegalAction, { type: 'reaction' }>['reactionFeature']>): string {
+  if (reaction === 'monk_deflect') return 'Deflect Attacks';
+  if (reaction === 'superior_hunters_defense') return "Superior Hunter's Defense";
+  if (reaction === 'opportunity_attack') return 'opportunity attack';
+  return 'Uncanny Dodge';
+}
+
+function damageReactionDescription(action: Extract<LegalAction, { type: 'reaction' }>): string {
+  const name = damageReactionName(action.reactionFeature ?? action.reaction);
+  if (action.reaction === 'decline') {
+    return `Do not spend this reaction on this ${name} attack-damage mitigation trigger from this attacker.`;
+  }
+  if ((action.reactionFeature ?? action.reaction) === 'monk_deflect') {
+    return 'Spend the reaction to reduce the incoming attack damage with Deflect Attacks or Deflect Energy. Battlecast redirect behavior is applied if the blow is fully deflected.';
+  }
+  if ((action.reactionFeature ?? action.reaction) === 'superior_hunters_defense') {
+    return "Spend the reaction to gain resistance to this damage type for this damage and the rest of the current turn.";
+  }
+  return 'Spend the reaction on this eligible attack damage from this attacker to halve the damage with Uncanny Dodge.';
 }
 
 function abilityView(creature: Creature): Record<AbilityKey, LlmAbilityView> {

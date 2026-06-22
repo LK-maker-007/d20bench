@@ -48,9 +48,9 @@ import {
   createBattlecastTacticAction,
   estimateAttackRollBudget,
   findLegalAction,
+  generateDamageReactionActions,
   generateLegalActions,
   generateOpportunityReactionActions,
-  generateUncannyDodgeReactionActions,
   type LegalAction,
   type LegalActionCatalogue,
 } from './legal-actions.js';
@@ -249,6 +249,7 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
             agent,
             controllers: { red, blue },
             agentRng,
+            battleRng,
             turnStart,
             replay,
             matchId,
@@ -641,6 +642,7 @@ async function runStepwiseOpenRouterTurn(input: {
   agent: Extract<Agent, { kind: 'openrouter-llm' }>;
   controllers: MatchControllers;
   agentRng: ReturnType<typeof createRng>;
+  battleRng: ReturnType<typeof createRng>;
   turnStart: ManualTurnStartResult;
   replay: ReplayEvent[];
   matchId: string;
@@ -656,10 +658,12 @@ async function runStepwiseOpenRouterTurn(input: {
   const maxSteps = 12;
   let step = 0;
 
-  while (!input.state.isComplete && input.active.isAlive && !actualTurn.ended && step < maxSteps) {
+  while (!input.state.isComplete && !actualTurn.ended && step < maxSteps) {
+    const active = input.state.creatures.find((creature) => creature.id === input.active.id);
+    if (!active || !active.isAlive) break;
     const catalogue = createActionCatalogueForAgent(
       input.state,
-      input.active,
+      active,
       input.agent,
       'actual-actions-v1',
       actualTurn,
@@ -671,8 +675,8 @@ async function runStepwiseOpenRouterTurn(input: {
       round: input.state.round,
       turnIndex: input.state.turnIndex,
       turnStep: step,
-      activeCreatureId: input.active.id,
-      activeCreatureName: input.active.displayName,
+      activeCreatureId: active.id,
+      activeCreatureName: active.displayName,
       controller: describeAgentController(input.agent),
       legalActions: catalogue.actions,
       stateHash: hashBattlecastState(input.state),
@@ -684,12 +688,13 @@ async function runStepwiseOpenRouterTurn(input: {
       const eventsBefore = step === 0 ? input.turnStart.eventsBefore : input.state.events.length;
       await applyActualLegalAction({
         state: input.state,
-        active: input.active,
+        active,
         action: acceptedAction,
         agent: input.agent,
         actualTurn,
         controllers: input.controllers,
         agentRng: input.agentRng,
+        battleRng: input.battleRng,
         replay: input.replay,
         matchId: input.matchId,
         turnStep: step,
@@ -701,7 +706,7 @@ async function runStepwiseOpenRouterTurn(input: {
         round: input.state.round,
         turnIndex: input.state.turnIndex,
         turnStep: step,
-        activeCreatureId: input.active.id,
+        activeCreatureId: active.id,
         agentId: input.agent.id,
         requestedActionId: 'automatic:no_legal_actions',
         acceptedAction,
@@ -717,7 +722,7 @@ async function runStepwiseOpenRouterTurn(input: {
     const eventsBefore = step === 0 ? input.turnStart.eventsBefore : input.state.events.length;
     const selection = await chooseOpenRouterAction(input.agent, {
       state: input.state,
-      activeCreature: input.active,
+      activeCreature: active,
       catalogue,
       rng: input.agentRng,
       traceMeta: {
@@ -725,20 +730,21 @@ async function runStepwiseOpenRouterTurn(input: {
         round: input.state.round,
         turnIndex: input.state.turnIndex,
         turnStep: step,
-        activeCreatureId: input.active.id,
-        activeCreatureName: input.active.displayName,
+        activeCreatureId: active.id,
+        activeCreatureName: active.displayName,
         agentId: input.agent.id,
       },
       traceSink: input.traceSink,
     });
     const applyResult = await applyActualLegalAction({
       state: input.state,
-      active: input.active,
+      active,
       action: selection.acceptedAction,
       agent: input.agent,
       actualTurn,
       controllers: input.controllers,
       agentRng: input.agentRng,
+      battleRng: input.battleRng,
       replay: input.replay,
       matchId: input.matchId,
       turnStep: step,
@@ -751,7 +757,7 @@ async function runStepwiseOpenRouterTurn(input: {
       round: input.state.round,
       turnIndex: input.state.turnIndex,
       turnStep: step,
-      activeCreatureId: input.active.id,
+      activeCreatureId: active.id,
       agentId: input.agent.id,
       requestedActionId: selection.requestedActionId,
       acceptedAction: selection.acceptedAction,
@@ -774,7 +780,8 @@ async function runStepwiseOpenRouterTurn(input: {
       type: 'info',
     });
   }
-  finishManualTurnEnd(input.state, input.active);
+  const active = input.state.creatures.find((creature) => creature.id === input.active.id) ?? input.active;
+  finishManualTurnEnd(input.state, active);
   checkBattleComplete(input.state);
 }
 
@@ -894,6 +901,7 @@ async function applyActualLegalAction(input: {
   actualTurn: ActualTurnContext;
   controllers: MatchControllers;
   agentRng: ReturnType<typeof createRng>;
+  battleRng: ReturnType<typeof createRng>;
   replay: ReplayEvent[];
   matchId: string;
   turnStep: number;
@@ -1189,6 +1197,7 @@ async function processPostMoveEffects(
     actualTurn: ActualTurnContext;
     controllers: MatchControllers;
     agentRng: ReturnType<typeof createRng>;
+    battleRng: ReturnType<typeof createRng>;
     replay: ReplayEvent[];
     matchId: string;
     turnStep: number;
@@ -1207,11 +1216,77 @@ async function processPostMoveEffects(
       controllers: input.controllers,
       decisions: reactions,
     });
-    runOpportunityAttacks(state, active, before, hooks);
+    await runOpportunityAttacksWithDynamicDamageReactions({
+      state,
+      active,
+      before,
+      opportunityAttacks: hooks,
+      replay: input.replay,
+      matchId: input.matchId,
+      controllers: input.controllers,
+      agentRng: input.agentRng,
+      battleRng: input.battleRng,
+      traceSink: input.traceSink,
+    });
   }
   if (active.isAlive && !state.isComplete) {
     checkAuraEntry(state, active, before);
   }
+}
+
+async function runOpportunityAttacksWithDynamicDamageReactions(input: {
+  state: BattleState;
+  active: Creature;
+  before: { x: number; y: number };
+  opportunityAttacks: OpportunityAttackHooks;
+  replay: ReplayEvent[];
+  matchId: string;
+  controllers: MatchControllers;
+  agentRng: ReturnType<typeof createRng>;
+  battleRng: ReturnType<typeof createRng>;
+  traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
+}): Promise<void> {
+  const decisions: DamageReactionMap = new Map();
+  const maxReactionPrompts = 20;
+  for (let attempt = 0; attempt <= maxReactionPrompts; attempt += 1) {
+    const stateSnapshot = cloneBattleState(input.state);
+    const replayLength = input.replay.length;
+    const rngSnapshot = input.battleRng.snapshot();
+    const active = input.state.creatures.find((creature) => creature.id === input.active.id);
+    if (!active) {
+      throw new Error(`Active creature ${input.active.id} disappeared during ${input.matchId}`);
+    }
+    const damageReactions = createDamageReactionHooks({
+      state: input.state,
+      replay: input.replay,
+      matchId: input.matchId,
+      controllers: input.controllers,
+      decisions,
+    });
+    const previousDamageReactionHooks = input.state.damageReactionHooks;
+    input.state.damageReactionHooks = damageReactions;
+    try {
+      runOpportunityAttacks(input.state, active, input.before, input.opportunityAttacks);
+      return;
+    } catch (error) {
+      if (!(error instanceof PendingDamageReactionDecision)) throw error;
+      const prepared = await chooseDamageReactionAtTrigger({
+        state: input.state,
+        request: error.request,
+        agentRng: input.agentRng,
+        matchId: input.matchId,
+        traceSink: input.traceSink,
+      });
+      decisions.set(error.request.triggerKey, prepared);
+      restoreBattleState(input.state, stateSnapshot);
+      input.replay.length = replayLength;
+      input.battleRng.restore(rngSnapshot);
+    } finally {
+      input.state.damageReactionHooks = previousDamageReactionHooks;
+    }
+  }
+
+  throw new Error(`Exceeded ${maxReactionPrompts} pending movement damage reaction prompts in ${input.matchId}`);
 }
 
 async function prepareOpportunityReactionChoicesForMove(
@@ -1302,7 +1377,7 @@ async function chooseDamageReactionAtTrigger(input: {
   if (!context.attacker) {
     throw new Error(`Cannot ask ${agent.id} for ${context.reaction} without an attacker`);
   }
-  const catalogue = generateUncannyDodgeReactionActions(context.target, context.attacker, {
+  const catalogue = generateDamageReactionActions(context.target, context.attacker, context.reaction, {
     incomingDamage: context.incomingDamage,
     damageType: context.damageType,
   });
@@ -1496,9 +1571,8 @@ function createDamageReactionHooks(input: {
         ...prepared.acceptedAction,
         incomingDamage: context.incomingDamage,
         damageType: context.damageType,
-        expectedDamageReduction: decision === 'use'
-          ? context.incomingDamage - Math.floor(context.incomingDamage / 2)
-          : 0,
+        expectedDamageReduction: decision === 'use' ? prepared.acceptedAction.expectedDamageReduction : 0,
+        actualDamageReduction: decision === 'use' ? context.actualDamageReduction : 0,
       };
       input.replay.push({
         type: 'action_resolved',

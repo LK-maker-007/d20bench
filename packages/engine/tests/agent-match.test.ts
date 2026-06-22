@@ -992,6 +992,27 @@ describe('agent matches', () => {
     globalThis.fetch = vi.fn(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const declinedReaction = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      if (declinedReaction) {
+        return jsonResponse({
+          id: `gen-reaction-${declinedReaction}`,
+          model: 'test/tool-model',
+          choices: [{
+            finish_reason: 'tool_calls',
+            message: {
+              tool_calls: [{
+                id: 'call-test',
+                type: 'function',
+                function: {
+                  name: 'choose_d20bench_action',
+                  arguments: JSON.stringify({ actionId: declinedReaction, rationale: 'Preserve ki for the flurry test.' }),
+                },
+              }],
+            },
+          }],
+          usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+        });
+      }
       const preferred = callIndex === 0
         ? actionIds.find((id) => id.startsWith('attack:'))
         : callIndex <= 2
@@ -1271,6 +1292,187 @@ describe('agent matches', () => {
       log.includes('hits Rogue L5') && log.includes('damage')
     )).toBe(true);
     expect(reactionResolution?.logs.some((log) => log.action === 'Uncanny Dodge')).toBe(true);
+  });
+
+  it('asks OpenRouter for Monk Deflect at the damage trigger during Battlecast attack turns', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let observedPrompt: { legalActions?: Array<{ id: string; reactionFeature?: string; incomingDamage?: number }> } | undefined;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const deflect = actionIds.find((id) => id.startsWith('reaction:monk-deflect:'));
+      if (deflect) {
+        const userMessage = body.messages.find((message: { role: string }) => message.role === 'user');
+        observedPrompt = JSON.parse(String(userMessage.content));
+      }
+      const actionId = deflect ?? 'end_turn';
+      return jsonResponse({
+        id: `gen-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Spend the reaction to reduce attack damage.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: fighterThreatensHeroScenario('Monk', 5),
+      seed: 1,
+      redAgent: 'battlecast.aggressive',
+      blueAgent: 'openrouter:test/tool-model',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const reactionResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.acceptedAction.type === 'reaction' &&
+      event.acceptedAction.reaction === 'monk_deflect'
+    );
+
+    expect(observedPrompt?.legalActions?.some((action) =>
+      action.id.startsWith('reaction:monk-deflect:') &&
+      action.reactionFeature === 'monk_deflect'
+    )).toBe(true);
+    expect(reactionResolution?.type).toBe('action_resolved');
+    expect(reactionResolution?.acceptedAction).toEqual(expect.objectContaining({
+      reaction: 'monk_deflect',
+      incomingDamage: expect.any(Number),
+      actualDamageReduction: expect.any(Number),
+    }));
+    expect(reactionResolution?.logs.some((log) => log.action === 'Deflect Attacks')).toBe(true);
+  });
+
+  it('asks OpenRouter for Monk Deflect when a Battlecast opportunity attack hits during model movement', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let actionCall = 0;
+    let observedDeflectPrompt = false;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const deflect = actionIds.find((id) => id.startsWith('reaction:monk-deflect:'));
+      let actionId: string;
+      if (deflect) {
+        observedDeflectPrompt = true;
+        actionId = deflect;
+      } else if (actionCall === 0 && actionIds.includes('dash')) {
+        actionId = 'dash';
+        actionCall += 1;
+      } else if (actionCall === 1) {
+        actionId = actionIds.find((id) => id.startsWith('move_to:7,0')) ??
+          actionIds.find((id) => id.startsWith('move_to:0,0')) ??
+          actionIds.find((id) => id.startsWith('move_to:')) ??
+          'end_turn';
+        actionCall += 1;
+      } else {
+        actionId = 'end_turn';
+      }
+      return jsonResponse({
+        id: `gen-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Move away, then spend Deflect if hit.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: monkThreatensMonkScenario(),
+      seed: 1,
+      redAgent: 'battlecast.aggressive',
+      blueAgent: 'openrouter:test/tool-model',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const reactionResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.acceptedAction.type === 'reaction' &&
+      event.acceptedAction.reaction === 'monk_deflect'
+    );
+
+    expect(observedDeflectPrompt).toBe(true);
+    expect(reactionResolution?.type).toBe('action_resolved');
+    expect(reactionResolution?.logs.some((log) => log.action === 'Deflect Attacks')).toBe(true);
+  });
+
+  it("asks OpenRouter for Superior Hunter's Defense at the damage trigger during Battlecast attack turns", async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let observedPrompt: { legalActions?: Array<{ id: string; reactionFeature?: string; incomingDamage?: number }> } | undefined;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const defense = actionIds.find((id) => id.startsWith('reaction:superior-hunters-defense:'));
+      if (defense) {
+        const userMessage = body.messages.find((message: { role: string }) => message.role === 'user');
+        observedPrompt = JSON.parse(String(userMessage.content));
+      }
+      const actionId = defense ?? 'end_turn';
+      return jsonResponse({
+        id: `gen-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Spend the reaction to resist this damage type.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: fighterThreatensHeroScenario('Ranger', 15),
+      seed: 1,
+      redAgent: 'battlecast.aggressive',
+      blueAgent: 'openrouter:test/tool-model',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const reactionResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.acceptedAction.type === 'reaction' &&
+      event.acceptedAction.reaction === 'superior_hunters_defense'
+    );
+
+    expect(observedPrompt?.legalActions?.some((action) =>
+      action.id.startsWith('reaction:superior-hunters-defense:') &&
+      action.reactionFeature === 'superior_hunters_defense'
+    )).toBe(true);
+    expect(reactionResolution?.type).toBe('action_resolved');
+    expect(reactionResolution?.acceptedAction).toEqual(expect.objectContaining({
+      reaction: 'superior_hunters_defense',
+      incomingDamage: expect.any(Number),
+      actualDamageReduction: expect.any(Number),
+    }));
+    expect(reactionResolution?.logs.some((log) => log.action === "Superior Hunter's Defense")).toBe(true);
   });
 
   it('lets an actual-action LLM Dodge and keep the defensive flag until its next turn', async () => {
@@ -1851,6 +2053,46 @@ function barbarianPounceScenario(): D20benchScenario {
     combatants: [
       { monster: buildHero('Barbarian', 7), team: 'red', position: { x: 1, y: 1 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 18, y: 1 } },
+    ],
+  };
+}
+
+function fighterThreatensHeroScenario(heroClass: Parameters<typeof buildHero>[0], level: number): D20benchScenario {
+  return {
+    id: `test.fighter-threatens-${String(heroClass).toLowerCase()}.v1`,
+    name: `Fighter Threatens ${heroClass}`,
+    description: `A Battlecast Fighter attacks an OpenRouter-controlled level-${level} ${heroClass}.`,
+    battleType: 'reaction-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test', 'reaction'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Fighter', 20), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero(heroClass, level), team: 'blue', position: { x: 2, y: 3 } },
+    ],
+  };
+}
+
+function monkThreatensMonkScenario(): D20benchScenario {
+  return {
+    id: 'test.monk-threatens-monk.v1',
+    name: 'Monk Threatens Monk',
+    description: 'A high-level Monk threatens an OpenRouter-controlled Monk that can provoke an opportunity attack and Deflect it.',
+    battleType: 'reaction-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test', 'reaction'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Monk', 20), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Monk', 5), team: 'blue', position: { x: 2, y: 3 } },
     ],
   };
 }
