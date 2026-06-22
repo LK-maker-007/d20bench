@@ -1,0 +1,131 @@
+{
+  "seasonId": "llm-actual-abjure-foes-verify-v1",
+  "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control Paladin Abjure Foes as a concrete multi-target saving-throw action.",
+  "status": "complete",
+  "llmActionSpace": "actual-actions-v1",
+  "startedAt": "2026-06-22T14:55:32.418Z",
+  "updatedAt": "2026-06-22T14:56:11.909Z",
+  "concurrency": 4,
+  "maxRounds": 1,
+  "totalMatches": 4,
+  "completedMatches": 4,
+  "failedMatches": 0,
+  "runningMatches": 0,
+  "costSummary": {
+    "totalDecisions": 26,
+    "promptTokens": 206883,
+    "completionTokens": 5522,
+    "totalTokens": 212405,
+    "estimatedCostUsd": 0.017144505,
+    "byModel": [
+      {
+        "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "decisions": 9,
+        "promptTokens": 69533,
+        "completionTokens": 4696,
+        "totalTokens": 74229,
+        "estimatedCostUsd": 0.005740605
+      },
+      {
+        "agentId": "openrouter:deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-flash",
+        "decisions": 7,
+        "promptTokens": 59571,
+        "completionTokens": 451,
+        "totalTokens": 60022,
+        "estimatedCostUsd": 0.005442570000000001
+      },
+      {
+        "agentId": "openrouter:mistralai/ministral-8b-2512",
+        "model": "mistralai/ministral-8b-2512",
+        "decisions": 4,
+        "promptTokens": 33610,
+        "completionTokens": 210,
+        "totalTokens": 33820,
+        "estimatedCostUsd": 0.005073
+      },
+      {
+        "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "decisions": 6,
+        "promptTokens": 44169,
+        "completionTokens": 165,
+        "totalTokens": 44334,
+        "estimatedCostUsd": 0.00088833
+      }
+    ]
+  },
+  "activeMatches": [],
+  "recentMatches": [
+    {
+      "index": 3,
+      "status": "completed",
+      "scenarioId": "hidden.llm-abjure-foes-paladin-party.v1",
+      "battleType": "class-feature-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "blueAgent": "battlecast.aggressive",
+      "startedAt": "2026-06-22T14:55:32.583Z",
+      "completedAt": "2026-06-22T14:56:11.907Z",
+      "durationMs": 39324,
+      "matchId": "hidden.llm-abjure-foes-paladin-party.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+      "winner": "blue",
+      "llmDecisions": 9,
+      "estimatedCostUsd": 0.005740605,
+      "finalStateHash": "7533e810829a8f6099a19ecece80d76456f469f0f30b03521d6bca68bfee2193"
+    },
+    {
+      "index": 0,
+      "status": "completed",
+      "scenarioId": "hidden.llm-abjure-foes-paladin-party.v1",
+      "battleType": "class-feature-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.aggressive",
+      "startedAt": "2026-06-22T14:55:32.583Z",
+      "completedAt": "2026-06-22T14:55:59.737Z",
+      "durationMs": 27154,
+      "matchId": "hidden.llm-abjure-foes-paladin-party.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+      "winner": "blue",
+      "llmDecisions": 7,
+      "estimatedCostUsd": 0.005442570000000001,
+      "finalStateHash": "1aa8438e6f4260e846d67aa82af81609e975dfdf63eb85475df51f20d4592cdd"
+    },
+    {
+      "index": 1,
+      "status": "completed",
+      "scenarioId": "hidden.llm-abjure-foes-paladin-party.v1",
+      "battleType": "class-feature-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "battlecast.aggressive",
+      "startedAt": "2026-06-22T14:55:32.583Z",
+      "completedAt": "2026-06-22T14:55:42.889Z",
+      "durationMs": 10306,
+      "matchId": "hidden.llm-abjure-foes-paladin-party.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+      "winner": "blue",
+      "llmDecisions": 4,
+      "estimatedCostUsd": 0.005073,
+      "finalStateHash": "f2d321b860debee2ce2754eafc53d7a43028d484f3e51f4a73f29ff3edd8c4f5"
+    },
+    {
+      "index": 2,
+      "status": "completed",
+      "scenarioId": "hidden.llm-abjure-foes-paladin-party.v1",
+      "battleType": "class-feature-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "blueAgent": "battlecast.aggressive",
+      "startedAt": "2026-06-22T14:55:32.583Z",
+      "completedAt": "2026-06-22T14:55:38.947Z",
+      "durationMs": 6364,
+      "matchId": "hidden.llm-abjure-foes-paladin-party.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+      "winner": "blue",
+      "llmDecisions": 6,
+      "estimatedCostUsd": 0.00088833,
+      "finalStateHash": "58cd3787387423b3caf17436d4a2bdba7a0f6db5cfee1a897767e95c16d874e1"
+    }
+  ],
+  "failures": []
+}

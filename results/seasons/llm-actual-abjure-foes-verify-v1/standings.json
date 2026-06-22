@@ -1,0 +1,250 @@
+{
+  "seasonId": "llm-actual-abjure-foes-verify-v1",
+  "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control Paladin Abjure Foes as a concrete multi-target saving-throw action.",
+  "generatedAt": "2026-06-22T14:55:32.418Z",
+  "startedAt": "2026-06-22T14:55:32.418Z",
+  "completedAt": "2026-06-22T14:56:11.909Z",
+  "llmActionSpace": "actual-actions-v1",
+  "initialRating": 1000,
+  "kFactor": 32,
+  "maxRounds": 1,
+  "concurrency": 4,
+  "totalMatches": 4,
+  "completedMatches": 4,
+  "failedMatches": 0,
+  "standings": [
+    {
+      "agentId": "battlecast.aggressive",
+      "rating": 1059.729526119354,
+      "matches": 4,
+      "wins": 4,
+      "losses": 0,
+      "draws": 0,
+      "score": 4
+    },
+    {
+      "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+      "rating": 986.0982942088476,
+      "matches": 1,
+      "wins": 0,
+      "losses": 1,
+      "draws": 0,
+      "score": 0
+    },
+    {
+      "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "rating": 985.4358728782763,
+      "matches": 1,
+      "wins": 0,
+      "losses": 1,
+      "draws": 0,
+      "score": 0
+    },
+    {
+      "agentId": "openrouter:mistralai/ministral-8b-2512",
+      "rating": 984.736306793522,
+      "matches": 1,
+      "wins": 0,
+      "losses": 1,
+      "draws": 0,
+      "score": 0
+    },
+    {
+      "agentId": "openrouter:deepseek/deepseek-v4-flash",
+      "rating": 984,
+      "matches": 1,
+      "wins": 0,
+      "losses": 1,
+      "draws": 0,
+      "score": 0
+    }
+  ],
+  "battleTypeStandings": [
+    {
+      "battleType": "class-feature-smoke",
+      "standings": [
+        {
+          "agentId": "battlecast.aggressive",
+          "rating": 1059.729526119354,
+          "matches": 4,
+          "wins": 4,
+          "losses": 0,
+          "draws": 0,
+          "score": 4
+        },
+        {
+          "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+          "rating": 986.0982942088476,
+          "matches": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "score": 0
+        },
+        {
+          "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "rating": 985.4358728782763,
+          "matches": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "score": 0
+        },
+        {
+          "agentId": "openrouter:mistralai/ministral-8b-2512",
+          "rating": 984.736306793522,
+          "matches": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "score": 0
+        },
+        {
+          "agentId": "openrouter:deepseek/deepseek-v4-flash",
+          "rating": 984,
+          "matches": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "score": 0
+        }
+      ]
+    }
+  ],
+  "costSummary": {
+    "totalDecisions": 26,
+    "promptTokens": 206883,
+    "completionTokens": 5522,
+    "totalTokens": 212405,
+    "estimatedCostUsd": 0.017144505,
+    "byModel": [
+      {
+        "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "decisions": 9,
+        "promptTokens": 69533,
+        "completionTokens": 4696,
+        "totalTokens": 74229,
+        "estimatedCostUsd": 0.005740605
+      },
+      {
+        "agentId": "openrouter:deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-flash",
+        "decisions": 7,
+        "promptTokens": 59571,
+        "completionTokens": 451,
+        "totalTokens": 60022,
+        "estimatedCostUsd": 0.005442570000000001
+      },
+      {
+        "agentId": "openrouter:mistralai/ministral-8b-2512",
+        "model": "mistralai/ministral-8b-2512",
+        "decisions": 4,
+        "promptTokens": 33610,
+        "completionTokens": 210,
+        "totalTokens": 33820,
+        "estimatedCostUsd": 0.005073
+      },
+      {
+        "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "decisions": 6,
+        "promptTokens": 44169,
+        "completionTokens": 165,
+        "totalTokens": 44334,
+        "estimatedCostUsd": 0.00088833
+      }
+    ]
+  },
+  "failures": [],
+  "matches": [
+    {
+      "matchId": "hidden.llm-abjure-foes-paladin-party.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+      "scenarioId": "hidden.llm-abjure-foes-paladin-party.v1",
+      "battleType": "class-feature-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1000,
+      "redRatingAfter": 984,
+      "blueRatingAfter": 1016,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1000,
+      "redBattleTypeRatingAfter": 984,
+      "blueBattleTypeRatingAfter": 1016,
+      "finalStateHash": "1aa8438e6f4260e846d67aa82af81609e975dfdf63eb85475df51f20d4592cdd",
+      "llmDecisions": 7,
+      "estimatedCostUsd": 0.005442570000000001
+    },
+    {
+      "matchId": "hidden.llm-abjure-foes-paladin-party.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+      "scenarioId": "hidden.llm-abjure-foes-paladin-party.v1",
+      "battleType": "class-feature-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1016,
+      "redRatingAfter": 984.736306793522,
+      "blueRatingAfter": 1031.263693206478,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1016,
+      "redBattleTypeRatingAfter": 984.736306793522,
+      "blueBattleTypeRatingAfter": 1031.263693206478,
+      "finalStateHash": "f2d321b860debee2ce2754eafc53d7a43028d484f3e51f4a73f29ff3edd8c4f5",
+      "llmDecisions": 4,
+      "estimatedCostUsd": 0.005073
+    },
+    {
+      "matchId": "hidden.llm-abjure-foes-paladin-party.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+      "scenarioId": "hidden.llm-abjure-foes-paladin-party.v1",
+      "battleType": "class-feature-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1031.263693206478,
+      "redRatingAfter": 985.4358728782763,
+      "blueRatingAfter": 1045.8278203282016,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1031.263693206478,
+      "redBattleTypeRatingAfter": 985.4358728782763,
+      "blueBattleTypeRatingAfter": 1045.8278203282016,
+      "finalStateHash": "58cd3787387423b3caf17436d4a2bdba7a0f6db5cfee1a897767e95c16d874e1",
+      "llmDecisions": 6,
+      "estimatedCostUsd": 0.00088833
+    },
+    {
+      "matchId": "hidden.llm-abjure-foes-paladin-party.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+      "scenarioId": "hidden.llm-abjure-foes-paladin-party.v1",
+      "battleType": "class-feature-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1045.8278203282016,
+      "redRatingAfter": 986.0982942088476,
+      "blueRatingAfter": 1059.729526119354,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1045.8278203282016,
+      "redBattleTypeRatingAfter": 986.0982942088476,
+      "blueBattleTypeRatingAfter": 1059.729526119354,
+      "finalStateHash": "7533e810829a8f6099a19ecece80d76456f469f0f30b03521d6bca68bfee2193",
+      "llmDecisions": 9,
+      "estimatedCostUsd": 0.005740605
+    }
+  ]
+}
