@@ -100,6 +100,12 @@
     return `$${Number(value || 0).toFixed(6)}`;
   }
 
+  function formatActionSpaceCounts(counts) {
+    return (counts || [])
+      .map((entry) => `${entry.actionSpace}: ${formatInteger(entry.count)}`)
+      .join(", ");
+  }
+
   function formatDuration(ms) {
     const numeric = Number(ms || 0);
     if (numeric < 1000) {
@@ -201,11 +207,15 @@
     ];
 
     if (audit) {
+      const actionSpaceCounts = formatActionSpaceCounts(audit.modelActionSpaceTurnStarts);
       metrics.push(
         metric("LLM Actions", formatInteger(audit.modelActionResolutions || 0), `${formatInteger(audit.modelToolCallDecisions || 0)} tool calls`),
         metric("Delegates", formatInteger(audit.modelDelegateSelections || 0), `${formatInteger(audit.modelDelegateLegalActionExposures || 0)} exposed`),
         metric("Stepwise", formatInteger(audit.modelStepwiseTurns || 0), `max ${formatInteger(audit.maxModelActionsInTurn || 0)} actions`),
         metric("Invalid", formatInteger(audit.modelInvalidActionApplications || 0), `${formatInteger(audit.modelNoLogMovementActions || 0)} no-effect moves`),
+        ...(actionSpaceCounts ? [
+          metric("Action Space", formatInteger(audit.modelTurnStarts || 0), actionSpaceCounts),
+        ] : []),
       );
     }
 

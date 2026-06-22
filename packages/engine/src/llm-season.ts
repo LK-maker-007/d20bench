@@ -84,6 +84,11 @@ export interface LlmAcceptedActionCount {
   count: number;
 }
 
+export interface LlmActionSpaceTurnStartCount {
+  actionSpace: string;
+  count: number;
+}
+
 export interface LlmSeasonHarnessAudit {
   modelTurnStarts: number;
   modelActionResolutions: number;
@@ -97,6 +102,7 @@ export interface LlmSeasonHarnessAudit {
   modelRepairAttempts: number;
   modelNoLogMovementActions: number;
   modelInvalidActionApplications: number;
+  modelActionSpaceTurnStarts?: LlmActionSpaceTurnStartCount[];
   acceptedActionCounts: LlmAcceptedActionCount[];
 }
 
@@ -1687,6 +1693,11 @@ export function renderLlmSeasonMarkdown(result: LlmSeasonResult): string {
     `Tool-call decisions: ${result.harnessAudit.modelToolCallDecisions} (${result.harnessAudit.modelJsonFallbackDecisions} JSON fallbacks, ${result.harnessAudit.modelRepairAttempts} repair attempts)`,
     `No-log movement actions: ${result.harnessAudit.modelNoLogMovementActions}`,
     `Invalid action applications: ${result.harnessAudit.modelInvalidActionApplications}`,
+    ...(result.harnessAudit.modelActionSpaceTurnStarts ? [
+      `Model action-space turn starts: ${result.harnessAudit.modelActionSpaceTurnStarts
+        .map((entry) => `${entry.actionSpace}=${entry.count}`)
+        .join(', ')}`,
+    ] : []),
     '',
     '| Accepted Action Key | Count |',
     '| --- | ---: |',
@@ -2030,6 +2041,8 @@ function summarizeMatchCost(
 export function summarizeLlmHarnessAudit(matches: AgentMatchResult[]): LlmSeasonHarnessAudit {
   const modelActionsByTurn = new Map<string, number>();
   const acceptedActionCounts = new Map<string, number>();
+  const actionSpaceTurnStarts = new Map<string, number>();
+  let observedActionSpaceTurnStarts = false;
   let modelTurnStarts = 0;
   let modelActionResolutions = 0;
   let modelDelegateLegalActionExposures = 0;
@@ -2044,6 +2057,10 @@ export function summarizeLlmHarnessAudit(matches: AgentMatchResult[]): LlmSeason
     for (const event of match.replay) {
       if (event.type === 'turn_started' && isOpenRouterController(event.controller)) {
         modelTurnStarts += 1;
+        if (event.actionSpace) {
+          observedActionSpaceTurnStarts = true;
+          actionSpaceTurnStarts.set(event.actionSpace, (actionSpaceTurnStarts.get(event.actionSpace) ?? 0) + 1);
+        }
         if (event.legalActions.some((action) => action.type === 'battlecast_tactic')) {
           modelDelegateLegalActionExposures += 1;
         }
@@ -2085,7 +2102,7 @@ export function summarizeLlmHarnessAudit(matches: AgentMatchResult[]): LlmSeason
   }
 
   const actionCountsByTurn = [...modelActionsByTurn.values()];
-  return {
+  const audit: LlmSeasonHarnessAudit = {
     modelTurnStarts,
     modelActionResolutions,
     modelDelegateLegalActionExposures,
@@ -2102,6 +2119,12 @@ export function summarizeLlmHarnessAudit(matches: AgentMatchResult[]): LlmSeason
       .map(([actionKey, count]) => ({ actionKey, count }))
       .sort((left, right) => right.count - left.count || left.actionKey.localeCompare(right.actionKey)),
   };
+  if (observedActionSpaceTurnStarts) {
+    audit.modelActionSpaceTurnStarts = [...actionSpaceTurnStarts.entries()]
+      .map(([actionSpace, count]) => ({ actionSpace, count }))
+      .sort((left, right) => right.count - left.count || left.actionSpace.localeCompare(right.actionSpace));
+  }
+  return audit;
 }
 
 export function auditLlmSeasonResult(
@@ -2134,6 +2157,7 @@ export function auditLlmSeasonResult(
   }
 
   if (audit && requireActualActionFairness) {
+    const nonActualActionSpaceTurns = countNonActualActionSpaceTurns(audit);
     checks.push(
       {
         id: 'no-model-delegate-exposures',
@@ -2164,6 +2188,15 @@ export function auditLlmSeasonResult(
         actual: audit.modelNoLogMovementActions,
       },
     );
+    if (nonActualActionSpaceTurns !== undefined) {
+      checks.push({
+        id: 'actual-action-space-turn-starts',
+        label: 'All model turn starts used actual-actions-v1',
+        ok: nonActualActionSpaceTurns === 0,
+        expected: '0 non-actual action-space model turn starts',
+        actual: `${nonActualActionSpaceTurns} non-actual action-space model turn starts`,
+      });
+    }
   }
 
   if (audit && requireStepwise) {
@@ -2215,6 +2248,13 @@ export async function loadCompletedLlmMatchesFromCheckpoint(
 
 function harnessAuditsEqual(left: LlmSeasonHarnessAudit, right: LlmSeasonHarnessAudit): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function countNonActualActionSpaceTurns(audit: LlmSeasonHarnessAudit): number | undefined {
+  if (!audit.modelActionSpaceTurnStarts) return undefined;
+  return audit.modelActionSpaceTurnStarts
+    .filter((entry) => entry.actionSpace !== 'actual-actions-v1')
+    .reduce((sum, entry) => sum + entry.count, 0);
 }
 
 function isInvalidActionLog(action: string | undefined, details: string | undefined): boolean {

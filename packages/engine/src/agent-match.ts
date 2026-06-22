@@ -142,6 +142,7 @@ export function runAgentMatch(spec: AgentMatchSpec): AgentMatchResult {
               replay,
               matchId,
               autoClassFeatures: !(agent.kind === 'openrouter-llm' && (spec.llmActionSpace ?? 'primitive') === 'actual-actions-v1'),
+              actionSpace: actionSpaceForAgent(agent, spec.llmActionSpace ?? 'primitive'),
             });
         if (!turnStart.canAct) continue;
 
@@ -154,6 +155,7 @@ export function runAgentMatch(spec: AgentMatchSpec): AgentMatchResult {
           activeCreatureId: active.id,
           activeCreatureName: active.displayName,
           controller: describeAgentController(agent),
+          actionSpace: catalogue.actionSpace,
           legalActions: catalogue.actions,
           actionEconomy: catalogue.actionEconomy,
           stateHash: hashBattlecastState(state),
@@ -266,6 +268,7 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
               replay,
               matchId,
               autoClassFeatures: !(agent.kind === 'openrouter-llm' && (spec.llmActionSpace ?? 'primitive') === 'actual-actions-v1'),
+              actionSpace: actionSpaceForAgent(agent, spec.llmActionSpace ?? 'primitive'),
             });
         if (!turnStart.canAct) continue;
 
@@ -296,6 +299,7 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
             activeCreatureId: active.id,
             activeCreatureName: active.displayName,
             controller: describeAgentController(agent),
+            actionSpace: catalogue.actionSpace,
             legalActions: catalogue.actions,
             actionEconomy: catalogue.actionEconomy,
             stateHash: hashBattlecastState(state),
@@ -362,6 +366,7 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
           activeCreatureId: active.id,
           activeCreatureName: active.displayName,
           controller: describeAgentController(agent),
+          actionSpace: catalogue.actionSpace,
           legalActions: catalogue.actions,
           actionEconomy: catalogue.actionEconomy,
           stateHash: hashBattlecastState(state),
@@ -477,6 +482,10 @@ function describeAgentController(agent: Agent): ReplayEventController {
   };
 }
 
+function actionSpaceForAgent(agent: Agent, llmActionSpace: LlmActionSpace): LlmActionSpace {
+  return agent.kind === 'openrouter-llm' ? llmActionSpace : 'primitive';
+}
+
 interface AgentTurnInput {
   state: BattleState;
   active: Creature;
@@ -567,6 +576,7 @@ function processManualAgentTurnStart(input: {
   replay: ReplayEvent[];
   matchId: string;
   autoClassFeatures?: boolean;
+  actionSpace?: LlmActionSpace;
 }): ManualTurnStartResult {
   const logsBefore = input.state.logs.length;
   const eventsBefore = input.state.events.length;
@@ -598,6 +608,7 @@ function processManualAgentTurnStart(input: {
     activeCreatureId: input.active.id,
     activeCreatureName: input.active.displayName,
     controller: describeAgentController(input.agent),
+    actionSpace: input.actionSpace,
     legalActions: [acceptedAction],
     stateHash: hashBattlecastState(input.state),
   });
@@ -716,6 +727,7 @@ async function runStepwiseOpenRouterTurn(input: {
       activeCreatureId: active.id,
       activeCreatureName: active.displayName,
       controller: describeAgentController(input.agent),
+      actionSpace: catalogue.actionSpace,
       legalActions: catalogue.actions,
       actionEconomy: catalogue.actionEconomy,
       stateHash: hashBattlecastState(input.state),
@@ -1635,6 +1647,7 @@ function createOpportunityAttackHooks(input: {
         activeCreatureId: context.reactor.id,
         activeCreatureName: context.reactor.displayName,
         controller: describeAgentController(decision.agent),
+        actionSpace: decision.catalogue.actionSpace,
         legalActions: decision.catalogue.actions,
         actionEconomy: decision.catalogue.actionEconomy,
         stateHash: hashBattlecastState(input.state),
@@ -1705,6 +1718,7 @@ function createDamageReactionHooks(input: {
         activeCreatureId: damageReactionActor(context).id,
         activeCreatureName: damageReactionActor(context).displayName,
         controller: describeAgentController(prepared.agent),
+        actionSpace: prepared.catalogue.actionSpace,
         legalActions: prepared.catalogue.actions,
         actionEconomy: prepared.catalogue.actionEconomy,
         stateHash: hashBattlecastState(input.state),

@@ -148,7 +148,7 @@ Audit a completed actual-action season before treating it as publishable:
 npm run d20bench -- llm audit --season llm-actual-cheap-verify-v12 --require-stepwise
 ```
 
-This reads `results/seasons/<season-id>/standings.json` and fails nonzero if the published harness audit is missing, the season is incomplete, an `actual-actions-v1` model saw or selected a Battlecast delegate, a model action was applied as invalid, or a model movement action produced no effect. When local `completed-matches.jsonl` checkpoints are present, the command also recomputes the harness audit from the archived replays and fails if the published counters are stale or mismatched. `--allow-incomplete` can be used for cost-capped exploratory runs that are intentionally partial.
+This reads `results/seasons/<season-id>/standings.json` and fails nonzero if the published harness audit is missing, the season is incomplete, an `actual-actions-v1` model saw or selected a Battlecast delegate, a model prompt used a non-actual action space, a model action was applied as invalid, or a model movement action produced no effect. When local `completed-matches.jsonl` checkpoints are present, the command also recomputes the harness audit from the archived replays and fails if the published counters are stale or mismatched. `--allow-incomplete` can be used for cost-capped exploratory runs that are intentionally partial.
 
 ## Current Scope
 
@@ -221,7 +221,7 @@ This gives us a safe, auditable harness before we spend significant model budget
 Current confidence checklist:
 
 - OpenRouter agents in `actual-actions-v1` cannot see or select `battlecast_tactic` delegates.
-- Every accepted LLM decision is a legal action id from the current engine-generated catalogue.
+- Every accepted LLM decision is a legal action id from the current engine-generated catalogue, and new replays record the catalogue action-space mode on model turn starts.
 - Extra Attack and multiattack-like turns are stepwise: the model attacks, the engine resolves dice/effects, the model observes the updated state and `actionEconomy`, and only then chooses the next action.
 - Unit coverage exercises stepwise Extra Attack, Eldritch Blast beams, Beholder eye rays, Action Surge, maintained Witch Bolt damage, Hex retargeting, Swallow, opportunity attacks, damage reactions, Cutting Words, Stabilise, and high-level class features such as Sacred Weapon, Superior Defense, Nature's Veil, and Holy Nimbus.
 - Cheap live-model validation has stayed well below the requested `$20` harness-validation budget; the latest broad run cost under `$1`.

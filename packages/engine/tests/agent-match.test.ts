@@ -1306,6 +1306,7 @@ describe('agent matches', () => {
     );
 
     expect(llmTurnStarts.some((event) => event.legalActions.some((action) => action.type === 'battlecast_tactic'))).toBe(false);
+    expect(llmTurnStarts.every((event) => event.actionSpace === 'actual-actions-v1')).toBe(true);
     expect(llmTurnStarts[0]?.actionEconomy).toEqual(expect.objectContaining({
       attackRollsRemaining: 2,
       attackActionStarted: false,

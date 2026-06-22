@@ -439,6 +439,7 @@ describe('LLM seasons', () => {
           activeCreatureId: 'fighter-red',
           activeCreatureName: 'Fighter',
           controller: { mode: 'openrouter-llm', agentId: 'openrouter:test/model', model: 'test/model' },
+          actionSpace: 'actual-actions-v1',
           legalActions: [
             { id: 'attack:longsword:goblin-blue', type: 'attack', actionName: 'Longsword', targetId: 'goblin-blue', targetName: 'Goblin', expectedDamage: 7 },
             { id: 'end_turn', type: 'end_turn' },
@@ -480,6 +481,7 @@ describe('LLM seasons', () => {
           activeCreatureId: 'fighter-red',
           activeCreatureName: 'Fighter',
           controller: { mode: 'openrouter-llm', agentId: 'openrouter:test/model', model: 'test/model' },
+          actionSpace: 'battlecast-full-turn',
           legalActions: [
             { id: 'battlecast_tactic:smart', type: 'battlecast_tactic', tactic: 'smart' },
             { id: 'end_turn', type: 'end_turn' },
@@ -570,6 +572,10 @@ describe('LLM seasons', () => {
       modelRepairAttempts: 1,
       modelNoLogMovementActions: 1,
       modelInvalidActionApplications: 1,
+      modelActionSpaceTurnStarts: [
+        { actionSpace: 'actual-actions-v1', count: 1 },
+        { actionSpace: 'battlecast-full-turn', count: 1 },
+      ],
       acceptedActionCounts: [
         { actionKey: 'attack:Longsword', count: 1 },
         { actionKey: 'attack:Missing', count: 1 },
@@ -593,6 +599,9 @@ describe('LLM seasons', () => {
       modelRepairAttempts: 0,
       modelNoLogMovementActions: 0,
       modelInvalidActionApplications: 0,
+      modelActionSpaceTurnStarts: [
+        { actionSpace: 'actual-actions-v1', count: 4 },
+      ],
       acceptedActionCounts: [
         { actionKey: 'attack:Longsword', count: 4 },
       ],
@@ -621,6 +630,7 @@ describe('LLM seasons', () => {
       ['no-model-delegate-selections', true],
       ['no-invalid-action-applications', true],
       ['no-no-effect-movement-actions', true],
+      ['actual-action-space-turn-starts', true],
       ['stepwise-model-turns-present', true],
       ['checkpoint-match-count', true],
       ['harness-audit-matches-checkpoints', true],
@@ -641,6 +651,9 @@ describe('LLM seasons', () => {
       modelRepairAttempts: 0,
       modelNoLogMovementActions: 0,
       modelInvalidActionApplications: 0,
+      modelActionSpaceTurnStarts: [
+        { actionSpace: 'actual-actions-v1', count: 1 },
+      ],
       acceptedActionCounts: [{ actionKey: 'attack:Longsword', count: 1 }],
     };
     const recomputedAudit = {
@@ -689,6 +702,9 @@ describe('LLM seasons', () => {
         modelRepairAttempts: 1,
         modelNoLogMovementActions: 2,
         modelInvalidActionApplications: 1,
+        modelActionSpaceTurnStarts: [
+          { actionSpace: 'primitive', count: 1 },
+        ],
         acceptedActionCounts: [
           { actionKey: 'battlecast_tactic:smart', count: 1 },
         ],
@@ -707,6 +723,7 @@ describe('LLM seasons', () => {
       'no-model-delegate-selections',
       'no-invalid-action-applications',
       'no-no-effect-movement-actions',
+      'actual-action-space-turn-starts',
       'stepwise-model-turns-present',
     ]);
   });
