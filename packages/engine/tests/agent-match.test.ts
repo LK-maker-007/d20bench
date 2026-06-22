@@ -339,6 +339,68 @@ describe('agent matches', () => {
     expect(spentActionCatalogue.actions.some((action) => action.type === 'escape_container')).toBe(false);
   });
 
+  it('exposes maintained linked spell damage as a concrete bonus action', () => {
+    const state = initBattle(createBattlecastCreatures(witchBoltLinkedDamageScenario().combatants, true), 20);
+    const warlock = state.creatures.find((creature) => creature.monsterData.heroClass === 'Warlock');
+    const target = state.creatures.find((creature) => creature.team !== warlock?.team);
+    if (!warlock || !target) throw new Error('expected Warlock and target');
+
+    state.round = 2;
+    warlock.concentratingOn = 'witch-bolt';
+    target.activeBuffs.push({
+      name: 'Witch Bolt',
+      key: 'witch-bolt',
+      casterId: warlock.id,
+      appliedRound: 1,
+      endRound: 11,
+      requiresConcentration: true,
+      bonusActionDamage: '1d12',
+      bonusActionDamageType: 'lightning',
+      bonusActionDamageRange: 60,
+      endsWhenTargetDies: true,
+    });
+
+    const catalogue = generateLegalActions(state, warlock, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, warlock, catalogue);
+    const action = catalogue.actions.find((candidate) => candidate.type === 'linked_bonus_damage');
+    const view = observation.legalActions.find((candidate) => candidate.type === 'linked_bonus_damage');
+
+    expect(action).toEqual(expect.objectContaining({
+      id: `linked_bonus_damage:witch-bolt:${target.id}`,
+      buffKey: 'witch-bolt',
+      targetId: target.id,
+      damageDice: '1d12',
+      damageType: 'lightning',
+      isBonusAction: true,
+      expectedDamage: 6.5,
+    }));
+    expect(view).toEqual(expect.objectContaining({
+      id: `linked_bonus_damage:witch-bolt:${target.id}`,
+      label: expect.stringContaining('Witch Bolt linked damage'),
+      damageDice: '1d12',
+      damageType: 'lightning',
+      isBonusAction: true,
+      expectedDamage: 6.5,
+      description: expect.stringContaining('does not cast a new spell'),
+    }));
+
+    warlock.bonusActionUsed = true;
+    const afterBonusAction = generateLegalActions(state, warlock, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    expect(afterBonusAction.actions.some((candidate) => candidate.type === 'linked_bonus_damage')).toBe(false);
+  });
+
   it('exposes Eldritch Blast beams as stepwise attack actions', () => {
     const state = initBattle(createBattlecastCreatures(warlockBeamScenario().combatants, true), 12);
     const warlock = state.creatures.find((creature) => creature.team === 'red');
@@ -1389,6 +1451,71 @@ describe('agent matches', () => {
 
     expect(beamActions).toHaveLength(2);
     expect(beamActions.map((event) => event.turnStep)).toEqual([0, 1]);
+  });
+
+  it('lets an actual-action Warlock use maintained Witch Bolt damage on a later turn', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const actionId = actionIds.find((id) => id.startsWith('linked_bonus_damage:witch-bolt:')) ??
+        actionIds.find((id) => id.startsWith('spell:witch-bolt:')) ??
+        'end_turn';
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Use the concrete linked spell action when legal.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: witchBoltLinkedDamageScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 2,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const llmTurnStarts = match.replay.filter((event) =>
+      event.type === 'turn_started' &&
+      event.controller?.mode === 'openrouter-llm'
+    );
+    const linkedTurnStart = llmTurnStarts.find((event) =>
+      event.legalActions.some((action) => action.type === 'linked_bonus_damage')
+    );
+    const linkedResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'linked_bonus_damage'
+    );
+
+    expect(linkedTurnStart?.legalActions.some((action) => action.type === 'battlecast_tactic')).toBe(false);
+    expect(linkedTurnStart?.actionEconomy).toEqual(expect.objectContaining({
+      hasBonusAction: true,
+      hasMainAction: true,
+    }));
+    expect(linkedResolution?.round).toBe(2);
+    expect(linkedResolution?.turnStep).toBe(0);
+    expect(linkedResolution?.logs).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        action: 'Witch Bolt',
+        type: 'damage',
+        damage: expect.any(Number),
+      }),
+    ]));
   });
 
   it('executes a split-target Magic Missile selected by an actual-action LLM', async () => {
@@ -3247,6 +3374,37 @@ function warlockBeamScenario(): D20benchScenario {
     combatants: [
       { monster: buildHero('Warlock', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 8 } },
+    ],
+  };
+}
+
+function witchBoltLinkedDamageScenario(): D20benchScenario {
+  return {
+    id: 'test.witch-bolt-linked-damage.v1',
+    name: 'Witch Bolt Linked Damage Test',
+    description: 'A Warlock can cast Witch Bolt, then use its later bonus-action linked damage as a concrete action.',
+    battleType: 'spell-followup-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 20,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Warlock', 5), team: 'red', position: { x: 2, y: 2 } },
+      {
+        monster: {
+          ...buildHero('Fighter', 1),
+          name: 'Training Target',
+          ac: 1,
+          hp: 120,
+          hpFormula: '120',
+          actions: [],
+        },
+        team: 'blue',
+        position: { x: 8, y: 8 },
+      },
     ],
   };
 }

@@ -89,6 +89,19 @@ export type LegalAction =
     }
   | {
       id: string;
+      type: 'linked_bonus_damage';
+      buffKey: string;
+      buffName: string;
+      targetId: string;
+      targetName: string;
+      damageDice: string;
+      damageType: string;
+      rangeFt?: number;
+      expectedDamage: number;
+      isBonusAction: true;
+    }
+  | {
+      id: string;
       type: 'smite';
       smite: 'divine_smite' | 'decline';
       targetId: string;
@@ -410,6 +423,10 @@ export function escapeContainerActionId(): 'escape:container' {
   return 'escape:container';
 }
 
+export function linkedBonusDamageActionId(buffKey: string, targetId: string): string {
+  return `linked_bonus_damage:${slugActionName(buffKey)}:${targetId}`;
+}
+
 export function divineSmiteActionId(resourceKey: string): string {
   return `smite:divine-smite:${resourceKey}`;
 }
@@ -689,6 +706,9 @@ function coreActualActions(
   if (hasMainActionAvailable) {
     actions.push(...escapeContainerActions(state, active));
   }
+  if (economy.hasBonusAction) {
+    actions.push(...linkedBonusDamageActions(state, active));
+  }
   if (hasMainActionAvailable && canTakeDefensiveAction(active)) {
     actions.push({ id: 'dodge', type: 'dodge' });
     actions.push(...helpActions(state, active));
@@ -834,6 +854,40 @@ function escapeContainerActions(state: BattleState, active: Creature): LegalActi
     sourceId: source.id,
     sourceName: source.displayName,
     escapeDc: container.escapeDc,
+  }];
+}
+
+function linkedBonusDamageActions(state: BattleState, active: Creature): LegalAction[] {
+  if (active.bonusActionUsed || !active.isAlive || active.dying) return [];
+  const linked = state.creatures
+    .filter((target) => target.team !== active.team && target.isAlive && !target.dying)
+    .flatMap((target) => (target.activeBuffs ?? [])
+      .filter((buff) =>
+        buff.casterId === active.id &&
+        buff.bonusActionDamage &&
+        buff.appliedRound < state.round &&
+        creatureDistance(active, target) <= (buff.bonusActionDamageRange ?? Infinity)
+      )
+      .map((buff) => ({ target, buff })))
+    .sort((left, right) =>
+      left.target.currentHp - right.target.currentHp ||
+      left.target.displayName.localeCompare(right.target.displayName) ||
+      left.target.id.localeCompare(right.target.id)
+    );
+  const chosen = linked[0];
+  if (!chosen?.buff.bonusActionDamage) return [];
+  return [{
+    id: linkedBonusDamageActionId(chosen.buff.key, chosen.target.id),
+    type: 'linked_bonus_damage' as const,
+    buffKey: chosen.buff.key,
+    buffName: chosen.buff.name,
+    targetId: chosen.target.id,
+    targetName: chosen.target.displayName,
+    damageDice: chosen.buff.bonusActionDamage,
+    damageType: chosen.buff.bonusActionDamageType ?? 'untyped',
+    rangeFt: chosen.buff.bonusActionDamageRange,
+    expectedDamage: averageDamage(chosen.buff.bonusActionDamage),
+    isBonusAction: true as const,
   }];
 }
 

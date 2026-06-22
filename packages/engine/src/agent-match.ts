@@ -27,6 +27,7 @@ import {
   rollSaveWithBuffs,
   stabiliseDyingAlly,
   tryEscapeContainer,
+  tryUseBonusActionDamageBuff,
   checkAuraEntry,
   type DamageReactionDecisionContext,
   type DamageReactionHooks,
@@ -1005,6 +1006,11 @@ async function applyActualLegalAction(input: {
     return { ended: shouldEndActualTurn(active, actualTurn) };
   }
 
+  if (action.type === 'linked_bonus_damage') {
+    applyLinkedBonusDamageAction(state, active, action, agent);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
   if (action.type === 'disengage') {
     applyDisengageAction(state, active, action, actualTurn);
     return { ended: shouldEndActualTurn(active, actualTurn) };
@@ -1266,6 +1272,29 @@ function applyEscapeContainerAction(
   active.hasActed = true;
   actualTurn.attackRollsRemaining = 0;
   actualTurn.pendingSmite = undefined;
+}
+
+function applyLinkedBonusDamageAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'linked_bonus_damage' }>,
+  agent: Agent,
+): void {
+  const target = state.creatures.find((creature) => creature.id === action.targetId);
+  if (!target?.isAlive) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+  const linked = target.activeBuffs?.some((buff) =>
+    buff.key === action.buffKey &&
+    buff.casterId === active.id &&
+    buff.bonusActionDamage &&
+    buff.appliedRound < state.round &&
+    creatureDistance(active, target) <= (buff.bonusActionDamageRange ?? Infinity)
+  );
+  if (!linked || !tryUseBonusActionDamageBuff(state, active)) {
+    pushInvalidActionLog(state, active, agent, action.id);
+  }
 }
 
 async function processPostMoveEffects(

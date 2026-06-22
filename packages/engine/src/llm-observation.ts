@@ -296,6 +296,9 @@ export interface LlmActionView {
   isCritical?: boolean;
   spellLevel?: number;
   resourceCost?: { key: string; amount: number };
+  buffKey?: string;
+  damageDice?: string;
+  rangeFt?: number;
   setupAction?: boolean;
   beastName?: string;
   beastCr?: string;
@@ -542,6 +545,27 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       description: action.smite === 'decline'
         ? 'Resolve the hit without spending a Divine Smite resource, then continue the turn if action economy remains.'
         : 'Spend the listed resource now to add Divine Smite radiant damage to the hit that just landed.',
+    };
+  }
+
+  if (action.type === 'linked_bonus_damage') {
+    const target = creatureById.get(action.targetId);
+    return {
+      id: action.id,
+      type: action.type,
+      label: `${action.buffName} linked damage against ${target?.label ?? action.targetName}`,
+      targetId: action.targetId,
+      targetName: action.targetName,
+      targetLabel: target?.label,
+      targetRelation: target?.relation,
+      targetTeam: target?.team,
+      buffKey: action.buffKey,
+      damageDice: action.damageDice,
+      damageType: action.damageType,
+      rangeFt: action.rangeFt,
+      expectedDamage: Number(action.expectedDamage.toFixed(2)),
+      isBonusAction: true,
+      description: 'Spend the bonus action on an existing linked spell effect. This does not cast a new spell or spend a spell slot; after the damage resolves, choose the next concrete action if action economy remains.',
     };
   }
 
