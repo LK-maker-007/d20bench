@@ -1,0 +1,250 @@
+{
+  "seasonId": "llm-actual-stabilise-verify-v2",
+  "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control Stabilise as a concrete adjacent-ally support action in a fixture that preserves adjacency.",
+  "generatedAt": "2026-06-22T15:19:30.586Z",
+  "startedAt": "2026-06-22T15:19:30.586Z",
+  "completedAt": "2026-06-22T15:20:13.086Z",
+  "llmActionSpace": "actual-actions-v1",
+  "initialRating": 1000,
+  "kFactor": 32,
+  "maxRounds": 2,
+  "concurrency": 4,
+  "totalMatches": 4,
+  "completedMatches": 4,
+  "failedMatches": 0,
+  "standings": [
+    {
+      "agentId": "openrouter:mistralai/ministral-8b-2512",
+      "rating": 1016.736306793522,
+      "matches": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "score": 1
+    },
+    {
+      "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "rating": 1015.9660918698308,
+      "matches": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "score": 1
+    },
+    {
+      "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+      "rating": 1015.2314181019374,
+      "matches": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "score": 1
+    },
+    {
+      "agentId": "openrouter:deepseek/deepseek-v4-flash",
+      "rating": 984,
+      "matches": 1,
+      "wins": 0,
+      "losses": 1,
+      "draws": 0,
+      "score": 0
+    },
+    {
+      "agentId": "battlecast.aggressive",
+      "rating": 968.0661832347098,
+      "matches": 4,
+      "wins": 1,
+      "losses": 3,
+      "draws": 0,
+      "score": 1
+    }
+  ],
+  "battleTypeStandings": [
+    {
+      "battleType": "support-smoke",
+      "standings": [
+        {
+          "agentId": "openrouter:mistralai/ministral-8b-2512",
+          "rating": 1016.736306793522,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "rating": 1015.9660918698308,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+          "rating": 1015.2314181019374,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:deepseek/deepseek-v4-flash",
+          "rating": 984,
+          "matches": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "score": 0
+        },
+        {
+          "agentId": "battlecast.aggressive",
+          "rating": 968.0661832347098,
+          "matches": 4,
+          "wins": 1,
+          "losses": 3,
+          "draws": 0,
+          "score": 1
+        }
+      ]
+    }
+  ],
+  "costSummary": {
+    "totalDecisions": 46,
+    "promptTokens": 351548,
+    "completionTokens": 7255,
+    "totalTokens": 358803,
+    "estimatedCostUsd": 0.03165819499999999,
+    "byModel": [
+      {
+        "agentId": "openrouter:mistralai/ministral-8b-2512",
+        "model": "mistralai/ministral-8b-2512",
+        "decisions": 13,
+        "promptTokens": 99399,
+        "completionTokens": 446,
+        "totalTokens": 99845,
+        "estimatedCostUsd": 0.014976749999999997
+      },
+      {
+        "agentId": "openrouter:deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-flash",
+        "decisions": 11,
+        "promptTokens": 89677,
+        "completionTokens": 642,
+        "totalTokens": 90319,
+        "estimatedCostUsd": 0.00818649
+      },
+      {
+        "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "decisions": 11,
+        "promptTokens": 83077,
+        "completionTokens": 5748,
+        "totalTokens": 88825,
+        "estimatedCostUsd": 0.006894485
+      },
+      {
+        "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "decisions": 11,
+        "promptTokens": 79395,
+        "completionTokens": 419,
+        "totalTokens": 79814,
+        "estimatedCostUsd": 0.00160047
+      }
+    ]
+  },
+  "failures": [],
+  "matches": [
+    {
+      "matchId": "hidden.llm-stabilise-ally-party-v2.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+      "scenarioId": "hidden.llm-stabilise-ally-party-v2.v1",
+      "battleType": "support-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "blue",
+      "redScore": 0,
+      "blueScore": 1,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1000,
+      "redRatingAfter": 984,
+      "blueRatingAfter": 1016,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1000,
+      "redBattleTypeRatingAfter": 984,
+      "blueBattleTypeRatingAfter": 1016,
+      "finalStateHash": "bac5f975f874e8b0f61db7d17158e210f64335e2096d28feed11d1eaa84ac643",
+      "llmDecisions": 11,
+      "estimatedCostUsd": 0.00818649
+    },
+    {
+      "matchId": "hidden.llm-stabilise-ally-party-v2.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+      "scenarioId": "hidden.llm-stabilise-ally-party-v2.v1",
+      "battleType": "support-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1016,
+      "redRatingAfter": 1016.736306793522,
+      "blueRatingAfter": 999.263693206478,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1016,
+      "redBattleTypeRatingAfter": 1016.736306793522,
+      "blueBattleTypeRatingAfter": 999.263693206478,
+      "finalStateHash": "eed0de2cd0295c4e560cbabe797a3f9c10418fdeba095828de3adbfad56bd1aa",
+      "llmDecisions": 13,
+      "estimatedCostUsd": 0.014976749999999997
+    },
+    {
+      "matchId": "hidden.llm-stabilise-ally-party-v2.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+      "scenarioId": "hidden.llm-stabilise-ally-party-v2.v1",
+      "battleType": "support-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 999.263693206478,
+      "redRatingAfter": 1015.9660918698308,
+      "blueRatingAfter": 983.2976013366472,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 999.263693206478,
+      "redBattleTypeRatingAfter": 1015.9660918698308,
+      "blueBattleTypeRatingAfter": 983.2976013366472,
+      "finalStateHash": "b267b5414b0e49b5cb1a4deca8063b124a1fb8af4db787439afe81b4d291b51c",
+      "llmDecisions": 11,
+      "estimatedCostUsd": 0.00160047
+    },
+    {
+      "matchId": "hidden.llm-stabilise-ally-party-v2.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+      "scenarioId": "hidden.llm-stabilise-ally-party-v2.v1",
+      "battleType": "support-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 983.2976013366472,
+      "redRatingAfter": 1015.2314181019374,
+      "blueRatingAfter": 968.0661832347098,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 983.2976013366472,
+      "redBattleTypeRatingAfter": 1015.2314181019374,
+      "blueBattleTypeRatingAfter": 968.0661832347098,
+      "finalStateHash": "aa41d857302cbd5259081862ba8634a41ec9c6fda6b602128ee0a94491cf6e87",
+      "llmDecisions": 11,
+      "estimatedCostUsd": 0.006894485
+    }
+  ]
+}

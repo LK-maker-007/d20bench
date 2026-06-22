@@ -25,6 +25,7 @@ import {
   resolveDivineSmite,
   resolveSingleTargetSave,
   rollSaveWithBuffs,
+  stabiliseDyingAlly,
   checkAuraEntry,
   type DamageReactionDecisionContext,
   type DamageReactionHooks,
@@ -987,6 +988,11 @@ async function applyActualLegalAction(input: {
     return { ended: shouldEndActualTurn(active, actualTurn) };
   }
 
+  if (action.type === 'stabilise') {
+    applyStabiliseAction(state, active, action, agent, actualTurn);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
   if (action.type === 'disengage') {
     applyDisengageAction(state, active, action, actualTurn);
     return { ended: shouldEndActualTurn(active, actualTurn) };
@@ -1215,6 +1221,23 @@ function applyHelpAction(
     tone: 'success',
     durationMs: BASE_DURATIONS.effect,
   });
+}
+
+function applyStabiliseAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'stabilise' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  const target = state.creatures.find((creature) => creature.id === action.targetId);
+  if (!target || !stabiliseDyingAlly(state, active, target)) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+  active.hasActed = true;
+  actualTurn.attackRollsRemaining = 0;
+  actualTurn.pendingSmite = undefined;
 }
 
 async function processPostMoveEffects(

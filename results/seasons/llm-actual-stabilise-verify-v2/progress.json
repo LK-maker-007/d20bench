@@ -1,0 +1,131 @@
+{
+  "seasonId": "llm-actual-stabilise-verify-v2",
+  "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control Stabilise as a concrete adjacent-ally support action in a fixture that preserves adjacency.",
+  "status": "complete",
+  "llmActionSpace": "actual-actions-v1",
+  "startedAt": "2026-06-22T15:19:30.586Z",
+  "updatedAt": "2026-06-22T15:20:13.087Z",
+  "concurrency": 4,
+  "maxRounds": 2,
+  "totalMatches": 4,
+  "completedMatches": 4,
+  "failedMatches": 0,
+  "runningMatches": 0,
+  "costSummary": {
+    "totalDecisions": 46,
+    "promptTokens": 351548,
+    "completionTokens": 7255,
+    "totalTokens": 358803,
+    "estimatedCostUsd": 0.03165819499999999,
+    "byModel": [
+      {
+        "agentId": "openrouter:mistralai/ministral-8b-2512",
+        "model": "mistralai/ministral-8b-2512",
+        "decisions": 13,
+        "promptTokens": 99399,
+        "completionTokens": 446,
+        "totalTokens": 99845,
+        "estimatedCostUsd": 0.014976749999999997
+      },
+      {
+        "agentId": "openrouter:deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-flash",
+        "decisions": 11,
+        "promptTokens": 89677,
+        "completionTokens": 642,
+        "totalTokens": 90319,
+        "estimatedCostUsd": 0.00818649
+      },
+      {
+        "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "decisions": 11,
+        "promptTokens": 83077,
+        "completionTokens": 5748,
+        "totalTokens": 88825,
+        "estimatedCostUsd": 0.006894485
+      },
+      {
+        "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "decisions": 11,
+        "promptTokens": 79395,
+        "completionTokens": 419,
+        "totalTokens": 79814,
+        "estimatedCostUsd": 0.00160047
+      }
+    ]
+  },
+  "activeMatches": [],
+  "recentMatches": [
+    {
+      "index": 3,
+      "status": "completed",
+      "scenarioId": "hidden.llm-stabilise-ally-party-v2.v1",
+      "battleType": "support-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "blueAgent": "battlecast.aggressive",
+      "startedAt": "2026-06-22T15:19:30.749Z",
+      "completedAt": "2026-06-22T15:20:13.083Z",
+      "durationMs": 42334,
+      "matchId": "hidden.llm-stabilise-ally-party-v2.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+      "winner": "red",
+      "llmDecisions": 11,
+      "estimatedCostUsd": 0.006894485,
+      "finalStateHash": "aa41d857302cbd5259081862ba8634a41ec9c6fda6b602128ee0a94491cf6e87"
+    },
+    {
+      "index": 0,
+      "status": "completed",
+      "scenarioId": "hidden.llm-stabilise-ally-party-v2.v1",
+      "battleType": "support-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.aggressive",
+      "startedAt": "2026-06-22T15:19:30.749Z",
+      "completedAt": "2026-06-22T15:20:02.656Z",
+      "durationMs": 31907,
+      "matchId": "hidden.llm-stabilise-ally-party-v2.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+      "winner": "blue",
+      "llmDecisions": 11,
+      "estimatedCostUsd": 0.00818649,
+      "finalStateHash": "bac5f975f874e8b0f61db7d17158e210f64335e2096d28feed11d1eaa84ac643"
+    },
+    {
+      "index": 1,
+      "status": "completed",
+      "scenarioId": "hidden.llm-stabilise-ally-party-v2.v1",
+      "battleType": "support-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "battlecast.aggressive",
+      "startedAt": "2026-06-22T15:19:30.749Z",
+      "completedAt": "2026-06-22T15:19:48.338Z",
+      "durationMs": 17589,
+      "matchId": "hidden.llm-stabilise-ally-party-v2.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+      "winner": "red",
+      "llmDecisions": 13,
+      "estimatedCostUsd": 0.014976749999999997,
+      "finalStateHash": "eed0de2cd0295c4e560cbabe797a3f9c10418fdeba095828de3adbfad56bd1aa"
+    },
+    {
+      "index": 2,
+      "status": "completed",
+      "scenarioId": "hidden.llm-stabilise-ally-party-v2.v1",
+      "battleType": "support-smoke",
+      "seed": 1,
+      "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "blueAgent": "battlecast.aggressive",
+      "startedAt": "2026-06-22T15:19:30.749Z",
+      "completedAt": "2026-06-22T15:19:40.603Z",
+      "durationMs": 9854,
+      "matchId": "hidden.llm-stabilise-ally-party-v2.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+      "winner": "red",
+      "llmDecisions": 11,
+      "estimatedCostUsd": 0.00160047,
+      "finalStateHash": "b267b5414b0e49b5cb1a4deca8063b124a1fb8af4db787439afe81b4d291b51c"
+    }
+  ],
+  "failures": []
+}

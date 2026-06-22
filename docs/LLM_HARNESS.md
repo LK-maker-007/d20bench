@@ -147,7 +147,7 @@ The first implementation is deliberately narrow:
 - LLM agents choose from the existing D20bench legal-action catalogue.
 - The historical primitive action space contains `attack`, `move_toward`, and `end_turn`.
 - The historical full-turn action space also exposes copied Battlecast delegates: `battlecast_tactic:aggressive`, `battlecast_tactic:smart`, `battlecast_tactic:kiting`, and `battlecast_tactic:defensive`. These seasons verify tool calls and the copied Battlecast executor, but they are not the final fair action-space target.
-- `actual-actions-v1` is the current fair-action-space target. It forbids Battlecast tactic delegates for OpenRouter agents and exposes concrete target-directed movement, exact `move_to:x,y` destination movement, Dash, Disengage, Dodge, Help, class features such as Fighter Action Surge, Rogue Steady Aim, Druid Wild Shape beast forms, Ranger Nature's Veil, Barbarian Rage/Instinctive Pounce, Reckless Attack, Brutal Strike, and Frenzy, Paladin Sacred Weapon, Paladin Abjure Foes multi-target saves, and Divine Smite post-hit choices, Monk Superior Defense, Quivering Palm end actions, and Martial Arts/Flurry strikes, opportunity-attack reaction choices, trigger-time Rogue Uncanny Dodge, Monk Deflect, Superior Hunter's Defense, Barbarian Retaliation, and Bard Cutting Words attack-roll/damage-roll choices, attack, spell, save, point-origin AoE centers, line/cone AoE directions, non-geometric multi-target saving throws, healing, buff, auto-dart, target-level random monster rays, and end-turn actions. The async harness calls the model repeatedly within one creature turn when action economy remains.
+- `actual-actions-v1` is the current fair-action-space target. It forbids Battlecast tactic delegates for OpenRouter agents and exposes concrete target-directed movement, exact `move_to:x,y` destination movement, Dash, Disengage, Dodge, Help, Stabilise, class features such as Fighter Action Surge, Rogue Steady Aim, Druid Wild Shape beast forms, Ranger Nature's Veil, Barbarian Rage/Instinctive Pounce, Reckless Attack, Brutal Strike, and Frenzy, Paladin Sacred Weapon, Paladin Abjure Foes multi-target saves, and Divine Smite post-hit choices, Monk Superior Defense, Quivering Palm end actions, and Martial Arts/Flurry strikes, opportunity-attack reaction choices, trigger-time Rogue Uncanny Dodge, Monk Deflect, Superior Hunter's Defense, Barbarian Retaliation, and Bard Cutting Words attack-roll/damage-roll choices, attack, spell, save, point-origin AoE centers, line/cone AoE directions, non-geometric multi-target saving throws, healing, buff, auto-dart, target-level random monster rays, and end-turn actions. The async harness calls the model repeatedly within one creature turn when action economy remains.
 - The current observation schema is `d20bench.llm_observation.v2`, which includes Battlecast-relevant tactical metadata: action/spell profiles, defenses, resources, recharges, buffs, condition timers, concentration/wild-shape state, team tactic flags, and tactic reference notes.
 - Non-Battlecast agents now share Battlecast turn-start processing with the fixed tactic agents, including death saves, start-of-turn condition effects, movement reset, and skip-turn conditions.
 - Battlecast tactic agents still delegate to copied Battlecast `executeTurn`.
@@ -184,8 +184,10 @@ The first implementation is deliberately narrow:
 - `llm-actual-class-feature-verify-v1` is a focused hidden class-feature smoke season for Paladin Sacred Weapon and Monk Superior Defense. It asks cheap OpenRouter models to choose those exact buff actions instead of receiving hidden Battlecast tactic auto-spends.
 - `llm-actual-class-feature-verify-v2` repeats that class-feature smoke after marking setup class-feature actions explicitly in the LLM observation.
 - `llm-actual-abjure-foes-verify-v1` is a focused hidden class-feature smoke season for Paladin Abjure Foes. It asks cheap OpenRouter models to choose a concrete `spell:abjure-foes:targets:<ids>` action against multiple enemies instead of receiving the hidden Battlecast tactic helper.
+- `llm-actual-stabilise-verify-v3` is a focused hidden support-action smoke season for Stabilise. It asks cheap OpenRouter models to control a Fighter after an adjacent immobile ally has been downed, choose the concrete `stabilise:<ally-id>` action without competing healing spells, and continue without any Battlecast tactic delegate.
 - Unit coverage now includes Paladin Abjure Foes as a concrete non-geometric multi-target saving-throw action. The model chooses the exact target group, the copied Battlecast spell executor resolves the saves, and the action consumes Channel Divinity without exposing any Battlecast tactic delegate.
 - Unit coverage now includes Monk Quivering Palm end actions as concrete target-level main actions. A model can seed Quivering Palm with an unarmed hit, see later state, and choose `class_feature:quivering-palm:<target-id>` to resolve the copied Battlecast CON save and force damage.
+- Unit coverage now includes Stabilise as a concrete adjacent-ally support action. A model can spend its main action to stabilise a dying hero ally at 0 HP, and the copied Battlecast combat helper resolves the same log/events without exposing any Battlecast tactic delegate.
 - LLM ladder runs write `completed-matches.jsonl` checkpoints as matches finish; `--resume` reloads completed fixtures and continues with failed or unstarted fixtures.
 - LLM ladder runs also write local `raw-decisions.jsonl` audit logs for every OpenRouter decision attempt. These are intentionally not published by default.
 - Published benchmark results are append-only by season id: new experiments get new ids and new `results/seasons/<id>/` directories rather than overwriting previous runs.
@@ -198,6 +200,12 @@ Latest broad cheap audit:
 - The action mix included attacks, spells, reactions, class features, movement, Dash, Dodge, and end-turn actions, confirming models are executing concrete actions rather than selecting strategy delegates.
 
 This gives us a safe, auditable harness before we spend significant model budget.
+
+Latest focused support-action audit:
+
+- `llm-actual-stabilise-verify-v3` finished 4/4, 0 failed, estimated cost `$0.022840`.
+- The accepted OpenRouter traces contained 47 concrete decisions, 0 `battlecast_tactic` legal-action exposures, and 0 delegate selections.
+- The no-healing support fixture exposed `stabilise:<ally-id>` to a live cheap model and recorded 1 OpenRouter Stabilise execution in replay.
 
 ## Next Work
 

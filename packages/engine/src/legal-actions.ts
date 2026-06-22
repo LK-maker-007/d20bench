@@ -75,6 +75,12 @@ export type LegalAction =
     }
   | {
       id: string;
+      type: 'stabilise';
+      targetId: string;
+      targetName: string;
+    }
+  | {
+      id: string;
       type: 'smite';
       smite: 'divine_smite' | 'decline';
       targetId: string;
@@ -388,6 +394,10 @@ export function helpActionId(targetId: string): string {
   return `help:${targetId}`;
 }
 
+export function stabiliseActionId(targetId: string): string {
+  return `stabilise:${targetId}`;
+}
+
 export function divineSmiteActionId(resourceKey: string): string {
   return `smite:divine-smite:${resourceKey}`;
 }
@@ -667,6 +677,7 @@ function coreActualActions(
   if (hasMainActionAvailable && canTakeDefensiveAction(active)) {
     actions.push({ id: 'dodge', type: 'dodge' });
     actions.push(...helpActions(state, active));
+    actions.push(...stabiliseActions(state, active));
   }
   if (canUseSteadyAim(state, active, economy)) {
     actions.push({
@@ -766,6 +777,31 @@ function helpActions(state: BattleState, active: Creature): LegalAction[] {
     .map((target) => ({
       id: helpActionId(target.id),
       type: 'help' as const,
+      targetId: target.id,
+      targetName: target.displayName,
+    }));
+}
+
+function stabiliseActions(state: BattleState, active: Creature): LegalAction[] {
+  if (!active.monsterData.isHero || !active.isAlive || active.dying) return [];
+  return state.creatures
+    .filter((target) =>
+      target.id !== active.id &&
+      target.team === active.team &&
+      target.monsterData.isHero &&
+      target.isAlive &&
+      target.dying &&
+      creatureDistance(active, target) <= 5
+    )
+    .sort((left, right) =>
+      (right.deathSaves?.failures ?? 0) - (left.deathSaves?.failures ?? 0) ||
+      (left.deathSaves?.successes ?? 0) - (right.deathSaves?.successes ?? 0) ||
+      left.displayName.localeCompare(right.displayName) ||
+      left.id.localeCompare(right.id)
+    )
+    .map((target) => ({
+      id: stabiliseActionId(target.id),
+      type: 'stabilise' as const,
       targetId: target.id,
       targetName: target.displayName,
     }));

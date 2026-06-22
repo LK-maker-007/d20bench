@@ -338,6 +338,35 @@ function highArmorFighter(level: number, ac: number) {
   };
 }
 
+function immobileHero(heroClass: Parameters<typeof buildHero>[0], level: number) {
+  const hero = buildHero(heroClass, level);
+  return {
+    ...hero,
+    name: `${hero.name} Immobile`,
+    speed: { ...hero.speed, walk: 0 },
+  };
+}
+
+function fragileImmobileHero(heroClass: Parameters<typeof buildHero>[0], level: number, hp: number) {
+  const hero = immobileHero(heroClass, level);
+  return {
+    ...hero,
+    name: `${hero.name} HP${hp}`,
+    hp,
+    hpFormula: String(hp),
+  };
+}
+
+function noActionSurgeFighter(level: number) {
+  const fighter = buildHero('Fighter', level);
+  const { ['action-surge']: _actionSurge, ...resources } = fighter.initialResources ?? {};
+  return {
+    ...fighter,
+    name: `${fighter.name} No Surge`,
+    initialResources: resources,
+  };
+}
+
 export const llmActualCuttingWordsAttackVerifyScenario: D20benchScenario = {
   id: 'hidden.llm-cutting-words-attack-party.v1',
   name: 'LLM Cutting Words Attack Roll Party',
@@ -486,6 +515,76 @@ export const llmActualAbjureFoesVerifyScenario: D20benchScenario = {
     { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 5, y: 2 } },
     { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 6, y: 3 } },
     { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 7, y: 4 } },
+  ],
+};
+
+export const llmActualStabiliseVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-stabilise-ally-party.v1',
+  name: 'LLM Stabilise Ally Party',
+  description: 'A Battlecast Aggressive Fighter downs an OpenRouter ally, then an adjacent OpenRouter Cleric should choose the concrete Stabilise action.',
+  battleType: 'support-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['support', 'stabilise', 'death-saves'],
+  designNotes: [
+    'Designed as a live-model harness validation for concrete adjacent-ally support actions.',
+    'Seed 2 lets the Battlecast Fighter create a dying ally state before the Cleric turn, so the legal-action catalogue should expose stabilise:<ally-id> instead of any Battlecast tactic delegate.',
+  ],
+  combatants: [
+    { monster: buildHero('Wizard', 5), team: 'red', position: { x: 2, y: 3 } },
+    { monster: buildHero('Cleric', 5), team: 'red', position: { x: 3, y: 3 } },
+    { monster: buildHero('Fighter', 20), team: 'blue', position: { x: 2, y: 2 } },
+  ],
+};
+
+export const llmActualStabiliseVerifyV2Scenario: D20benchScenario = {
+  id: 'hidden.llm-stabilise-ally-party-v2.v1',
+  name: 'LLM Stabilise Ally Party V2',
+  description: 'A Battlecast Aggressive Fighter downs an immobile OpenRouter ally, then an adjacent OpenRouter Cleric should choose the concrete Stabilise action.',
+  battleType: 'support-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['support', 'stabilise', 'death-saves'],
+  designNotes: [
+    'Designed as a live-model harness validation for concrete adjacent-ally support actions.',
+    'The would-be downed Wizard has zero movement and 12 HP so live models cannot move it out of adjacency before the Battlecast Fighter creates the dying-ally state.',
+    'The Fighter has no Action Surge, so it can down the Wizard without also downing the Cleric before the support action is tested.',
+    'Seed 1 lets the Battlecast Fighter create a dying ally state before the Cleric turn, so the legal-action catalogue should expose stabilise:<ally-id> instead of any Battlecast tactic delegate.',
+  ],
+  combatants: [
+    { monster: fragileImmobileHero('Wizard', 5, 12), team: 'red', position: { x: 2, y: 3 } },
+    { monster: buildHero('Cleric', 5), team: 'red', position: { x: 3, y: 3 } },
+    { monster: noActionSurgeFighter(5), team: 'blue', position: { x: 2, y: 2 } },
+  ],
+};
+
+export const llmActualStabiliseVerifyV3Scenario: D20benchScenario = {
+  id: 'hidden.llm-stabilise-ally-fighter-party.v1',
+  name: 'LLM Stabilise Ally Fighter Party',
+  description: 'A Battlecast Aggressive Fighter downs an immobile OpenRouter Wizard, then an adjacent OpenRouter Fighter should choose the concrete Stabilise action.',
+  battleType: 'support-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['support', 'stabilise', 'death-saves'],
+  designNotes: [
+    'Designed as a live-model harness validation for concrete adjacent-ally support actions without competing healing spells.',
+    'The would-be downed Wizard has zero movement and 12 HP so live models cannot move it out of adjacency before the Battlecast Fighter creates the dying-ally state.',
+    'The OpenRouter support actor is a Fighter, so Stabilise competes with ordinary attacks and defensive actions but not with Healing Word, Cure Wounds, or Preserve Life.',
+    'Seed 2 exposes stabilise:<ally-id> to the red Fighter after the Wizard is downed.',
+  ],
+  combatants: [
+    { monster: fragileImmobileHero('Wizard', 5, 12), team: 'red', position: { x: 2, y: 3 } },
+    { monster: buildHero('Fighter', 5), team: 'red', position: { x: 3, y: 3 } },
+    { monster: noActionSurgeFighter(5), team: 'blue', position: { x: 2, y: 2 } },
   ],
 };
 
@@ -927,7 +1026,46 @@ export const llmActualAbjureFoesVerifySeason: LlmSeasonConfig = {
   concurrency: 4,
 };
 
+export const llmActualStabiliseVerifySeason: LlmSeasonConfig = {
+  id: 'llm-actual-stabilise-verify-v1',
+  description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control Stabilise as a concrete adjacent-ally support action.',
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    'battlecast.aggressive',
+  ],
+  scenarios: [llmActualStabiliseVerifyScenario],
+  seeds: [2],
+  maxRounds: 2,
+  pairings: llmActualCheapVerifyModelAgents.map((model) => ({
+    redAgent: model,
+    blueAgent: 'battlecast.aggressive' as const,
+  })),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
+export const llmActualStabiliseVerifyV2Season: LlmSeasonConfig = {
+  ...llmActualStabiliseVerifySeason,
+  id: 'llm-actual-stabilise-verify-v2',
+  description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control Stabilise as a concrete adjacent-ally support action in a fixture that preserves adjacency.',
+  scenarios: [llmActualStabiliseVerifyV2Scenario],
+  seeds: [1],
+};
+
+export const llmActualStabiliseVerifyV3Season: LlmSeasonConfig = {
+  ...llmActualStabiliseVerifySeason,
+  id: 'llm-actual-stabilise-verify-v3',
+  description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control Stabilise as a concrete adjacent-ally support action without competing healing spells.',
+  scenarios: [llmActualStabiliseVerifyV3Scenario],
+  seeds: [2],
+};
+
 export const llmSeasons = [
+  llmActualStabiliseVerifyV3Season,
+  llmActualStabiliseVerifyV2Season,
+  llmActualStabiliseVerifySeason,
   llmActualAbjureFoesVerifySeason,
   llmActualClassFeatureVerifyV2Season,
   llmActualClassFeatureVerifySeason,

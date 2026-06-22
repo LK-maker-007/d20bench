@@ -241,6 +241,51 @@ describe('agent matches', () => {
     expect(spentActionCatalogue.actions.some((action) => action.type === 'help')).toBe(false);
   });
 
+  it('exposes Stabilise as a concrete actual action for adjacent dying hero allies', () => {
+    const state = initBattle(createBattlecastCreatures(stabiliseAllyScenario().combatants, true), 8);
+    const cleric = state.creatures.find((creature) => creature.monsterData.heroClass === 'Cleric');
+    const ally = state.creatures.find((creature) => creature.monsterData.heroClass === 'Wizard');
+    if (!cleric || !ally) throw new Error('expected cleric and dying ally');
+    ally.currentHp = 0;
+    ally.dying = true;
+    ally.deathSaves = { successes: 0, failures: 2 };
+    ally.conditions.push('unconscious');
+
+    const catalogue = generateLegalActions(state, cleric, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, cleric, catalogue);
+
+    expect(catalogue.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: `stabilise:${ally.id}`,
+        type: 'stabilise',
+        targetId: ally.id,
+      }),
+    ]));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: `stabilise:${ally.id}`,
+        type: 'stabilise',
+        description: expect.stringContaining('stops making death saves'),
+      }),
+    ]));
+
+    cleric.hasActed = true;
+    const spentActionCatalogue = generateLegalActions(state, cleric, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 0,
+        attackActionStarted: false,
+      },
+    });
+    expect(spentActionCatalogue.actions.some((action) => action.type === 'stabilise')).toBe(false);
+  });
+
   it('exposes Eldritch Blast beams as stepwise attack actions', () => {
     const state = initBattle(createBattlecastCreatures(warlockBeamScenario().combatants, true), 12);
     const warlock = state.creatures.find((creature) => creature.team === 'red');
@@ -2071,6 +2116,57 @@ describe('agent matches', () => {
     expect(match.state.logs.some((log) => log.action === 'Opportunity Attack')).toBe(false);
   });
 
+  it('lets an actual-action LLM stabilise an adjacent dying ally', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let choseStabilise = false;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const stabilise = actionIds.find((id) => id.startsWith('stabilise:'));
+      const actionId = stabilise ?? 'end_turn';
+      if (stabilise) choseStabilise = true;
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Stabilise the adjacent dying ally.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: stabiliseAllyScenario(),
+      seed: 2,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.aggressive',
+      maxRounds: 2,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const stabiliseResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'stabilise'
+    );
+
+    expect(choseStabilise).toBe(true);
+    expect(stabiliseResolution?.type).toBe('action_resolved');
+    expect(stabiliseResolution?.logs.some((log) => log.action === 'Stabilise')).toBe(true);
+    expect(stabiliseResolution?.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'stabiliseAlly' }),
+    ]));
+  });
+
   it('asks an OpenRouter reactor to choose an opportunity attack after an actual-action move trigger', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     const observedReactionIds: string[][] = [];
@@ -2988,6 +3084,27 @@ function helpOpeningScenario(): D20benchScenario {
       { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 3 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 4 } },
+    ],
+  };
+}
+
+function stabiliseAllyScenario(): D20benchScenario {
+  return {
+    id: 'test.stabilise-ally.v1',
+    name: 'Stabilise Ally Test',
+    description: 'A Cleric can stabilise an adjacent dying hero ally.',
+    battleType: 'support-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Wizard', 5), team: 'red', position: { x: 2, y: 3 } },
+      { monster: buildHero('Cleric', 5), team: 'red', position: { x: 3, y: 3 } },
+      { monster: buildHero('Fighter', 20), team: 'blue', position: { x: 2, y: 2 } },
     ],
   };
 }

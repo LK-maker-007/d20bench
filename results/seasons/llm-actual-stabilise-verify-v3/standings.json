@@ -1,0 +1,250 @@
+{
+  "seasonId": "llm-actual-stabilise-verify-v3",
+  "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control Stabilise as a concrete adjacent-ally support action without competing healing spells.",
+  "generatedAt": "2026-06-22T15:22:44.100Z",
+  "startedAt": "2026-06-22T15:22:44.101Z",
+  "completedAt": "2026-06-22T15:23:33.317Z",
+  "llmActionSpace": "actual-actions-v1",
+  "initialRating": 1000,
+  "kFactor": 32,
+  "maxRounds": 2,
+  "concurrency": 4,
+  "totalMatches": 4,
+  "completedMatches": 4,
+  "failedMatches": 0,
+  "standings": [
+    {
+      "agentId": "openrouter:deepseek/deepseek-v4-flash",
+      "rating": 1016,
+      "matches": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "score": 1
+    },
+    {
+      "agentId": "openrouter:mistralai/ministral-8b-2512",
+      "rating": 1015.263693206478,
+      "matches": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "score": 1
+    },
+    {
+      "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "rating": 1014.5641271217237,
+      "matches": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "score": 1
+    },
+    {
+      "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+      "rating": 1013.9017057911524,
+      "matches": 1,
+      "wins": 1,
+      "losses": 0,
+      "draws": 0,
+      "score": 1
+    },
+    {
+      "agentId": "battlecast.aggressive",
+      "rating": 940.2704738806459,
+      "matches": 4,
+      "wins": 0,
+      "losses": 4,
+      "draws": 0,
+      "score": 0
+    }
+  ],
+  "battleTypeStandings": [
+    {
+      "battleType": "support-smoke",
+      "standings": [
+        {
+          "agentId": "openrouter:deepseek/deepseek-v4-flash",
+          "rating": 1016,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:mistralai/ministral-8b-2512",
+          "rating": 1015.263693206478,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "rating": 1014.5641271217237,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+          "rating": 1013.9017057911524,
+          "matches": 1,
+          "wins": 1,
+          "losses": 0,
+          "draws": 0,
+          "score": 1
+        },
+        {
+          "agentId": "battlecast.aggressive",
+          "rating": 940.2704738806459,
+          "matches": 4,
+          "wins": 0,
+          "losses": 4,
+          "draws": 0,
+          "score": 0
+        }
+      ]
+    }
+  ],
+  "costSummary": {
+    "totalDecisions": 47,
+    "promptTokens": 244557,
+    "completionTokens": 7504,
+    "totalTokens": 252061,
+    "estimatedCostUsd": 0.022839839999999997,
+    "byModel": [
+      {
+        "agentId": "openrouter:mistralai/ministral-8b-2512",
+        "model": "mistralai/ministral-8b-2512",
+        "decisions": 13,
+        "promptTokens": 69242,
+        "completionTokens": 380,
+        "totalTokens": 69622,
+        "estimatedCostUsd": 0.010443299999999999
+      },
+      {
+        "agentId": "openrouter:deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-flash",
+        "decisions": 12,
+        "promptTokens": 65836,
+        "completionTokens": 718,
+        "totalTokens": 66554,
+        "estimatedCostUsd": 0.006054479999999999
+      },
+      {
+        "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "decisions": 11,
+        "promptTokens": 57064,
+        "completionTokens": 6054,
+        "totalTokens": 63118,
+        "estimatedCostUsd": 0.005283199999999999
+      },
+      {
+        "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "decisions": 11,
+        "promptTokens": 52415,
+        "completionTokens": 352,
+        "totalTokens": 52767,
+        "estimatedCostUsd": 0.0010588600000000002
+      }
+    ]
+  },
+  "failures": [],
+  "matches": [
+    {
+      "matchId": "hidden.llm-stabilise-ally-fighter-party.v1__actual-actions-v1__2__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+      "scenarioId": "hidden.llm-stabilise-ally-fighter-party.v1",
+      "battleType": "support-smoke",
+      "seed": 2,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 1000,
+      "redRatingAfter": 1016,
+      "blueRatingAfter": 984,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 1000,
+      "redBattleTypeRatingAfter": 1016,
+      "blueBattleTypeRatingAfter": 984,
+      "finalStateHash": "405084ce791832a0126f201b41e570e640db1af4aac7815c81992f68d11c0564",
+      "llmDecisions": 12,
+      "estimatedCostUsd": 0.006054479999999999
+    },
+    {
+      "matchId": "hidden.llm-stabilise-ally-fighter-party.v1__actual-actions-v1__2__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+      "scenarioId": "hidden.llm-stabilise-ally-fighter-party.v1",
+      "battleType": "support-smoke",
+      "seed": 2,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 984,
+      "redRatingAfter": 1015.263693206478,
+      "blueRatingAfter": 968.736306793522,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 984,
+      "redBattleTypeRatingAfter": 1015.263693206478,
+      "blueBattleTypeRatingAfter": 968.736306793522,
+      "finalStateHash": "00dcae3fea412027b1e5b09448d06539aab4f7e724ccd9ebae0bd393c7cc3f44",
+      "llmDecisions": 13,
+      "estimatedCostUsd": 0.010443299999999999
+    },
+    {
+      "matchId": "hidden.llm-stabilise-ally-fighter-party.v1__actual-actions-v1__2__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+      "scenarioId": "hidden.llm-stabilise-ally-fighter-party.v1",
+      "battleType": "support-smoke",
+      "seed": 2,
+      "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 968.736306793522,
+      "redRatingAfter": 1014.5641271217237,
+      "blueRatingAfter": 954.1721796717983,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 968.736306793522,
+      "redBattleTypeRatingAfter": 1014.5641271217237,
+      "blueBattleTypeRatingAfter": 954.1721796717983,
+      "finalStateHash": "c3630530194b075a6c1caddd892f67de30b3933efed054265ad740b280a74788",
+      "llmDecisions": 11,
+      "estimatedCostUsd": 0.0010588600000000002
+    },
+    {
+      "matchId": "hidden.llm-stabilise-ally-fighter-party.v1__actual-actions-v1__2__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+      "scenarioId": "hidden.llm-stabilise-ally-fighter-party.v1",
+      "battleType": "support-smoke",
+      "seed": 2,
+      "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "blueAgent": "battlecast.aggressive",
+      "winner": "red",
+      "redScore": 1,
+      "blueScore": 0,
+      "redRatingBefore": 1000,
+      "blueRatingBefore": 954.1721796717983,
+      "redRatingAfter": 1013.9017057911524,
+      "blueRatingAfter": 940.2704738806459,
+      "redBattleTypeRatingBefore": 1000,
+      "blueBattleTypeRatingBefore": 954.1721796717983,
+      "redBattleTypeRatingAfter": 1013.9017057911524,
+      "blueBattleTypeRatingAfter": 940.2704738806459,
+      "finalStateHash": "752f918a44cca021e63fa2ca7661cd95a82de91ca37a0659ef5aa8ed1c5cf03b",
+      "llmDecisions": 11,
+      "estimatedCostUsd": 0.005283199999999999
+    }
+  ]
+}

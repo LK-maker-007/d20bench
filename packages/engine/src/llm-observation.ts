@@ -493,6 +493,21 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
     };
   }
 
+  if (action.type === 'stabilise') {
+    const target = creatureById.get(action.targetId);
+    return {
+      id: action.id,
+      type: action.type,
+      label: `Stabilise ${target?.label ?? action.targetName}`,
+      targetId: action.targetId,
+      targetName: action.targetName,
+      targetLabel: target?.label,
+      targetRelation: target?.relation,
+      targetTeam: target?.team,
+      description: 'Spend the main action to stabilise this adjacent dying hero ally at 0 HP. The ally remains unconscious but stops making death saves.',
+    };
+  }
+
   if (action.type === 'smite') {
     const target = creatureById.get(action.targetId);
     return {
