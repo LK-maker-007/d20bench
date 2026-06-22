@@ -206,8 +206,17 @@ Latest broad cheap audit:
 - Stepwise control was exercised: 146 model-controlled turns required multiple decisions after observing intermediate results, with a max of 10 model actions in one turn.
 - The v12 replay audit found 0 no-log `move_toward` actions, compared with 32 in v11 before the movement-legality filter.
 - The action mix included attacks, spells, reactions, class features, movement, Dash, Dodge, and end-turn actions, confirming models are executing concrete actions rather than selecting strategy delegates.
+- The results site surfaces these audit checks directly: LLM action count, delegate exposures/selections, stepwise turn count, invalid action applications, and no-effect movement actions.
 
 This gives us a safe, auditable harness before we spend significant model budget.
+
+Current confidence checklist:
+
+- OpenRouter agents in `actual-actions-v1` cannot see or select `battlecast_tactic` delegates.
+- Every accepted LLM decision is a legal action id from the current engine-generated catalogue.
+- Extra Attack and multiattack-like turns are stepwise: the model attacks, the engine resolves dice/effects, the model observes the updated state and `actionEconomy`, and only then chooses the next action.
+- Unit coverage exercises stepwise Extra Attack, Eldritch Blast beams, Beholder eye rays, Action Surge, maintained Witch Bolt damage, Hex retargeting, Swallow, opportunity attacks, damage reactions, Cutting Words, Stabilise, and high-level class features such as Sacred Weapon, Superior Defense, Nature's Veil, and Holy Nimbus.
+- Cheap live-model validation has stayed well below the requested `$20` harness-validation budget; the latest broad run cost under `$1`.
 
 Latest focused support-action audit:
 
@@ -217,9 +226,10 @@ Latest focused support-action audit:
 
 ## Next Work
 
-`actual-actions-v1` now replaces full-turn delegates as the fairness bridge. The remaining work is to keep widening the concrete catalogue until it matches every relevant Battlecast decision point:
+`actual-actions-v1` now replaces full-turn delegates as the fairness bridge. The remaining work is not to simplify the benchmark, but to keep the evaluator honest as Battlecast coverage expands:
 
-- remaining non-OA reactions not yet bridged, especially Shield/Counterspell-style spell timing once those mechanics exist in the engine
-- remaining Battlecast-only high-level class helpers should be audited before high-level heroes enter public Elo seasons
+- any newly copied Battlecast mechanic must get a concrete legal-action representation or an explicit passive/automatic classification before it appears in a public LLM Elo season
+- trigger-time reactions such as Shield or Counterspell should be implemented as exact reaction catalogues once those mechanics exist in the copied engine
+- before publishing final public leaderboard claims, run the public `battlecast.smart` schedule in `actual-actions-v1` with the intended production model set and archive the harness audit beside the standings
 
 Until those are covered, `actual-actions-v1` results should be treated as harness-validation results, not final leaderboard claims.
