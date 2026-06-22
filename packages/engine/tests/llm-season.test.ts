@@ -4,6 +4,7 @@ import {
   auditLlmSeasonResult,
   isFatalSeasonError,
   llmActualActionSurgeVerifySeason,
+  llmActualBestCheapModelAgents,
   llmActualClassFeatureVerifySeason,
   llmActualClassFeatureVerifyV2Season,
   llmActualCheapVerifyModelAgents,
@@ -22,6 +23,7 @@ import {
   llmActualCheapVerifyV12Season,
   llmActualCuttingWordsVerifySeason,
   llmActualDeflectVerifySeason,
+  llmActualDeepseekSmartCompleteSeason,
   llmActualGlmSmartFourRoundSeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
@@ -396,6 +398,32 @@ describe('LLM seasons', () => {
         expect(orderedPairKeys.has(`${redAgent} -> ${blueAgent}`)).toBe(true);
       }
     }
+  });
+
+  it('defines the full-length best-cheap actual-action smart season', () => {
+    const pairings = llmActualDeepseekSmartCompleteSeason.pairings ?? [];
+
+    expect(llmActualBestCheapModelAgents).toEqual([
+      'openrouter:deepseek/deepseek-v4-flash',
+    ]);
+    expect(llmActualDeepseekSmartCompleteSeason.id).toBe('llm-actual-deepseek-smart-complete-v1');
+    expect(llmActualDeepseekSmartCompleteSeason.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualDeepseekSmartCompleteSeason.maxRounds).toBe(100);
+    expect(llmActualDeepseekSmartCompleteSeason.seeds).toEqual([1]);
+    expect(llmActualDeepseekSmartCompleteSeason.agents).toEqual([
+      'openrouter:deepseek/deepseek-v4-flash',
+      'battlecast.smart',
+    ]);
+    expect(llmActualDeepseekSmartCompleteSeason.scenarios.map((scenario) => scenario.battleType)).toEqual([
+      'hero-party-chokepoint',
+      'hero-party-status',
+    ]);
+    expect(pairings).toEqual([
+      { redAgent: 'openrouter:deepseek/deepseek-v4-flash', blueAgent: 'battlecast.smart' },
+      { redAgent: 'battlecast.smart', blueAgent: 'openrouter:deepseek/deepseek-v4-flash' },
+    ]);
+    expect(pairings.length * llmActualDeepseekSmartCompleteSeason.scenarios.length * llmActualDeepseekSmartCompleteSeason.seeds.length)
+      .toBe(4);
   });
 
   it('defines the small GLM actual-action smart verification season', () => {

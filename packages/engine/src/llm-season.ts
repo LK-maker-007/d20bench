@@ -279,6 +279,10 @@ export const llmActualCheapVerifyModelAgents: OpenRouterAgentId[] = [
   ...llmSmartTop3ModelAgents,
 ];
 
+export const llmActualBestCheapModelAgents: OpenRouterAgentId[] = [
+  createOpenRouterAgentId('deepseek/deepseek-v4-flash'),
+];
+
 export const llmActualReactionVerifyScenario: D20benchScenario = {
   id: 'hidden.llm-reaction-kiting-duel.v1',
   name: 'LLM Reaction Kiting Duel',
@@ -1088,6 +1092,26 @@ export const llmActualGlmSmartFourRoundSeason: LlmSeasonConfig = {
   concurrency: 2,
 };
 
+export const llmActualDeepseekSmartCompleteSeason: LlmSeasonConfig = {
+  id: 'llm-actual-deepseek-smart-complete-v1',
+  description: 'Full-length delegate-free actual-action run for the best cheap model from the latest round robin, DeepSeek Flash, against Battlecast Smart on the two public hero-party mirrors.',
+  agents: [
+    ...llmActualBestCheapModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: [1],
+  maxRounds: 100,
+  pairings: createModelOpponentPairings(llmActualBestCheapModelAgents, llmSmartOpponentAgents),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 2,
+};
+
 export const llmActualReactionVerifySeason: LlmSeasonConfig = {
   id: 'llm-actual-reaction-verify-v1',
   description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control opportunity-attack reactions against a Battlecast Kiting mover.',
@@ -1358,6 +1382,7 @@ export const llmSeasons = [
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
+  llmActualDeepseekSmartCompleteSeason,
   llmActualGlmSmartFourRoundSeason,
   llmActualCheapRoundRobinV2Season,
   llmActualCheapVerifyV12Season,

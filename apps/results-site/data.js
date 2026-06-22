@@ -1,6 +1,482 @@
 window.D20BENCH_RESULTS = {
-  "generatedAt": "2026-06-22T20:29:38.279Z",
+  "generatedAt": "2026-06-22T21:06:26.999Z",
   "seasons": [
+    {
+      "seasonId": "llm-actual-deepseek-smart-complete-v1",
+      "description": "Full-length delegate-free actual-action run for the best cheap model from the latest round robin, DeepSeek Flash, against Battlecast Smart on the two public hero-party mirrors.",
+      "generatedAt": "2026-06-22T20:40:56.926Z",
+      "startedAt": "2026-06-22T20:40:56.926Z",
+      "completedAt": "2026-06-22T21:05:58.304Z",
+      "llmActionSpace": "actual-actions-v1",
+      "initialRating": 1000,
+      "kFactor": 32,
+      "maxRounds": 100,
+      "concurrency": 2,
+      "totalMatches": 4,
+      "completedMatches": 4,
+      "failedMatches": 0,
+      "standings": [
+        {
+          "agentId": "openrouter:deepseek/deepseek-v4-flash",
+          "rating": 1005.3331712136038,
+          "matches": 4,
+          "wins": 2,
+          "losses": 2,
+          "draws": 0,
+          "score": 2
+        },
+        {
+          "agentId": "battlecast.smart",
+          "rating": 994.6668287863961,
+          "matches": 4,
+          "wins": 2,
+          "losses": 2,
+          "draws": 0,
+          "score": 2
+        }
+      ],
+      "battleTypeStandings": [
+        {
+          "battleType": "hero-party-chokepoint",
+          "standings": [
+            {
+              "agentId": "battlecast.smart",
+              "rating": 1030.5304984710244,
+              "matches": 2,
+              "wins": 2,
+              "losses": 0,
+              "draws": 0,
+              "score": 2
+            },
+            {
+              "agentId": "openrouter:deepseek/deepseek-v4-flash",
+              "rating": 969.4695015289755,
+              "matches": 2,
+              "wins": 0,
+              "losses": 2,
+              "draws": 0,
+              "score": 0
+            }
+          ]
+        },
+        {
+          "battleType": "hero-party-status",
+          "standings": [
+            {
+              "agentId": "openrouter:deepseek/deepseek-v4-flash",
+              "rating": 1030.5304984710244,
+              "matches": 2,
+              "wins": 2,
+              "losses": 0,
+              "draws": 0,
+              "score": 2
+            },
+            {
+              "agentId": "battlecast.smart",
+              "rating": 969.4695015289755,
+              "matches": 2,
+              "wins": 0,
+              "losses": 2,
+              "draws": 0,
+              "score": 0
+            }
+          ]
+        }
+      ],
+      "costSummary": {
+        "totalDecisions": 379,
+        "promptTokens": 5723584,
+        "completionTokens": 30248,
+        "totalTokens": 5753832,
+        "estimatedCostUsd": 0.5205672000000001,
+        "byModel": [
+          {
+            "agentId": "openrouter:deepseek/deepseek-v4-flash",
+            "model": "deepseek/deepseek-v4-flash",
+            "decisions": 379,
+            "promptTokens": 5723584,
+            "completionTokens": 30248,
+            "totalTokens": 5753832,
+            "estimatedCostUsd": 0.5205672000000001
+          }
+        ]
+      },
+      "harnessAudit": {
+        "modelTurnStarts": 446,
+        "modelActionResolutions": 446,
+        "modelDelegateLegalActionExposures": 0,
+        "modelDelegateSelections": 0,
+        "modelStepwiseTurns": 106,
+        "modelStepwiseContinuations": 296,
+        "maxModelActionsInTurn": 9,
+        "modelToolCallDecisions": 379,
+        "modelJsonFallbackDecisions": 0,
+        "modelRepairAttempts": 2,
+        "modelNoLogMovementActions": 0,
+        "modelInvalidActionApplications": 0,
+        "acceptedActionCounts": [
+          {
+            "actionKey": "end_turn",
+            "count": 140
+          },
+          {
+            "actionKey": "move_to",
+            "count": 60
+          },
+          {
+            "actionKey": "move_toward",
+            "count": 40
+          },
+          {
+            "actionKey": "attack:Eldritch Blast",
+            "count": 26
+          },
+          {
+            "actionKey": "attack:Javelin",
+            "count": 22
+          },
+          {
+            "actionKey": "attack:Longbow",
+            "count": 22
+          },
+          {
+            "actionKey": "attack:Longsword",
+            "count": 16
+          },
+          {
+            "actionKey": "spell:Healing Word",
+            "count": 15
+          },
+          {
+            "actionKey": "dash",
+            "count": 12
+          },
+          {
+            "actionKey": "spell:Spiritual Weapon",
+            "count": 8
+          },
+          {
+            "actionKey": "dodge",
+            "count": 7
+          },
+          {
+            "actionKey": "spell:Hunter's Mark",
+            "count": 6
+          },
+          {
+            "actionKey": "spell:Lay on Hands",
+            "count": 6
+          },
+          {
+            "actionKey": "spell:Scorching Ray",
+            "count": 6
+          },
+          {
+            "actionKey": "attack:Produce Flame",
+            "count": 5
+          },
+          {
+            "actionKey": "spell:Guiding Bolt",
+            "count": 5
+          },
+          {
+            "actionKey": "spell:Second Wind",
+            "count": 5
+          },
+          {
+            "actionKey": "spell:Hex",
+            "count": 4
+          },
+          {
+            "actionKey": "reaction:cutting_words_damage",
+            "count": 3
+          },
+          {
+            "actionKey": "smite:divine_smite",
+            "count": 3
+          },
+          {
+            "actionKey": "spell:Channel Divinity: Divine Spark Harm",
+            "count": 3
+          },
+          {
+            "actionKey": "spell:Hypnotic Pattern",
+            "count": 3
+          },
+          {
+            "actionKey": "spell:Shield of Faith",
+            "count": 3
+          },
+          {
+            "actionKey": "attack:Shortbow",
+            "count": 2
+          },
+          {
+            "actionKey": "class_feature:action_surge",
+            "count": 2
+          },
+          {
+            "actionKey": "class_feature:wild_shape",
+            "count": 2
+          },
+          {
+            "actionKey": "reaction:cutting_words_attack",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Aid",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Dissonant Whispers",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Hold Person",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Innate Sorcery",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Land's Aid",
+            "count": 2
+          },
+          {
+            "actionKey": "spell:Spirit Guardians",
+            "count": 2
+          },
+          {
+            "actionKey": "smite:decline",
+            "count": 1
+          },
+          {
+            "actionKey": "spell:Bardic Inspiration",
+            "count": 1
+          },
+          {
+            "actionKey": "spell:Call Lightning",
+            "count": 1
+          },
+          {
+            "actionKey": "spell:Channel Divinity: Preserve Life",
+            "count": 1
+          },
+          {
+            "actionKey": "spell:Shining Smite",
+            "count": 1
+          },
+          {
+            "actionKey": "spell:Vicious Mockery",
+            "count": 1
+          }
+        ],
+        "modelActionSpaceTurnStarts": [
+          {
+            "actionSpace": "actual-actions-v1",
+            "count": 446
+          }
+        ]
+      },
+      "failures": [],
+      "matches": [
+        {
+          "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.smart",
+          "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+          "battleType": "hero-party-chokepoint",
+          "seed": 1,
+          "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+          "blueAgent": "battlecast.smart",
+          "winner": "blue",
+          "redScore": 0,
+          "blueScore": 1,
+          "redRatingBefore": 1000,
+          "blueRatingBefore": 1000,
+          "redRatingAfter": 984,
+          "blueRatingAfter": 1016,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 1000,
+          "redBattleTypeRatingAfter": 984,
+          "blueBattleTypeRatingAfter": 1016,
+          "finalStateHash": "05b50c2d475984f09070ce5482e4e652580a872739398fb8faee0865100ba3b5",
+          "llmDecisions": 79,
+          "estimatedCostUsd": 0.11156724
+        },
+        {
+          "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_deepseek_deepseek-v4-flash",
+          "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+          "battleType": "hero-party-chokepoint",
+          "seed": 1,
+          "redAgent": "battlecast.smart",
+          "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+          "winner": "red",
+          "redScore": 1,
+          "blueScore": 0,
+          "redRatingBefore": 1016,
+          "blueRatingBefore": 984,
+          "redRatingAfter": 1030.5304984710244,
+          "blueRatingAfter": 969.4695015289755,
+          "redBattleTypeRatingBefore": 1016,
+          "blueBattleTypeRatingBefore": 984,
+          "redBattleTypeRatingAfter": 1030.5304984710244,
+          "blueBattleTypeRatingAfter": 969.4695015289755,
+          "finalStateHash": "f1840ef3ca6e8667c4e197a1a5bdad6456c813e6a546e899f9fba0eccba55239",
+          "llmDecisions": 50,
+          "estimatedCostUsd": 0.07435611000000002
+        },
+        {
+          "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.smart",
+          "scenarioId": "public.hero-mirror-status-l5.v1",
+          "battleType": "hero-party-status",
+          "seed": 1,
+          "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+          "blueAgent": "battlecast.smart",
+          "winner": "red",
+          "redScore": 1,
+          "blueScore": 0,
+          "redRatingBefore": 969.4695015289755,
+          "blueRatingBefore": 1030.5304984710244,
+          "redRatingAfter": 988.2528663663891,
+          "blueRatingAfter": 1011.7471336336108,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 1000,
+          "redBattleTypeRatingAfter": 1016,
+          "blueBattleTypeRatingAfter": 984,
+          "finalStateHash": "438fed8f16adb8ff9b8d2cd3fdee582607ab76c3e67143729bd27f091730dd7d",
+          "llmDecisions": 84,
+          "estimatedCostUsd": 0.11207555999999998
+        },
+        {
+          "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_deepseek_deepseek-v4-flash",
+          "scenarioId": "public.hero-mirror-status-l5.v1",
+          "battleType": "hero-party-status",
+          "seed": 1,
+          "redAgent": "battlecast.smart",
+          "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+          "winner": "blue",
+          "redScore": 0,
+          "blueScore": 1,
+          "redRatingBefore": 1011.7471336336108,
+          "blueRatingBefore": 988.2528663663891,
+          "redRatingAfter": 994.6668287863961,
+          "blueRatingAfter": 1005.3331712136038,
+          "redBattleTypeRatingBefore": 984,
+          "blueBattleTypeRatingBefore": 1016,
+          "redBattleTypeRatingAfter": 969.4695015289755,
+          "blueBattleTypeRatingAfter": 1030.5304984710244,
+          "finalStateHash": "f381708104ab018ff5f5c67d2a21031163a36c8c62b5909ee162035e77176190",
+          "llmDecisions": 166,
+          "estimatedCostUsd": 0.22256829
+        }
+      ],
+      "progress": {
+        "seasonId": "llm-actual-deepseek-smart-complete-v1",
+        "description": "Full-length delegate-free actual-action run for the best cheap model from the latest round robin, DeepSeek Flash, against Battlecast Smart on the two public hero-party mirrors.",
+        "status": "complete",
+        "llmActionSpace": "actual-actions-v1",
+        "startedAt": "2026-06-22T20:40:56.926Z",
+        "updatedAt": "2026-06-22T21:05:58.306Z",
+        "concurrency": 2,
+        "maxRounds": 100,
+        "totalMatches": 4,
+        "completedMatches": 4,
+        "failedMatches": 0,
+        "runningMatches": 0,
+        "costSummary": {
+          "totalDecisions": 379,
+          "promptTokens": 5723584,
+          "completionTokens": 30248,
+          "totalTokens": 5753832,
+          "estimatedCostUsd": 0.5205672000000001,
+          "byModel": [
+            {
+              "agentId": "openrouter:deepseek/deepseek-v4-flash",
+              "model": "deepseek/deepseek-v4-flash",
+              "decisions": 379,
+              "promptTokens": 5723584,
+              "completionTokens": 30248,
+              "totalTokens": 5753832,
+              "estimatedCostUsd": 0.5205672000000001
+            }
+          ]
+        },
+        "activeMatches": [],
+        "recentMatches": [
+          {
+            "index": 3,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-status-l5.v1",
+            "battleType": "hero-party-status",
+            "seed": 1,
+            "redAgent": "battlecast.smart",
+            "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+            "startedAt": "2026-06-22T20:53:51.859Z",
+            "completedAt": "2026-06-22T21:05:58.293Z",
+            "durationMs": 726434,
+            "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_deepseek_deepseek-v4-flash",
+            "winner": "blue",
+            "llmDecisions": 166,
+            "estimatedCostUsd": 0.22256829,
+            "finalStateHash": "f381708104ab018ff5f5c67d2a21031163a36c8c62b5909ee162035e77176190"
+          },
+          {
+            "index": 2,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-status-l5.v1",
+            "battleType": "hero-party-status",
+            "seed": 1,
+            "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+            "blueAgent": "battlecast.smart",
+            "startedAt": "2026-06-22T20:49:18.963Z",
+            "completedAt": "2026-06-22T20:59:53.797Z",
+            "durationMs": 634834,
+            "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.smart",
+            "winner": "red",
+            "llmDecisions": 84,
+            "estimatedCostUsd": 0.11207555999999998,
+            "finalStateHash": "438fed8f16adb8ff9b8d2cd3fdee582607ab76c3e67143729bd27f091730dd7d"
+          },
+          {
+            "index": 0,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+            "battleType": "hero-party-chokepoint",
+            "seed": 1,
+            "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+            "blueAgent": "battlecast.smart",
+            "startedAt": "2026-06-22T20:40:57.095Z",
+            "completedAt": "2026-06-22T20:53:51.852Z",
+            "durationMs": 774757,
+            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.smart",
+            "winner": "blue",
+            "llmDecisions": 79,
+            "estimatedCostUsd": 0.11156724,
+            "finalStateHash": "05b50c2d475984f09070ce5482e4e652580a872739398fb8faee0865100ba3b5"
+          },
+          {
+            "index": 1,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+            "battleType": "hero-party-chokepoint",
+            "seed": 1,
+            "redAgent": "battlecast.smart",
+            "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+            "startedAt": "2026-06-22T20:40:57.095Z",
+            "completedAt": "2026-06-22T20:49:18.957Z",
+            "durationMs": 501862,
+            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_deepseek_deepseek-v4-flash",
+            "winner": "red",
+            "llmDecisions": 50,
+            "estimatedCostUsd": 0.07435611000000002,
+            "finalStateHash": "f1840ef3ca6e8667c4e197a1a5bdad6456c813e6a546e899f9fba0eccba55239"
+          }
+        ],
+        "failures": []
+      },
+      "sourcePath": "results/seasons/llm-actual-deepseek-smart-complete-v1/standings.json",
+      "progressPath": "results/seasons/llm-actual-deepseek-smart-complete-v1/progress.json"
+    },
     {
       "seasonId": "llm-actual-glm-smart-4round-v1",
       "description": "Small delegate-free actual-action check for GLM 5.2 against Battlecast Smart, with four combat rounds per match.",
