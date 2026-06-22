@@ -24,6 +24,7 @@ import {
   resolveAoE,
   resolveDivineSmite,
   resolveSingleTargetSave,
+  resolveSwallowAction,
   rollSaveWithBuffs,
   stabiliseDyingAlly,
   tryEscapeContainer,
@@ -1839,7 +1840,9 @@ function applySpellAction(
     return;
   }
 
-  if (battlecastAction.autoDarts) {
+  if (battlecastAction.name === 'Swallow' && primaryTarget) {
+    applied = resolveSwallowAction(state, active, primaryTarget, battlecastAction);
+  } else if (battlecastAction.autoDarts) {
     applied = executeSpell(state, active, battlecastAction, primaryTarget, targets);
   } else if (battlecastAction.spellLevel !== undefined || battlecastAction.resourceCost || battlecastAction.heal || battlecastAction.temporaryHp || battlecastAction.buff || battlecastAction.powerWord) {
     const aoeTargets = battlecastAction.savingThrow?.area || (battlecastAction.targetScope === 'area_enemies' && targets.length > 1)

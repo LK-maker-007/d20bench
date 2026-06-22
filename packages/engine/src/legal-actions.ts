@@ -1577,6 +1577,7 @@ function generateConcreteSpellActions(
     for (const target of targets) {
       if (!targetMatchesAction(active, target, action)) continue;
       if (!canReachActionTarget(active, target, action)) continue;
+      if (action.name === 'Swallow' && !canSwallowTarget(active, target)) continue;
       if (action.type === 'ranged' && target.team !== active.team && !canSee(state, active, target)) continue;
       if (!isWorthTargeting(target, action)) continue;
       actions.push(spellActionForTarget(action, target));
@@ -1587,7 +1588,8 @@ function generateConcreteSpellActions(
 }
 
 function isConcreteSpellAction(action: MonsterAction): boolean {
-  return action.spellLevel !== undefined ||
+  return action.name === 'Swallow' ||
+    action.spellLevel !== undefined ||
     action.resourceCost !== undefined ||
     action.savingThrow !== undefined ||
     action.heal !== undefined ||
@@ -1960,6 +1962,13 @@ function targetMatchesAction(active: Creature, target: Creature, action: Monster
   return target.team !== active.team;
 }
 
+function canSwallowTarget(active: Creature, target: Creature): boolean {
+  if (!target.conditions.includes('grappled')) return false;
+  if (target.swallowedBy || active.swallowedTargetId) return false;
+  const grappleTimers = target.conditionTimers.filter((timer) => timer.condition === 'grappled');
+  return grappleTimers.length === 0 || grappleTimers.some((timer) => timer.sourceId === active.id);
+}
+
 function canReachActionTarget(active: Creature, target: Creature, action: MonsterAction): boolean {
   const distance = creatureDistance(active, target);
   if (action.type === 'melee' && action.spellLevel === undefined && action.resourceCost === undefined) {
@@ -1986,6 +1995,7 @@ function isWorthTargeting(target: Creature, action: MonsterAction): boolean {
 }
 
 function effectKindForAction(action: MonsterAction): Extract<LegalAction, { type: 'spell' }>['effectKind'] {
+  if (action.name === 'Swallow') return 'special';
   if (action.autoDarts) return 'auto_darts';
   if (action.savingThrow?.area) return 'aoe';
   if (action.savingThrow) return 'save';

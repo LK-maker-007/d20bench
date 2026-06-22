@@ -14,7 +14,8 @@ import {
   type D20benchScenario,
 } from '../src/index.js';
 import { buildHero } from '../src/battlecast/data/heroes.js';
-import { initBattle, resolveAttack, resolveDivineSmite } from '../src/battlecast/engine/combat.js';
+import { getMonsterByName } from '../src/battlecast/data/monsters.js';
+import { initBattle, resolveAttack, resolveDivineSmite, resolveSwallowAction } from '../src/battlecast/engine/combat.js';
 import { withBattlecastRng } from '../src/battlecast/engine/dice.js';
 import { getActiveActions } from '../src/battlecast/engine/ai-targeting.js';
 import { retargetHex } from '../src/battlecast/engine/ai-spellcasting.js';
@@ -460,6 +461,59 @@ describe('agent matches', () => {
     expect(oldTarget.activeBuffs.some((buff) => buff.key === 'hex' && buff.casterId === warlock.id)).toBe(false);
     expect(newTarget.activeBuffs.some((buff) => buff.key === 'hex' && buff.casterId === warlock.id)).toBe(true);
     expect(state.logs.some((log) => log.action === 'Hex' && log.details.includes(newTarget.displayName))).toBe(true);
+  });
+
+  it('exposes Swallow only for a creature grappled by the swallower', () => {
+    const state = initBattle(createBattlecastCreatures(purpleWormSwallowScenario().combatants, true), 20);
+    const worm = state.creatures.find((creature) => creature.monsterData.name === 'Purple Worm');
+    const grappled = state.creatures.find((creature) => creature.team === 'blue' && creature.position.x === 4);
+    const ungrappled = state.creatures.find((creature) => creature.team === 'blue' && creature.position.x === 7);
+    if (!worm || !grappled || !ungrappled) throw new Error('expected Purple Worm and targets');
+
+    grappled.conditions.push('grappled');
+    grappled.conditionTimers.push({
+      condition: 'grappled',
+      duration: 'end_of_next_turn',
+      appliedRound: state.round,
+      sourceId: worm.id,
+    });
+
+    const catalogue = generateLegalActions(state, worm, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, worm, catalogue);
+    const swallowAction = catalogue.actions.find((action) =>
+      action.type === 'spell' && action.actionName === 'Swallow'
+    );
+
+    expect(swallowAction).toEqual(expect.objectContaining({
+      id: `spell:swallow:${grappled.id}`,
+      type: 'spell',
+      effectKind: 'special',
+      targetId: grappled.id,
+    }));
+    expect(catalogue.actions.some((action) =>
+      action.type === 'spell' && action.actionName === 'Swallow' && action.targetId === ungrappled.id
+    )).toBe(false);
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: `spell:swallow:${grappled.id}`,
+        effectKind: 'special',
+        label: expect.stringContaining('Swallow'),
+      }),
+    ]));
+
+    const battlecastAction = getActiveActions(worm).find((action) => action.name === 'Swallow');
+    if (!battlecastAction) throw new Error('expected Swallow action');
+    expect(resolveSwallowAction(state, worm, grappled, battlecastAction)).toBe(true);
+    expect(worm.swallowedTargetId).toBe(grappled.id);
+    expect(grappled.swallowedBy?.sourceId).toBe(worm.id);
+    expect(grappled.conditions).toEqual(expect.arrayContaining(['blinded', 'restrained']));
+    expect(grappled.conditions.includes('grappled')).toBe(false);
   });
 
   it('exposes Eldritch Blast beams as stepwise attack actions', () => {
@@ -3487,6 +3541,29 @@ function hexRetargetScenario(): D20benchScenario {
       { monster: buildHero('Warlock', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 1), team: 'blue', position: { x: 8, y: 8 } },
       { monster: buildHero('Fighter', 1), team: 'blue', position: { x: 9, y: 8 } },
+    ],
+  };
+}
+
+function purpleWormSwallowScenario(): D20benchScenario {
+  const purpleWorm = getMonsterByName('Purple Worm');
+  if (!purpleWorm) throw new Error('expected Purple Worm monster data');
+  return {
+    id: 'test.purple-worm-swallow.v1',
+    name: 'Purple Worm Swallow Test',
+    description: 'A Purple Worm can swallow a target it has already grappled.',
+    battleType: 'special-action-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 20,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: { ...purpleWorm }, team: 'red', position: { x: 3, y: 3 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 4, y: 3 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 7, y: 3 } },
     ],
   };
 }
