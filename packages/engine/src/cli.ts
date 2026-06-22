@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { isAgentId, isOpenRouterAgentId, listAgentIds, type AgentId } from './agents.js';
@@ -10,7 +10,15 @@ import { buildMatchReport, renderMatchReportMarkdown } from './report.js';
 import { readReplayJsonl, verifyReplayStructure, writeReplayJsonl } from './replay.js';
 import { renderEloSeasonMarkdown, runEloSeason } from './ratings.js';
 import { getSeasonById, publicBaselineSeason, seasons } from './seasons.js';
-import { getLlmSeasonById, llmFrontierSmartSeason, llmSeasons, renderLlmSeasonMarkdown, runLlmSeason } from './llm-season.js';
+import {
+  auditLlmSeasonResult,
+  getLlmSeasonById,
+  llmFrontierSmartSeason,
+  llmSeasons,
+  renderLlmSeasonMarkdown,
+  runLlmSeason,
+  type LlmSeasonResult,
+} from './llm-season.js';
 
 interface ParsedArgs {
   positional: string[];
@@ -49,6 +57,11 @@ async function main(): Promise<void> {
 
     if (domain === 'llm' && command === 'ladder' && maybeTarget === 'run') {
       await commandLlmLadderRun(args.options);
+      return;
+    }
+
+    if (domain === 'llm' && command === 'audit') {
+      await commandLlmAudit(args.options);
       return;
     }
 
@@ -224,6 +237,32 @@ async function commandLlmLadderRun(options: ParsedArgs['options']): Promise<void
   }, null, 2));
 }
 
+async function commandLlmAudit(options: ParsedArgs['options']): Promise<void> {
+  const seasonId = typeof options.season === 'string' ? options.season : undefined;
+  const outDir = typeof options.out === 'string'
+    ? options.out
+    : seasonId
+      ? join('results/seasons', seasonId)
+      : undefined;
+  if (!outDir) {
+    throw new Error('llm audit requires --season <id> or --out <dir>');
+  }
+
+  const result = JSON.parse(await readFile(join(outDir, 'standings.json'), 'utf8')) as LlmSeasonResult;
+  const allowDelegates = options['allow-delegates'] === true || options['allow-delegates'] === 'true';
+  const requireActualActions = options['require-actual-actions'] === true || options['require-actual-actions'] === 'true';
+  const audit = auditLlmSeasonResult(result, {
+    requireComplete: options['allow-incomplete'] !== true && options['allow-incomplete'] !== 'true',
+    requireActualActionFairness: allowDelegates ? false : requireActualActions ? true : undefined,
+    requireStepwise: options['require-stepwise'] === true || options['require-stepwise'] === 'true',
+  });
+
+  console.log(JSON.stringify(audit, null, 2));
+  if (!audit.ok) {
+    process.exitCode = 1;
+  }
+}
+
 function parseArgs(raw: string[]): ParsedArgs {
   const positional: string[] = [];
   const options: ParsedArgs['options'] = {};
@@ -306,6 +345,7 @@ Commands:
   d20bench match run --scenario <id> --red <agent> --blue <agent> --seed 1 [--max-rounds 10] [--out dir]
   d20bench ladder run [--season public-baseline-v0] [--out results/seasons/public-baseline-v0]
   d20bench llm ladder run [--season llm-frontier-smart-v1] [--out results/seasons/<id>] [--concurrency 6] [--match-limit 8] [--max-cost 50] [--resume]
+  d20bench llm audit --season <id> [--out results/seasons/<id>] [--require-stepwise] [--allow-incomplete] [--allow-delegates] [--require-actual-actions]
 
 Seasons:
   ${seasons.map((season) => season.id).join('\n  ')}

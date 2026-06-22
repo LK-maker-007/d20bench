@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  auditLlmSeasonResult,
   isFatalSeasonError,
   llmActualActionSurgeVerifySeason,
   llmActualClassFeatureVerifySeason,
@@ -39,6 +40,7 @@ import {
   sanitizeBenchmarkErrorForArtifacts,
   summarizeLlmHarnessAudit,
   type AgentMatchResult,
+  type LlmSeasonResult,
 } from '../src/index.js';
 
 describe('LLM seasons', () => {
@@ -575,5 +577,90 @@ describe('LLM seasons', () => {
         { actionKey: 'move_toward', count: 1 },
       ],
     });
+  });
+
+  it('audits published actual-action season harness counters', () => {
+    const result = {
+      seasonId: 'llm-actual-audit-test',
+      llmActionSpace: 'actual-actions-v1',
+      totalMatches: 2,
+      completedMatches: 2,
+      failedMatches: 0,
+      harnessAudit: {
+        modelTurnStarts: 4,
+        modelActionResolutions: 8,
+        modelDelegateLegalActionExposures: 0,
+        modelDelegateSelections: 0,
+        modelStepwiseTurns: 2,
+        modelStepwiseContinuations: 4,
+        maxModelActionsInTurn: 3,
+        modelToolCallDecisions: 8,
+        modelJsonFallbackDecisions: 0,
+        modelRepairAttempts: 0,
+        modelNoLogMovementActions: 0,
+        modelInvalidActionApplications: 0,
+        acceptedActionCounts: [
+          { actionKey: 'attack:Longsword', count: 4 },
+        ],
+      },
+    } as Pick<LlmSeasonResult, 'seasonId' | 'llmActionSpace' | 'totalMatches' | 'completedMatches' | 'failedMatches' | 'harnessAudit'>;
+
+    const audit = auditLlmSeasonResult(result, {
+      requireComplete: true,
+      requireStepwise: true,
+    });
+
+    expect(audit.ok).toBe(true);
+    expect(audit.checks.map((check) => [check.id, check.ok])).toEqual([
+      ['harness-audit-present', true],
+      ['all-matches-completed', true],
+      ['no-model-delegate-exposures', true],
+      ['no-model-delegate-selections', true],
+      ['no-invalid-action-applications', true],
+      ['no-no-effect-movement-actions', true],
+      ['stepwise-model-turns-present', true],
+    ]);
+  });
+
+  it('fails actual-action season audits when fairness gates regress', () => {
+    const result = {
+      seasonId: 'llm-actual-audit-test',
+      llmActionSpace: 'actual-actions-v1',
+      totalMatches: 2,
+      completedMatches: 1,
+      failedMatches: 1,
+      harnessAudit: {
+        modelTurnStarts: 2,
+        modelActionResolutions: 4,
+        modelDelegateLegalActionExposures: 1,
+        modelDelegateSelections: 1,
+        modelStepwiseTurns: 0,
+        modelStepwiseContinuations: 0,
+        maxModelActionsInTurn: 1,
+        modelToolCallDecisions: 2,
+        modelJsonFallbackDecisions: 2,
+        modelRepairAttempts: 1,
+        modelNoLogMovementActions: 2,
+        modelInvalidActionApplications: 1,
+        acceptedActionCounts: [
+          { actionKey: 'battlecast_tactic:smart', count: 1 },
+        ],
+      },
+    } as Pick<LlmSeasonResult, 'seasonId' | 'llmActionSpace' | 'totalMatches' | 'completedMatches' | 'failedMatches' | 'harnessAudit'>;
+
+    const audit = auditLlmSeasonResult(result, {
+      requireComplete: true,
+      requireStepwise: true,
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.checks.filter((check) => !check.ok).map((check) => check.id)).toEqual([
+      'all-matches-completed',
+      'no-model-delegate-exposures',
+      'no-model-delegate-selections',
+      'no-invalid-action-applications',
+      'no-no-effect-movement-actions',
+      'stepwise-model-turns-present',
+    ]);
   });
 });

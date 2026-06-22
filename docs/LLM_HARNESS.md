@@ -142,6 +142,14 @@ For a cheap one-model-equivalent shakedown, cap the scheduled fixture list:
 npm run d20bench -- llm ladder run --season llm-frontier-smart-v1 --match-limit 8 --concurrency 6 --out /tmp/d20bench-frontier-shakedown
 ```
 
+Audit a completed actual-action season before treating it as publishable:
+
+```bash
+npm run d20bench -- llm audit --season llm-actual-cheap-verify-v12 --require-stepwise
+```
+
+This reads `results/seasons/<season-id>/standings.json` and fails nonzero if the published harness audit is missing, the season is incomplete, an `actual-actions-v1` model saw or selected a Battlecast delegate, a model action was applied as invalid, or a model movement action produced no effect. `--allow-incomplete` can be used for cost-capped exploratory runs that are intentionally partial.
+
 ## Current Scope
 
 The first implementation is deliberately narrow:

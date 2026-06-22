@@ -100,6 +100,28 @@ export interface LlmSeasonHarnessAudit {
   acceptedActionCounts: LlmAcceptedActionCount[];
 }
 
+export interface LlmSeasonAuditOptions {
+  requireComplete?: boolean;
+  requireActualActionFairness?: boolean;
+  requireStepwise?: boolean;
+}
+
+export interface LlmSeasonAuditCheck {
+  id: string;
+  label: string;
+  ok: boolean;
+  expected: string;
+  actual: string | number | boolean;
+}
+
+export interface LlmSeasonArtifactAudit {
+  seasonId: string;
+  ok: boolean;
+  llmActionSpace?: LlmActionSpace;
+  checks: LlmSeasonAuditCheck[];
+  harnessAudit?: LlmSeasonHarnessAudit;
+}
+
 export type LlmSeasonProgressStatus = 'running' | 'complete' | 'failed' | 'stopped';
 export type LlmSeasonMatchProgressStatus = 'running' | 'completed' | 'failed';
 
@@ -2077,6 +2099,87 @@ export function summarizeLlmHarnessAudit(matches: AgentMatchResult[]): LlmSeason
     acceptedActionCounts: [...acceptedActionCounts.entries()]
       .map(([actionKey, count]) => ({ actionKey, count }))
       .sort((left, right) => right.count - left.count || left.actionKey.localeCompare(right.actionKey)),
+  };
+}
+
+export function auditLlmSeasonResult(
+  result: Pick<LlmSeasonResult, 'seasonId' | 'llmActionSpace' | 'totalMatches' | 'completedMatches' | 'failedMatches' | 'harnessAudit'>,
+  options: LlmSeasonAuditOptions = {},
+): LlmSeasonArtifactAudit {
+  const requireActualActionFairness = options.requireActualActionFairness ??
+    result.llmActionSpace === 'actual-actions-v1';
+  const requireComplete = options.requireComplete ?? false;
+  const requireStepwise = options.requireStepwise ?? false;
+  const checks: LlmSeasonAuditCheck[] = [];
+  const audit = result.harnessAudit;
+
+  checks.push({
+    id: 'harness-audit-present',
+    label: 'Harness audit present',
+    ok: !!audit,
+    expected: 'standings.json includes harnessAudit',
+    actual: !!audit,
+  });
+
+  if (requireComplete) {
+    checks.push({
+      id: 'all-matches-completed',
+      label: 'All scheduled matches completed',
+      ok: result.completedMatches === result.totalMatches && result.failedMatches === 0,
+      expected: `${result.totalMatches} completed, 0 failed`,
+      actual: `${result.completedMatches} completed, ${result.failedMatches} failed`,
+    });
+  }
+
+  if (audit && requireActualActionFairness) {
+    checks.push(
+      {
+        id: 'no-model-delegate-exposures',
+        label: 'No model delegate legal-action exposures',
+        ok: audit.modelDelegateLegalActionExposures === 0,
+        expected: '0',
+        actual: audit.modelDelegateLegalActionExposures,
+      },
+      {
+        id: 'no-model-delegate-selections',
+        label: 'No model delegate selections',
+        ok: audit.modelDelegateSelections === 0,
+        expected: '0',
+        actual: audit.modelDelegateSelections,
+      },
+      {
+        id: 'no-invalid-action-applications',
+        label: 'No invalid model action applications',
+        ok: audit.modelInvalidActionApplications === 0,
+        expected: '0',
+        actual: audit.modelInvalidActionApplications,
+      },
+      {
+        id: 'no-no-effect-movement-actions',
+        label: 'No no-effect model movement actions',
+        ok: audit.modelNoLogMovementActions === 0,
+        expected: '0',
+        actual: audit.modelNoLogMovementActions,
+      },
+    );
+  }
+
+  if (audit && requireStepwise) {
+    checks.push({
+      id: 'stepwise-model-turns-present',
+      label: 'Stepwise model turns present',
+      ok: audit.modelStepwiseTurns > 0 && audit.maxModelActionsInTurn > 1,
+      expected: '>0 stepwise turns and >1 max actions in one turn',
+      actual: `${audit.modelStepwiseTurns} stepwise turns, max ${audit.maxModelActionsInTurn}`,
+    });
+  }
+
+  return {
+    seasonId: result.seasonId,
+    ok: checks.every((check) => check.ok),
+    llmActionSpace: result.llmActionSpace,
+    checks,
+    harnessAudit: audit,
   };
 }
 
