@@ -78,6 +78,7 @@ describe('OpenRouter action selection', () => {
     expect(requests[0].tools[0].function.parameters.properties.actionId.enum).toEqual(
       context.catalogue.actions.map((action) => action.id),
     );
+    expect(requests[0].tools[0].function.parameters.required).toEqual(['actionId']);
     expect(requests[0].tool_choice).toEqual({
       type: 'function',
       function: { name: 'choose_d20bench_action' },
@@ -189,6 +190,116 @@ describe('OpenRouter action selection', () => {
     expect(rawTraces[0].parseStatus).toBe('accepted');
   });
 
+  it('accepts tool-call-shaped JSON content from providers that do not emit tool_calls', async () => {
+    const { context, firstActionId } = createDecisionContext();
+    const rawTraces: OpenRouterRawDecisionTrace[] = [];
+    globalThis.fetch = vi.fn(async () => jsonResponse({
+      id: 'gen-pseudo-tool-json',
+      model: 'test/tool-model',
+      choices: [{
+        finish_reason: 'stop',
+        message: {
+          content: JSON.stringify({
+            name: 'choose_d20bench_action',
+            arguments: {
+              actionId: firstActionId,
+              rationale: 'Provider serialized the tool call into message content.',
+            },
+          }),
+        },
+      }],
+      usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+    })) as typeof fetch;
+
+    const selection = await chooseOpenRouterAction(
+      { id: 'openrouter:test/tool-model', kind: 'openrouter-llm', model: 'test/tool-model' },
+      { ...context, traceSink: (trace) => rawTraces.push(trace) },
+    );
+
+    expect(selection.acceptedAction.id).toBe(firstActionId);
+    expect(selection.trace.toolCall).toBe(false);
+    expect(selection.trace.repairedJson).toBe(true);
+    expect(selection.trace.rationale).toBe('Provider serialized the tool call into message content.');
+    expect(rawTraces).toHaveLength(1);
+    expect(rawTraces[0].parseStatus).toBe('accepted');
+  });
+
+  it('retries OpenRouter 200 responses that contain provider error bodies', async () => {
+    const { context, firstActionId } = createDecisionContext();
+    const requests: any[] = [];
+    let calls = 0;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      calls += 1;
+      requests.push(JSON.parse(String(init?.body)));
+      if (calls === 1) {
+        return jsonResponse({
+          error: {
+            message: 'Upstream error from provider.',
+            code: 502,
+          },
+        });
+      }
+      return jsonResponse({
+        id: 'gen-provider-error-retry',
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [toolCall({ actionId: firstActionId, rationale: 'Retry accepted.' })],
+          },
+        }],
+        usage: { prompt_tokens: 12, completion_tokens: 5, total_tokens: 17 },
+      });
+    }) as typeof fetch;
+
+    const selection = await chooseOpenRouterAction(
+      { id: 'openrouter:test/tool-model', kind: 'openrouter-llm', model: 'test/tool-model' },
+      context,
+    );
+
+    expect(selection.acceptedAction.id).toBe(firstActionId);
+    expect(requests).toHaveLength(2);
+  });
+
+  it('serializes delegate-free actual-action observations for OpenRouter decisions', async () => {
+    const { context } = createDecisionContext({ includeActualActions: true });
+    const requests: any[] = [];
+    const attackActionId = context.catalogue.actions.find((action) => action.type === 'attack')?.id
+      ?? context.catalogue.actions[0]?.id;
+    if (!attackActionId) throw new Error('expected a legal action');
+
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      requests.push(body);
+      return jsonResponse({
+        id: 'gen-actual-actions',
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [toolCall({ actionId: attackActionId, rationale: 'Choose a concrete legal action.' })],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    await chooseOpenRouterAction(
+      { id: 'openrouter:test/tool-model', kind: 'openrouter-llm', model: 'test/tool-model' },
+      context,
+    );
+
+    const observation = JSON.parse(requests[0].messages.at(-1).content);
+    expect(observation.actionSpace).toBe('actual-actions-v1');
+    expect(observation.tacticReference).toEqual([]);
+    expect(observation.objective).toContain('Delegates and strategy labels are not available');
+    expect(observation.legalActions.some((action: any) => action.type === 'battlecast_tactic')).toBe(false);
+    expect(observation.legalActions.some((action: any) => action.fullTurnDelegate === true)).toBe(false);
+    expect(requests[0].tools[0].function.parameters.properties.actionId.enum).toEqual(
+      context.catalogue.actions.map((action) => action.id),
+    );
+  });
+
   it('retries forced tool_choice compatibility errors without consuming a repair attempt', async () => {
     const { context, firstActionId } = createDecisionContext();
     const requests: any[] = [];
@@ -264,11 +375,13 @@ describe('OpenRouter action selection', () => {
   });
 });
 
-function createDecisionContext() {
+function createDecisionContext(options: { includeActualActions?: boolean } = {}) {
   const state = initBattle(createBattlecastCreatures(goblinDuelScenario.combatants, true), goblinDuelScenario.gridSize);
   const active = state.creatures.find((creature) => creature.id === state.initiativeOrder[0]);
   if (!active) throw new Error('expected active creature');
-  const catalogue = generateLegalActions(state, active);
+  const catalogue = generateLegalActions(state, active, {
+    includeActualActions: options.includeActualActions,
+  });
   const firstActionId = catalogue.actions[0]?.id;
   if (!firstActionId) throw new Error('expected at least one legal action');
   return {

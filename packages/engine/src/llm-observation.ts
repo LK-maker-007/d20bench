@@ -296,6 +296,7 @@ export interface LlmActionView {
   isCritical?: boolean;
   spellLevel?: number;
   resourceCost?: { key: string; amount: number };
+  setupAction?: boolean;
   beastName?: string;
   beastCr?: string;
   beastAc?: number;
@@ -629,6 +630,7 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       targetTeam: target?.team,
       expectedDamage: action.expectedDamage === undefined ? undefined : Number(action.expectedDamage.toFixed(2)),
       resourceCost: action.resourceCost,
+      setupAction: isSetupClassFeature(action),
       beastName: action.beastName,
       beastCr: action.beastCr,
       beastAc: action.beastAc,
@@ -665,6 +667,12 @@ function classFeatureDescription(action: Extract<LegalAction, { type: 'class_fea
   if (action.feature === 'action_surge') {
     return 'Spend one Action Surge use to regain a main action this turn. After this resolves, choose the next concrete action from a fresh legal-action list.';
   }
+  if (action.feature === 'sacred_weapon') {
+    return 'Spend 1 Channel Divinity to empower this Paladin weapon. Melee attack rolls gain the listed Charisma-based attack bonus, then choose the next concrete action from a fresh legal-action list.';
+  }
+  if (action.feature === 'superior_defense') {
+    return 'Spend 3 Focus Points to gain resistance to all damage except Force for 10 rounds, then choose the next concrete action from a fresh legal-action list.';
+  }
   if (action.feature === 'reckless_attack') {
     return 'Declare Reckless Attack before attacking. Melee attacks this turn have Advantage, and attacks against this creature have Advantage until its next turn.';
   }
@@ -685,12 +693,20 @@ function classFeatureDescription(action: Extract<LegalAction, { type: 'class_fea
   return 'Spend the bonus action to make one Martial Arts unarmed strike after attacking.';
 }
 
+function isSetupClassFeature(action: Extract<LegalAction, { type: 'class_feature' }>): boolean {
+  return action.feature === 'sacred_weapon' ||
+    action.feature === 'superior_defense' ||
+    action.feature === 'reckless_attack' ||
+    action.feature === 'brutal_strike' ||
+    action.feature === 'steady_aim';
+}
+
 function objectiveForActionSpace(actionSpace: LegalActionSpace): string {
   if (actionSpace === 'battlecast-full-turn') {
     return 'Choose exactly one legal action id for the active creature. Full-turn Battlecast delegate actions execute movement, spells, healing, buffs, AoE, and attacks through the copied Battlecast rules. Use creature actions, defenses, resources, recharges, buffs, condition timers, and tacticReference to choose the best delegate.';
   }
   if (actionSpace === 'actual-actions-v1') {
-    return 'Choose exactly one concrete legal action id for the active creature. Delegates and strategy labels are not available. The engine applies the chosen action through Battlecast rules, shows the result in logs, and if this creature still has movement, attacks, a bonus action, a reaction trigger, or a post-hit choice remaining, you will be asked to choose the next concrete action from a fresh legal-action list.';
+    return 'Choose exactly one concrete legal action id for the active creature. Delegates and strategy labels are not available. Legal class-feature setup actions marked setupAction resolve first and then return a fresh legal-action list before attacks. The engine applies the chosen action through Battlecast rules, shows the result in logs, and if this creature still has movement, attacks, a bonus action, a reaction trigger, or a post-hit choice remaining, you will be asked to choose the next concrete action from a fresh legal-action list.';
   }
   return 'Choose exactly one legal action id for the active creature. The engine applies the chosen action through Battlecast rules and rejects any action id not present in legalActions.';
 }

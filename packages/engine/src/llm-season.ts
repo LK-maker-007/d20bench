@@ -424,6 +424,48 @@ export const llmActualRecklessVerifyScenario: D20benchScenario = {
   ],
 };
 
+export const llmActualSacredWeaponVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-sacred-weapon-paladin-duel.v1',
+  name: 'LLM Sacred Weapon Paladin Duel',
+  description: 'An OpenRouter-controlled Paladin should be able to spend Channel Divinity on Sacred Weapon before choosing concrete melee attacks.',
+  battleType: 'class-feature-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['class-feature', 'sacred-weapon', 'buff'],
+  designNotes: [
+    'Designed as a live-model harness validation for concrete Paladin Sacred Weapon choices.',
+    'The Paladin starts adjacent to a melee target so the model can empower its weapon, then continue from a fresh legal-action list.',
+  ],
+  combatants: [
+    { monster: buildHero('Paladin', 5), team: 'red', position: { x: 2, y: 2 } },
+    { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+  ],
+};
+
+export const llmActualSuperiorDefenseVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-superior-defense-monk-duel.v1',
+  name: 'LLM Superior Defense Monk Duel',
+  description: 'An OpenRouter-controlled high-level Monk should be able to spend Focus Points on Superior Defense before choosing concrete attacks.',
+  battleType: 'class-feature-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['class-feature', 'superior-defense', 'buff'],
+  designNotes: [
+    'Designed as a live-model harness validation for concrete Monk Superior Defense choices.',
+    'Turn-start auto-spending is suppressed for actual-action LLM control, so the model must choose the concrete class-feature action itself.',
+  ],
+  combatants: [
+    { monster: buildHero('Monk', 18), team: 'red', position: { x: 2, y: 2 } },
+    { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+  ],
+};
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -655,6 +697,12 @@ export const llmActualCheapVerifyV9Season: LlmSeasonConfig = {
   description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after exposing opportunity attacks as explicit reaction choices.',
 };
 
+export const llmActualCheapVerifyV10Season: LlmSeasonConfig = {
+  ...llmActualCheapVerifySeason,
+  id: 'llm-actual-cheap-verify-v10',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after making OpenRouter rationale optional, retrying embedded provider errors, and accepting provider pseudo-tool JSON content.',
+};
+
 export const llmActualReactionVerifySeason: LlmSeasonConfig = {
   id: 'llm-actual-reaction-verify-v1',
   description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control opportunity-attack reactions against a Battlecast Kiting mover.',
@@ -801,7 +849,38 @@ export const llmActualRecklessVerifySeason: LlmSeasonConfig = {
   concurrency: 4,
 };
 
+export const llmActualClassFeatureVerifySeason: LlmSeasonConfig = {
+  id: 'llm-actual-class-feature-verify-v1',
+  description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control Paladin Sacred Weapon and Monk Superior Defense as concrete class-feature buff actions.',
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    'battlecast.aggressive',
+  ],
+  scenarios: [
+    llmActualSacredWeaponVerifyScenario,
+    llmActualSuperiorDefenseVerifyScenario,
+  ],
+  seeds: [1],
+  maxRounds: 1,
+  pairings: llmActualCheapVerifyModelAgents.map((model) => ({
+    redAgent: model,
+    blueAgent: 'battlecast.aggressive' as const,
+  })),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
+export const llmActualClassFeatureVerifyV2Season: LlmSeasonConfig = {
+  ...llmActualClassFeatureVerifySeason,
+  id: 'llm-actual-class-feature-verify-v2',
+  description: 'Focused delegate-free actual-action validation for Paladin Sacred Weapon and Monk Superior Defense after marking setup class-feature actions explicitly in the LLM observation.',
+};
+
 export const llmSeasons = [
+  llmActualClassFeatureVerifyV2Season,
+  llmActualClassFeatureVerifySeason,
   llmActualRecklessVerifySeason,
   llmActualActionSurgeVerifySeason,
   llmActualCuttingWordsVerifySeason,
@@ -809,6 +888,7 @@ export const llmSeasons = [
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
+  llmActualCheapVerifyV10Season,
   llmActualCheapVerifyV9Season,
   llmActualCheapVerifyV8Season,
   llmActualCheapVerifyV7Season,

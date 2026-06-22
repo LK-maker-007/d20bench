@@ -145,7 +145,7 @@ The first implementation is deliberately narrow:
 - LLM agents choose from the existing D20bench legal-action catalogue.
 - The historical primitive action space contains `attack`, `move_toward`, and `end_turn`.
 - The historical full-turn action space also exposes copied Battlecast delegates: `battlecast_tactic:aggressive`, `battlecast_tactic:smart`, `battlecast_tactic:kiting`, and `battlecast_tactic:defensive`. These seasons verify tool calls and the copied Battlecast executor, but they are not the final fair action-space target.
-- `actual-actions-v1` is the current fair-action-space target. It forbids Battlecast tactic delegates for OpenRouter agents and exposes concrete target-directed movement, exact `move_to:x,y` destination movement, Dash, Disengage, Dodge, Help, class features such as Fighter Action Surge, Rogue Steady Aim, Druid Wild Shape beast forms, Ranger Nature's Veil, Barbarian Rage/Instinctive Pounce, Reckless Attack, Brutal Strike, and Frenzy, Paladin Divine Smite post-hit choices, opportunity-attack reaction choices, trigger-time Rogue Uncanny Dodge, Monk Deflect, Superior Hunter's Defense, Barbarian Retaliation, and Bard Cutting Words attack-roll/damage-roll choices, and Monk Martial Arts/Flurry strikes, attack, spell, save, point-origin AoE centers, line/cone AoE directions, healing, buff, auto-dart, target-level random monster rays, and end-turn actions. The async harness calls the model repeatedly within one creature turn when action economy remains.
+- `actual-actions-v1` is the current fair-action-space target. It forbids Battlecast tactic delegates for OpenRouter agents and exposes concrete target-directed movement, exact `move_to:x,y` destination movement, Dash, Disengage, Dodge, Help, class features such as Fighter Action Surge, Rogue Steady Aim, Druid Wild Shape beast forms, Ranger Nature's Veil, Barbarian Rage/Instinctive Pounce, Reckless Attack, Brutal Strike, and Frenzy, Paladin Sacred Weapon and Divine Smite post-hit choices, Monk Superior Defense and Martial Arts/Flurry strikes, opportunity-attack reaction choices, trigger-time Rogue Uncanny Dodge, Monk Deflect, Superior Hunter's Defense, Barbarian Retaliation, and Bard Cutting Words attack-roll/damage-roll choices, attack, spell, save, point-origin AoE centers, line/cone AoE directions, healing, buff, auto-dart, target-level random monster rays, and end-turn actions. The async harness calls the model repeatedly within one creature turn when action economy remains.
 - The current observation schema is `d20bench.llm_observation.v2`, which includes Battlecast-relevant tactical metadata: action/spell profiles, defenses, resources, recharges, buffs, condition timers, concentration/wild-shape state, team tactic flags, and tactic reference notes.
 - Non-Battlecast agents now share Battlecast turn-start processing with the fixed tactic agents, including death saves, start-of-turn condition effects, movement reset, and skip-turn conditions.
 - Battlecast tactic agents still delegate to copied Battlecast `executeTurn`.
@@ -170,6 +170,7 @@ The first implementation is deliberately narrow:
 - `llm-actual-cheap-verify-v7` repeats that scope after adding concrete Dodge and Help actions.
 - `llm-actual-cheap-verify-v8` repeats that scope after making Paladin Divine Smite an explicit post-hit action choice instead of an automatic resource spend.
 - `llm-actual-cheap-verify-v9` repeats that scope after making opportunity attacks explicit reaction choices. Exact post-move triggers ask the reacting LLM at the trigger cell; synchronous Battlecast tactic turns can use predeclared LLM reactions for clear kiting/pure-ranged movement cases, and otherwise fail closed by declining LLM-owned OAs rather than auto-spending hidden reactions.
+- `llm-actual-cheap-verify-v10` repeats the same broad cheap scope after provider hardening: `rationale` is optional in the tool schema, OpenRouter 200 responses containing provider error bodies are retried as provider errors, and tool-call-shaped JSON content (`name` plus `arguments.actionId`) is accepted when the action id is exact and legal.
 - `llm-actual-reaction-verify-v1` is a focused hidden reaction smoke season: Battlecast Kiting controls a Ranger that starts adjacent to an OpenRouter-controlled Fighter, forcing a live opportunity-attack reaction choice in four cheap-model matches.
 - `llm-actual-mitigation-verify-v3` is a focused hidden mitigation smoke season: Battlecast Aggressive controls a high-level Fighter attacking an OpenRouter-controlled Rogue, forcing live trigger-time Uncanny Dodge choices in four cheap-model matches with isolated async Battlecast RNG. The model sees the hit log, incoming damage, damage type, and expected reduction before each mitigation choice.
 - `llm-actual-deflect-verify-v3` is a focused hidden mitigation smoke season for Monk Deflect Attacks and Ranger Superior Hunter's Defense. It uses the same cheap model set against Battlecast Aggressive on two one-round mitigation fixtures and covers movement-triggered opportunity-attack damage reactions.
@@ -177,9 +178,18 @@ The first implementation is deliberately narrow:
 - `llm-actual-cutting-words-verify-v1` is a focused hidden reaction smoke season for Bard Cutting Words. It asks cheap OpenRouter models to control a Bard ally at attack-roll and damage-roll trigger time with exact use/decline legal action ids.
 - `llm-actual-action-surge-verify-v1` is a focused hidden action-economy smoke season for Fighter Action Surge. It asks cheap OpenRouter models to spend Action Surge as an exact class-feature action after the first attack action, then continue from a fresh legal-action list.
 - `llm-actual-reckless-verify-v1` is a focused hidden class-feature smoke season for Barbarian Reckless Attack. It asks cheap OpenRouter models to declare Reckless Attack as an exact pre-attack class-feature action, then continue from a fresh legal-action list.
+- `llm-actual-class-feature-verify-v1` is a focused hidden class-feature smoke season for Paladin Sacred Weapon and Monk Superior Defense. It asks cheap OpenRouter models to choose those exact buff actions instead of receiving hidden Battlecast tactic auto-spends.
+- `llm-actual-class-feature-verify-v2` repeats that class-feature smoke after marking setup class-feature actions explicitly in the LLM observation.
 - LLM ladder runs write `completed-matches.jsonl` checkpoints as matches finish; `--resume` reloads completed fixtures and continues with failed or unstarted fixtures.
 - LLM ladder runs also write local `raw-decisions.jsonl` audit logs for every OpenRouter decision attempt. These are intentionally not published by default.
 - Published benchmark results are append-only by season id: new experiments get new ids and new `results/seasons/<id>/` directories rather than overwriting previous runs.
+
+Latest broad cheap audit:
+
+- `llm-actual-cheap-verify-v10` finished 16/16, 0 failed, estimated cost `$0.772367`.
+- Completed checkpoints contained 554 LLM action resolutions across 676 OpenRouter turn prompts, with 0 `battlecast_tactic` legal-action exposures and 0 delegate selections.
+- Stepwise control was exercised: max within-turn step was 11, and 132 LLM-controlled turns required multiple decisions after observing intermediate results.
+- The action mix included attacks, spells, reactions, class features, movement, Dash, Dodge, and end-turn actions, confirming models are executing concrete actions rather than selecting strategy delegates.
 
 This gives us a safe, auditable harness before we spend significant model budget.
 
@@ -188,6 +198,6 @@ This gives us a safe, auditable harness before we spend significant model budget
 `actual-actions-v1` now replaces full-turn delegates as the fairness bridge. The remaining work is to keep widening the concrete catalogue until it matches every relevant Battlecast decision point:
 
 - remaining non-OA reactions not yet bridged, especially Shield/Counterspell-style spell timing once those mechanics exist in the engine
-- remaining Battlecast-only high-level class helpers, currently Paladin Sacred Weapon and Monk Superior Defense, should become explicit concrete actions before high-level heroes enter public Elo seasons
+- remaining Battlecast-only high-level class helpers should be audited before high-level heroes enter public Elo seasons
 
 Until those are covered, `actual-actions-v1` results should be treated as harness-validation results, not final leaderboard claims.

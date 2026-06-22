@@ -1,5 +1,6 @@
 import {
   DEFAULT_TACTICS,
+  addBuff,
   checkBattleComplete,
   consumeResource,
   creatureDistance,
@@ -10,6 +11,7 @@ import {
   getEffectiveMoveSpeed,
   getHydraHeadCount,
   getAoETargets,
+  hasBuff,
   hasResource,
   initBattle,
   isPositionBlocked,
@@ -124,7 +126,14 @@ export function runAgentMatch(spec: AgentMatchSpec): AgentMatchResult {
         const agent = active.team === 'red' ? red : blue;
         const turnStart = agent.kind === 'battlecast-tactic'
           ? { canAct: true, logsBefore: state.logs.length, eventsBefore: state.events.length, turnStartAlreadyProcessed: false }
-          : processManualAgentTurnStart({ state, active, agent, replay, matchId });
+          : processManualAgentTurnStart({
+              state,
+              active,
+              agent,
+              replay,
+              matchId,
+              autoClassFeatures: !(agent.kind === 'openrouter-llm' && (spec.llmActionSpace ?? 'primitive') === 'actual-actions-v1'),
+            });
         if (!turnStart.canAct) continue;
 
         const catalogue = createActionCatalogueForAgent(state, active, agent, spec.llmActionSpace ?? 'primitive');
@@ -240,7 +249,14 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
         const agent = active.team === 'red' ? red : blue;
         const turnStart = agent.kind === 'battlecast-tactic'
           ? { canAct: true, logsBefore: state.logs.length, eventsBefore: state.events.length, turnStartAlreadyProcessed: false }
-          : processManualAgentTurnStart({ state, active, agent, replay, matchId });
+          : processManualAgentTurnStart({
+              state,
+              active,
+              agent,
+              replay,
+              matchId,
+              autoClassFeatures: !(agent.kind === 'openrouter-llm' && (spec.llmActionSpace ?? 'primitive') === 'actual-actions-v1'),
+            });
         if (!turnStart.canAct) continue;
 
         if (agent.kind === 'openrouter-llm' && (spec.llmActionSpace ?? 'primitive') === 'actual-actions-v1') {
@@ -537,10 +553,13 @@ function processManualAgentTurnStart(input: {
   agent: Agent;
   replay: ReplayEvent[];
   matchId: string;
+  autoClassFeatures?: boolean;
 }): ManualTurnStartResult {
   const logsBefore = input.state.logs.length;
   const eventsBefore = input.state.events.length;
-  const canAct = beginBattlecastControlledTurn(input.state, input.active);
+  const canAct = beginBattlecastControlledTurn(input.state, input.active, {
+    autoClassFeatures: input.autoClassFeatures,
+  });
   checkBattleComplete(input.state);
 
   if (canAct && !input.state.isComplete) {
@@ -1919,6 +1938,16 @@ function applyClassFeatureAction(
     return;
   }
 
+  if (action.feature === 'sacred_weapon') {
+    applySacredWeaponAction(state, active, action, agent, actualTurn);
+    return;
+  }
+
+  if (action.feature === 'superior_defense') {
+    applySuperiorDefenseAction(state, active, action, agent, actualTurn);
+    return;
+  }
+
   if (action.feature === 'reckless_attack') {
     applyRecklessAttackAction(state, active, action, agent, actualTurn);
     return;
@@ -1947,6 +1976,107 @@ function applyClassFeatureAction(
   if (action.feature === 'flurry_of_blows') {
     applyMonkBonusStrike(state, active, action, agent, actualTurn, 'flurry_of_blows');
   }
+}
+
+function applySacredWeaponAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'class_feature' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  if (
+    active.monsterData.heroClass !== 'Paladin' ||
+    (active.monsterData.heroLevel ?? 0) < 3 ||
+    active.hasActed ||
+    actualTurn.attackActionStarted ||
+    !hasResource(active, 'channel-divinity') ||
+    hasBuff(active, 'sacred-weapon') ||
+    !hasReachableMeleeTarget(state, active)
+  ) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  const attackBonus = Math.max(1, abilityModifier(active.monsterData.abilities.cha));
+  consumeResource(active, 'channel-divinity');
+  addBuff(active, {
+    name: 'Sacred Weapon',
+    key: 'sacred-weapon',
+    casterId: active.id,
+    appliedRound: state.round,
+    endRound: state.round + 100,
+    attackBonus,
+  });
+  active.stats.actionUsage['Sacred Weapon'] = (active.stats.actionUsage['Sacred Weapon'] || 0) + 1;
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Sacred Weapon',
+    details: `${active.displayName} empowers their weapon, adding +${attackBonus} to melee attack rolls.`,
+    type: 'special',
+  });
+  state.events.push({
+    kind: 'effect',
+    creatureId: active.id,
+    label: 'Sacred Weapon',
+    tone: 'success',
+    durationMs: BASE_DURATIONS.effect,
+  });
+}
+
+function applySuperiorDefenseAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'class_feature' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  if (
+    active.monsterData.heroClass !== 'Monk' ||
+    (active.monsterData.heroLevel ?? 0) < 18 ||
+    active.hasActed ||
+    actualTurn.attackActionStarted ||
+    active.hasMovedThisTurn ||
+    !hasResource(active, 'ki', 3) ||
+    hasBuff(active, 'superior-defense') ||
+    active.conditions.includes('incapacitated') ||
+    active.conditions.includes('stunned') ||
+    active.conditions.includes('paralyzed') ||
+    active.conditions.includes('petrified') ||
+    active.conditions.includes('unconscious') ||
+    !state.creatures.some((target) => target.team !== active.team && target.isAlive && !target.dying)
+  ) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  consumeResource(active, 'ki', 3);
+  addBuff(active, {
+    name: 'Superior Defense',
+    key: 'superior-defense',
+    casterId: active.id,
+    appliedRound: state.round,
+    endRound: state.round + 10,
+    resistAllDamageExcept: ['force'],
+  });
+  active.stats.actionUsage['Superior Defense'] = (active.stats.actionUsage['Superior Defense'] || 0) + 1;
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Superior Defense',
+    details: `${active.displayName} spends 3 Focus Points for resistance to all damage except Force.`,
+    type: 'special',
+  });
+  state.events.push({
+    kind: 'effect',
+    creatureId: active.id,
+    label: 'Superior Defense',
+    tone: 'success',
+    durationMs: BASE_DURATIONS.effect,
+  });
 }
 
 function applyRecklessAttackAction(
@@ -2047,6 +2177,17 @@ function applyBrutalStrikeAction(
     tone: 'success',
     durationMs: BASE_DURATIONS.effect,
   });
+}
+
+function hasReachableMeleeTarget(state: BattleState, active: Creature): boolean {
+  return getActiveActions(active)
+    .filter((candidate) => candidate.type === 'melee' && candidate.attackBonus !== undefined && candidate.legendaryOnly !== true)
+    .some((candidate) => state.creatures.some((target) =>
+      target.team !== active.team &&
+      target.isAlive &&
+      !target.dying &&
+      creatureDistance(active, target) <= (candidate.reach ?? 5)
+    ));
 }
 
 function applyActionSurgeAction(

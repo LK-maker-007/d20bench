@@ -466,6 +466,101 @@ describe('agent matches', () => {
     )).toBe(false);
   });
 
+  it('exposes Paladin Sacred Weapon as a concrete class feature action', () => {
+    const state = initBattle(createBattlecastCreatures(paladinSacredWeaponScenario().combatants, true), 8);
+    const paladin = state.creatures.find((creature) => creature.team === 'red');
+    if (!paladin) throw new Error('expected red paladin');
+
+    const catalogue = generateLegalActions(state, paladin, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, paladin, catalogue);
+
+    expect(catalogue.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'class_feature:sacred-weapon',
+        type: 'class_feature',
+        feature: 'sacred_weapon',
+        resourceCost: { key: 'channel-divinity', amount: 1 },
+      }),
+    ]));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'class_feature:sacred-weapon',
+        feature: 'sacred_weapon',
+        setupAction: true,
+        description: expect.stringContaining('Channel Divinity'),
+      }),
+    ]));
+
+    paladin.activeBuffs.push({
+      name: 'Sacred Weapon',
+      key: 'sacred-weapon',
+      casterId: paladin.id,
+      appliedRound: state.round,
+      endRound: state.round + 100,
+      attackBonus: 3,
+    });
+    const alreadyBuffed = generateLegalActions(state, paladin, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    expect(alreadyBuffed.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'sacred_weapon'
+    )).toBe(false);
+  });
+
+  it('exposes Monk Superior Defense as a concrete class feature action', () => {
+    const state = initBattle(createBattlecastCreatures(monkSuperiorDefenseScenario().combatants, true), 8);
+    const monk = state.creatures.find((creature) => creature.team === 'red');
+    if (!monk) throw new Error('expected red monk');
+
+    const catalogue = generateLegalActions(state, monk, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, monk, catalogue);
+
+    expect(catalogue.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'class_feature:superior-defense',
+        type: 'class_feature',
+        feature: 'superior_defense',
+        resourceCost: { key: 'ki', amount: 3 },
+      }),
+    ]));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'class_feature:superior-defense',
+        feature: 'superior_defense',
+        setupAction: true,
+        description: expect.stringContaining('resistance to all damage except Force'),
+      }),
+    ]));
+
+    monk.hasMovedThisTurn = true;
+    const afterMove = generateLegalActions(state, monk, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    expect(afterMove.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'superior_defense'
+    )).toBe(false);
+  });
+
   it('exposes Druid Wild Shape beast forms as concrete class feature actions', () => {
     const state = initBattle(createBattlecastCreatures(druidWildShapeScenario().combatants, true), 8);
     const druid = state.creatures.find((creature) => creature.team === 'red');
@@ -889,6 +984,144 @@ describe('agent matches', () => {
     expect(attackResolutions.map((event) => event.turnStep)).toEqual([0, 1, 3, 4]);
     expect(fighter?.resources['action-surge']).toBe(0);
     expect(fighter?.stats.actionUsage['Action Surge']).toBe(1);
+  });
+
+  it('lets an actual-action Paladin use Sacred Weapon before choosing attacks', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let choseSacredWeapon = false;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const reactionDecline = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      const smiteDecline = actionIds.find((id) => id === 'smite:decline');
+      const attack = actionIds.find((id) => id.startsWith('attack:'));
+      let actionId: string;
+      if (reactionDecline) {
+        actionId = reactionDecline;
+      } else if (smiteDecline) {
+        actionId = smiteDecline;
+      } else if (!choseSacredWeapon && actionIds.includes('class_feature:sacred-weapon')) {
+        actionId = 'class_feature:sacred-weapon';
+        choseSacredWeapon = true;
+      } else if (attack) {
+        actionId = attack;
+      } else {
+        actionId = 'end_turn';
+      }
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Empower weapon, then choose concrete attacks.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: paladinSacredWeaponScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const llmActions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.llmTrace
+    );
+    const sacredWeaponResolution = llmActions.find((event) =>
+      event.acceptedAction.type === 'class_feature' &&
+      event.acceptedAction.feature === 'sacred_weapon'
+    );
+    const attackResolution = llmActions.find((event) => event.acceptedAction.type === 'attack');
+    const paladin = match.state.creatures.find((creature) => creature.team === 'red');
+
+    expect(sacredWeaponResolution?.turnStep).toBe(0);
+    expect(sacredWeaponResolution?.logs.some((log) => log.action === 'Sacred Weapon')).toBe(true);
+    expect(sacredWeaponResolution?.events.some((event) => event.kind === 'effect' && event.label === 'Sacred Weapon')).toBe(true);
+    expect(attackResolution?.turnStep).toBe(1);
+    expect(paladin?.resources['channel-divinity']).toBe(1);
+    expect(paladin?.activeBuffs.some((buff) => buff.key === 'sacred-weapon' && buff.attackBonus)).toBe(true);
+  });
+
+  it('lets an actual-action Monk use Superior Defense before choosing attacks', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let choseSuperiorDefense = false;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const reactionDecline = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      const attack = actionIds.find((id) => id.startsWith('attack:'));
+      let actionId: string;
+      if (reactionDecline) {
+        actionId = reactionDecline;
+      } else if (!choseSuperiorDefense && actionIds.includes('class_feature:superior-defense')) {
+        actionId = 'class_feature:superior-defense';
+        choseSuperiorDefense = true;
+      } else if (attack) {
+        actionId = attack;
+      } else {
+        actionId = 'end_turn';
+      }
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Spend Focus Points for Superior Defense, then attack.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: monkSuperiorDefenseScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const llmActions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.llmTrace
+    );
+    const superiorDefenseResolution = llmActions.find((event) =>
+      event.acceptedAction.type === 'class_feature' &&
+      event.acceptedAction.feature === 'superior_defense'
+    );
+    const attackResolution = llmActions.find((event) => event.acceptedAction.type === 'attack');
+    const monk = match.state.creatures.find((creature) => creature.team === 'red');
+
+    expect(superiorDefenseResolution?.turnStep).toBe(0);
+    expect(superiorDefenseResolution?.logs.some((log) => log.action === 'Superior Defense')).toBe(true);
+    expect(superiorDefenseResolution?.events.some((event) => event.kind === 'effect' && event.label === 'Superior Defense')).toBe(true);
+    expect(attackResolution?.turnStep).toBe(1);
+    expect(monk?.resources.ki).toBeLessThanOrEqual(15);
+    expect(monk?.stats.actionUsage['Superior Defense']).toBe(1);
+    expect(monk?.activeBuffs.some((buff) => buff.key === 'superior-defense' && buff.resistAllDamageExcept?.includes('force'))).toBe(true);
   });
 
   it('asks an OpenRouter Warlock again after the first Eldritch Blast beam', async () => {
@@ -2613,6 +2846,46 @@ function beholderRandomRayScenario(): D20benchScenario {
     combatants: [
       { monster: 'Beholder', team: 'red', position: { x: 2, y: 2 } },
       { monster: 'Storm Giant', team: 'blue', position: { x: 10, y: 2 } },
+    ],
+  };
+}
+
+function paladinSacredWeaponScenario(): D20benchScenario {
+  return {
+    id: 'test.paladin-sacred-weapon.v1',
+    name: 'Paladin Sacred Weapon Test',
+    description: 'A level-5 Paladin can spend Channel Divinity on Sacred Weapon before making concrete melee attacks.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Paladin', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+    ],
+  };
+}
+
+function monkSuperiorDefenseScenario(): D20benchScenario {
+  return {
+    id: 'test.monk-superior-defense.v1',
+    name: 'Monk Superior Defense Test',
+    description: 'A level-18 Monk can spend Focus Points on Superior Defense before making concrete attacks.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Monk', 18), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
     ],
   };
 }

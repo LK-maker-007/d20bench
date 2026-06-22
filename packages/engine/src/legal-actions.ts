@@ -5,6 +5,7 @@ import {
   getFootprintSize,
   getAoETargets,
   getEffectiveMoveSpeed,
+  hasBuff,
   hasResource,
   isInCone,
   isInLine,
@@ -137,6 +138,8 @@ export type LegalAction =
       feature:
         | 'steady_aim'
         | 'action_surge'
+        | 'sacred_weapon'
+        | 'superior_defense'
         | 'reckless_attack'
         | 'brutal_strike'
         | 'martial_arts_strike'
@@ -646,6 +649,26 @@ function coreActualActions(
       resourceCost: { key: 'action-surge', amount: 1 },
     });
   }
+  if (canUseSacredWeapon(state, active, economy)) {
+    actions.push({
+      id: 'class_feature:sacred-weapon',
+      type: 'class_feature',
+      feature: 'sacred_weapon',
+      label: 'Sacred Weapon',
+      isBonusAction: false,
+      resourceCost: { key: 'channel-divinity', amount: 1 },
+    });
+  }
+  if (canUseSuperiorDefense(state, active, economy)) {
+    actions.push({
+      id: 'class_feature:superior-defense',
+      type: 'class_feature',
+      feature: 'superior_defense',
+      label: 'Superior Defense',
+      isBonusAction: false,
+      resourceCost: { key: 'ki', amount: 3 },
+    });
+  }
   if (canUseRecklessAttack(state, active, economy)) {
     actions.push({
       id: 'class_feature:reckless-attack',
@@ -862,6 +885,33 @@ function canUseActionSurge(
   return active.hasActed || economy.attackActionStarted;
 }
 
+function canUseSacredWeapon(
+  state: BattleState,
+  active: Creature,
+  economy: { hasMainAction: boolean; attackActionStarted: boolean },
+): boolean {
+  if (active.monsterData.heroClass !== 'Paladin' || (active.monsterData.heroLevel ?? 0) < 3) return false;
+  if (!economy.hasMainAction || economy.attackActionStarted) return false;
+  if (!hasResource(active, 'channel-divinity') || hasBuff(active, 'sacred-weapon')) return false;
+  if (active.conditions.includes('incapacitated') || active.conditions.includes('unconscious')) return false;
+
+  return hasReachableMeleeTarget(state, active);
+}
+
+function canUseSuperiorDefense(
+  state: BattleState,
+  active: Creature,
+  economy: { attackActionStarted: boolean },
+): boolean {
+  if (active.monsterData.heroClass !== 'Monk' || (active.monsterData.heroLevel ?? 0) < 18) return false;
+  if (active.hasActed || economy.attackActionStarted || active.hasMovedThisTurn) return false;
+  if (!hasResource(active, 'ki', 3) || hasBuff(active, 'superior-defense')) return false;
+  if (active.conditions.includes('incapacitated') || active.conditions.includes('stunned') ||
+      active.conditions.includes('paralyzed') || active.conditions.includes('petrified') ||
+      active.conditions.includes('unconscious')) return false;
+  return state.creatures.some((target) => target.team !== active.team && target.isAlive && !target.dying);
+}
+
 function canUseRecklessAttack(
   state: BattleState,
   active: Creature,
@@ -872,14 +922,7 @@ function canUseRecklessAttack(
   if (active.turnFlags?.reckless || active.turnFlags?.brutalStrike) return false;
   if (active.conditions.includes('incapacitated') || active.conditions.includes('unconscious')) return false;
 
-  return getActiveActions(active)
-    .filter((action) => action.type === 'melee' && action.attackBonus !== undefined && action.legendaryOnly !== true)
-    .some((action) => state.creatures.some((target) =>
-      target.team !== active.team &&
-      target.isAlive &&
-      !target.dying &&
-      isTargetInRange(active, target, action)
-    ));
+  return hasReachableMeleeTarget(state, active);
 }
 
 function canUseBrutalStrike(
@@ -892,6 +935,10 @@ function canUseBrutalStrike(
   if (active.turnFlags?.reckless || active.turnFlags?.brutalStrike || active.turnFlags?.brutalStrikeUsed) return false;
   if (active.conditions.includes('incapacitated') || active.conditions.includes('unconscious')) return false;
 
+  return hasReachableMeleeTarget(state, active);
+}
+
+function hasReachableMeleeTarget(state: BattleState, active: Creature): boolean {
   return getActiveActions(active)
     .filter((action) => action.type === 'melee' && action.attackBonus !== undefined && action.legendaryOnly !== true)
     .some((action) => state.creatures.some((target) =>

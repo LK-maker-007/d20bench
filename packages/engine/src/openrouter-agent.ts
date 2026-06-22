@@ -350,10 +350,16 @@ async function sendOpenRouterRequest(input: {
   } catch {
     parsedBody = undefined;
   }
+  const bodyErrorCode = typeof parsedBody?.error?.code === 'number'
+    ? parsedBody.error.code
+    : undefined;
+  const effectiveStatus = res.ok && parsedBody?.error
+    ? bodyErrorCode ?? 502
+    : res.status;
 
   return {
-    ok: res.ok,
-    status: res.status,
+    ok: res.ok && !parsedBody?.error,
+    status: effectiveStatus,
     bodyText,
     body: parsedBody,
   };
@@ -437,7 +443,7 @@ function buildOpenRouterToolRequest(input: {
                 description: 'One short sentence explaining the tactical choice.',
               },
             },
-            required: ['actionId', 'rationale'],
+            required: ['actionId'],
           },
         },
       },
@@ -511,10 +517,35 @@ function parseContentJsonDecision(message: any): OpenRouterToolDecision | undefi
   }
   if (!parsed || typeof parsed !== 'object') return undefined;
   const value = parsed as Partial<OpenRouterToolDecision>;
-  if (typeof value.actionId !== 'string' || value.actionId.length === 0) return undefined;
+  if (typeof value.actionId === 'string' && value.actionId.length > 0) {
+    return {
+      actionId: value.actionId,
+      rationale: typeof value.rationale === 'string' ? value.rationale : undefined,
+      toolCall: false,
+      repairedJson: true,
+    };
+  }
+  const pseudoToolCall = parsePseudoToolCallContent(value);
+  if (pseudoToolCall) return pseudoToolCall;
+  return undefined;
+}
+
+function parsePseudoToolCallContent(value: Partial<OpenRouterToolDecision> & { name?: unknown; arguments?: unknown }): OpenRouterToolDecision | undefined {
+  if (value.name !== toolName) return undefined;
+  let args = value.arguments;
+  if (typeof args === 'string') {
+    try {
+      args = JSON.parse(args);
+    } catch {
+      return undefined;
+    }
+  }
+  if (!args || typeof args !== 'object') return undefined;
+  const parsedArgs = args as Partial<OpenRouterToolDecision>;
+  if (typeof parsedArgs.actionId !== 'string' || parsedArgs.actionId.length === 0) return undefined;
   return {
-    actionId: value.actionId,
-    rationale: typeof value.rationale === 'string' ? value.rationale : undefined,
+    actionId: parsedArgs.actionId,
+    rationale: typeof parsedArgs.rationale === 'string' ? parsedArgs.rationale : undefined,
     toolCall: false,
     repairedJson: true,
   };

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   isFatalSeasonError,
   llmActualActionSurgeVerifySeason,
+  llmActualClassFeatureVerifySeason,
+  llmActualClassFeatureVerifyV2Season,
   llmActualCheapVerifyModelAgents,
   llmActualCheapVerifySeason,
   llmActualCheapVerifyV2Season,
@@ -13,6 +15,7 @@ import {
   llmActualCheapVerifyV7Season,
   llmActualCheapVerifyV8Season,
   llmActualCheapVerifyV9Season,
+  llmActualCheapVerifyV10Season,
   llmActualCuttingWordsVerifySeason,
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
@@ -242,6 +245,9 @@ describe('LLM seasons', () => {
     expect(llmActualCheapVerifyV9Season.id).toBe('llm-actual-cheap-verify-v9');
     expect(llmActualCheapVerifyV9Season.llmActionSpace).toBe('actual-actions-v1');
     expect(llmActualCheapVerifyV9Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
+    expect(llmActualCheapVerifyV10Season.id).toBe('llm-actual-cheap-verify-v10');
+    expect(llmActualCheapVerifyV10Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCheapVerifyV10Season.pairings).toEqual(llmActualCheapVerifySeason.pairings);
     expect(llmActualReactionVerifySeason.id).toBe('llm-actual-reaction-verify-v1');
     expect(llmActualReactionVerifySeason.llmActionSpace).toBe('actual-actions-v1');
     expect(llmActualReactionVerifySeason.scenarios.map((scenario) => scenario.battleType)).toEqual(['reaction-smoke']);
@@ -308,6 +314,20 @@ describe('LLM seasons', () => {
       pairing.redAgent.startsWith('openrouter:') &&
       pairing.blueAgent === 'battlecast.aggressive'
     )).toBe(true);
+    expect(llmActualClassFeatureVerifySeason.id).toBe('llm-actual-class-feature-verify-v1');
+    expect(llmActualClassFeatureVerifySeason.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualClassFeatureVerifySeason.scenarios.map((scenario) => scenario.id)).toEqual([
+      'hidden.llm-sacred-weapon-paladin-duel.v1',
+      'hidden.llm-superior-defense-monk-duel.v1',
+    ]);
+    expect(llmActualClassFeatureVerifySeason.pairings).toHaveLength(4);
+    expect(llmActualClassFeatureVerifySeason.pairings?.every((pairing) =>
+      pairing.redAgent.startsWith('openrouter:') &&
+      pairing.blueAgent === 'battlecast.aggressive'
+    )).toBe(true);
+    expect(llmActualClassFeatureVerifyV2Season.id).toBe('llm-actual-class-feature-verify-v2');
+    expect(llmActualClassFeatureVerifyV2Season.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualClassFeatureVerifyV2Season.pairings).toEqual(llmActualClassFeatureVerifySeason.pairings);
   });
 
   it('defines a twenty-match GLM post-toolcall verification season', () => {

@@ -343,7 +343,12 @@ function processTurnStartTraits(state: BattleState, creature: Creature): void {
 
 /** Turn start: expire buffs, process conditions, recharge, reset movement.
  *  Returns false if the creature can't act (incapacitated/dead). */
-function processTurnStart(state: BattleState, creature: Creature): boolean {
+interface TurnStartOptions {
+  autoClassFeatures?: boolean;
+}
+
+function processTurnStart(state: BattleState, creature: Creature, options: TurnStartOptions = {}): boolean {
+  const autoClassFeatures = options.autoClassFeatures ?? true;
   state.events.push({ kind: 'turnStart', creatureId: creature.id, durationMs: BASE_DURATIONS.turnStart });
   // Dying hero at the start of their turn: roll a death save before any
   // other turn-start processing. Outcomes:
@@ -378,7 +383,9 @@ function processTurnStart(state: BattleState, creature: Creature): boolean {
   creature.reactionUsed = false;
   creature.reactionsUsed = 0;
   creature.bonusActionUsed = false;
-  tryActivateHolyNimbus(state, creature);
+  if (autoClassFeatures) {
+    tryActivateHolyNimbus(state, creature);
+  }
   // Self-Restoration (Monk L10): auto-remove charmed, frightened, or poisoned
   if (creature.monsterData.heroClass === 'Monk' && (creature.monsterData.heroLevel ?? 0) >= 10) {
     for (const cond of ['charmed', 'frightened', 'poisoned'] as const) {
@@ -396,7 +403,9 @@ function processTurnStart(state: BattleState, creature: Creature): boolean {
     }
   }
   processConditionTimers(state, creature);
-  tryActivateSuperiorDefense(state, creature);
+  if (autoClassFeatures) {
+    tryActivateSuperiorDefense(state, creature);
+  }
   processTargetTurnStartOngoingEffects(state, creature);
   if (!creature.isAlive) return false;
   processSourceTurnStartOngoingEffects(state, creature);
@@ -1475,9 +1484,9 @@ function tryUseSteadyAim(
   });
 }
 
-export function beginBattlecastControlledTurn(state: BattleState, creature: Creature): boolean {
+export function beginBattlecastControlledTurn(state: BattleState, creature: Creature, options: TurnStartOptions = {}): boolean {
   if (!creature.isAlive || state.isComplete) return false;
-  if (!processTurnStart(state, creature)) {
+  if (!processTurnStart(state, creature, options)) {
     processTargetTurnEndOngoingEffects(state, creature);
     return false;
   }
