@@ -174,6 +174,14 @@ describe('agent matches', () => {
     expect(catalogue.actions.some((action) => action.type === 'battlecast_tactic')).toBe(false);
     expect(catalogue.actions.some((action) => action.type === 'spell')).toBe(true);
     expect(observation.actionSpace).toBe('actual-actions-v1');
+    expect(observation.actionEconomy).toEqual(expect.objectContaining({
+      hasMainAction: true,
+      hasAttackRoll: true,
+      attackRollsRemaining: 1,
+      attackActionStarted: false,
+      hasBonusAction: true,
+      hasMovement: expect.any(Boolean),
+    }));
     expect(observation.tacticReference).toEqual([]);
     expect(observation.objective).toContain('Delegates and strategy labels are not available');
   });
@@ -862,7 +870,14 @@ describe('agent matches', () => {
 
   it('asks an OpenRouter actual-action agent again after the first Extra Attack swing', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
-    const observedPrompts: Array<{ recentLogs?: string[] }> = [];
+    const observedPrompts: Array<{
+      recentLogs?: string[];
+      actionEconomy?: {
+        attackRollsRemaining?: number;
+        attackActionStarted?: boolean;
+        hasAttackRoll?: boolean;
+      };
+    }> = [];
     globalThis.fetch = vi.fn(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       const userMessage = body.messages.find((message: { role: string }) => message.role === 'user');
@@ -908,6 +923,26 @@ describe('agent matches', () => {
     );
 
     expect(llmTurnStarts.some((event) => event.legalActions.some((action) => action.type === 'battlecast_tactic'))).toBe(false);
+    expect(llmTurnStarts[0]?.actionEconomy).toEqual(expect.objectContaining({
+      attackRollsRemaining: 2,
+      attackActionStarted: false,
+      hasAttackRoll: true,
+    }));
+    expect(llmTurnStarts[1]?.actionEconomy).toEqual(expect.objectContaining({
+      attackRollsRemaining: 1,
+      attackActionStarted: true,
+      hasAttackRoll: true,
+    }));
+    expect(observedPrompts[0]?.actionEconomy).toEqual(expect.objectContaining({
+      attackRollsRemaining: 2,
+      attackActionStarted: false,
+      hasAttackRoll: true,
+    }));
+    expect(observedPrompts[1]?.actionEconomy).toEqual(expect.objectContaining({
+      attackRollsRemaining: 1,
+      attackActionStarted: true,
+      hasAttackRoll: true,
+    }));
     const attackResolutions = llmActions.filter((event) => event.acceptedAction.type === 'attack');
     expect(attackResolutions).toHaveLength(2);
     expect(attackResolutions.map((event) => event.turnStep)).toEqual([0, 1]);

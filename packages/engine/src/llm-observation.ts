@@ -19,7 +19,7 @@ import type {
   RuntimeTraitEffect,
   Speed,
 } from './battlecast/types/monster.js';
-import type { LegalActionCatalogue, LegalAction, LegalActionSpace } from './legal-actions.js';
+import type { ActualActionEconomySnapshot, LegalActionCatalogue, LegalAction, LegalActionSpace } from './legal-actions.js';
 
 type AbilityKey = keyof Abilities;
 
@@ -320,6 +320,7 @@ export interface LlmBattleObservation {
   actionSpace: LegalActionSpace;
   round: number;
   turnIndex: number;
+  actionEconomy?: ActualActionEconomySnapshot;
   teamTactics: BattleState['teamTactics'];
   activeCreatureId: string;
   activeCreatureName: string;
@@ -361,6 +362,7 @@ export function buildLlmBattleObservation(
     actionSpace,
     round: state.round,
     turnIndex: state.turnIndex,
+    actionEconomy: catalogue.actionEconomy,
     teamTactics: state.teamTactics,
     activeCreatureId: activeCreature.id,
     activeCreatureName: activeCreature.displayName,

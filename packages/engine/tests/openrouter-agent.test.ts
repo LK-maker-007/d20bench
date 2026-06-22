@@ -291,6 +291,16 @@ describe('OpenRouter action selection', () => {
 
     const observation = JSON.parse(requests[0].messages.at(-1).content);
     expect(observation.actionSpace).toBe('actual-actions-v1');
+    expect(observation.actionEconomy).toEqual(expect.objectContaining({
+      hasMainAction: true,
+      hasAttackRoll: true,
+      attackRollsRemaining: expect.any(Number),
+      attackActionStarted: false,
+      hasBonusAction: true,
+      movementRemaining: expect.any(Number),
+      hasMovement: expect.any(Boolean),
+      flurryStrikesRemaining: 0,
+    }));
     expect(observation.tacticReference).toEqual([]);
     expect(observation.objective).toContain('Delegates and strategy labels are not available');
     expect(observation.legalActions.some((action: any) => action.type === 'battlecast_tactic')).toBe(false);

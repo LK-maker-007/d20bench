@@ -146,6 +146,7 @@ export function runAgentMatch(spec: AgentMatchSpec): AgentMatchResult {
           activeCreatureName: active.displayName,
           controller: describeAgentController(agent),
           legalActions: catalogue.actions,
+          actionEconomy: catalogue.actionEconomy,
           stateHash: hashBattlecastState(state),
         });
 
@@ -287,6 +288,7 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
             activeCreatureName: active.displayName,
             controller: describeAgentController(agent),
             legalActions: catalogue.actions,
+            actionEconomy: catalogue.actionEconomy,
             stateHash: hashBattlecastState(state),
           });
 
@@ -352,6 +354,7 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
           activeCreatureName: active.displayName,
           controller: describeAgentController(agent),
           legalActions: catalogue.actions,
+          actionEconomy: catalogue.actionEconomy,
           stateHash: hashBattlecastState(state),
         });
 
@@ -699,6 +702,7 @@ async function runStepwiseOpenRouterTurn(input: {
       activeCreatureName: active.displayName,
       controller: describeAgentController(input.agent),
       legalActions: catalogue.actions,
+      actionEconomy: catalogue.actionEconomy,
       stateHash: hashBattlecastState(input.state),
     });
 
@@ -1522,6 +1526,7 @@ function createOpportunityAttackHooks(input: {
         activeCreatureName: context.reactor.displayName,
         controller: describeAgentController(decision.agent),
         legalActions: decision.catalogue.actions,
+        actionEconomy: decision.catalogue.actionEconomy,
         stateHash: hashBattlecastState(input.state),
       });
       return {
@@ -1591,6 +1596,7 @@ function createDamageReactionHooks(input: {
         activeCreatureName: damageReactionActor(context).displayName,
         controller: describeAgentController(prepared.agent),
         legalActions: prepared.catalogue.actions,
+        actionEconomy: prepared.catalogue.actionEconomy,
         stateHash: hashBattlecastState(input.state),
       });
       return {

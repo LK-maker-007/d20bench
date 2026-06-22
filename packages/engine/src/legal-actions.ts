@@ -190,7 +190,25 @@ export interface LegalActionCatalogue {
   activeCreatureId: string;
   activeCreatureName: string;
   actionSpace?: LegalActionSpace;
+  actionEconomy?: ActualActionEconomySnapshot;
   actions: LegalAction[];
+}
+
+export interface ActualActionEconomySnapshot {
+  hasMainAction: boolean;
+  hasAttackRoll: boolean;
+  attackRollsRemaining: number;
+  attackActionStarted: boolean;
+  hasBonusAction: boolean;
+  movementRemaining: number;
+  hasMovement: boolean;
+  flurryStrikesRemaining: number;
+  pendingSmite?: {
+    targetId: string;
+    targetName: string;
+    actionName: string;
+    isCritical: boolean;
+  };
 }
 
 export interface GenerateLegalActionsOptions {
@@ -235,12 +253,26 @@ export function generateLegalActions(
   const hasBonusAction = active.bonusActionUsed !== true;
   const flurryStrikesRemaining = options.actualTurnContext?.flurryStrikesRemaining ?? 0;
   const pendingSmite = options.actualTurnContext?.pendingSmite;
+  const actionEconomy: ActualActionEconomySnapshot | undefined = options.includeActualActions
+    ? {
+        hasMainAction,
+        hasAttackRoll,
+        attackRollsRemaining,
+        attackActionStarted,
+        hasBonusAction,
+        movementRemaining: active.movementRemaining,
+        hasMovement: active.movementRemaining > 0,
+        flurryStrikesRemaining,
+        pendingSmite,
+      }
+    : undefined;
 
   if (options.includeActualActions && pendingSmite) {
     return {
       activeCreatureId: active.id,
       activeCreatureName: active.displayName,
       actionSpace,
+      actionEconomy,
       actions: smiteActions(active, pendingSmite),
     };
   }
@@ -304,6 +336,7 @@ export function generateLegalActions(
     activeCreatureId: active.id,
     activeCreatureName: active.displayName,
     actionSpace,
+    actionEconomy,
     actions,
   };
 }

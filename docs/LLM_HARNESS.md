@@ -32,6 +32,7 @@ For each active creature:
    - active creature
    - allies and enemies with HP, AC, position, speed, initiative, conditions, resources, ability scores, saves, defenses, traits, and active action profiles
    - runtime status such as recharge readiness, active buffs, condition timers, concentration aura, wild shape, death saves, ongoing effects, and containment
+   - `actionEconomy` for `actual-actions-v1`, including remaining attack rolls, whether the attack action has started, bonus-action availability, movement remaining, pending smite choice, and remaining Flurry strikes
    - current Battlecast team tactic flags
    - tactic reference notes only when copied Battlecast full-turn delegates are intentionally exposed
    - recent combat logs
@@ -53,6 +54,7 @@ For each active creature:
 7. In `actual-actions-v1`, if the creature still has action economy remaining after that action, D20bench regenerates the legal-action catalogue from the updated state and asks the model for another concrete action. This is how Extra Attack, multiattack-like attack budgets, movement plus attack, bonus actions, post-hit smites, and opportunity-attack reaction triggers are represented: the model attacks or reacts, sees the result in logs/state, and then chooses the next action when action economy remains.
 8. If invalid, missing, or unparsable, D20bench records the raw provider response and retries. It does not silently convert malformed model output into `end_turn`.
 9. The replay stores:
+   - the turn-start legal-action ids and `actionEconomy` snapshot
    - requested action id
    - accepted action
    - LLM model metadata

@@ -51,6 +51,7 @@ export type ReplayEvent =
       activeCreatureName: string;
       controller?: ReplayEventController;
       legalActions: LegalActionCatalogue['actions'];
+      actionEconomy?: LegalActionCatalogue['actionEconomy'];
       stateHash: string;
     }
   | {
