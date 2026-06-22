@@ -681,6 +681,9 @@ function classFeatureDescription(action: Extract<LegalAction, { type: 'class_fea
   if (action.feature === 'brutal_strike') {
     return 'Declare Brutal Strike before attacking. The next melee hit this turn forgoes Reckless Attack advantage and adds the Battlecast-modeled Brutal Strike damage and rider.';
   }
+  if (action.feature === 'quivering_palm') {
+    return 'Use the main action to end the already-seeded Quivering Palm effect on this target. The target makes the copied Battlecast CON save and takes 10d12 force damage, half on success.';
+  }
   if (action.feature === 'flurry_of_blows') {
     return action.resourceCost
       ? 'Spend 1 ki and the bonus action to make the first Flurry of Blows unarmed strike. Remaining Flurry strikes are chosen as later concrete actions after seeing results.'

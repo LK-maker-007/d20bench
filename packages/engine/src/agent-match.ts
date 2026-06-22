@@ -1,6 +1,7 @@
 import {
   DEFAULT_TACTICS,
   addBuff,
+  applyDamage,
   checkBattleComplete,
   consumeResource,
   creatureDistance,
@@ -9,6 +10,7 @@ import {
   getActiveSpeed,
   getFootprintSize,
   getEffectiveMoveSpeed,
+  getEffectiveSaveModifier,
   getHydraHeadCount,
   getAoETargets,
   hasBuff,
@@ -22,6 +24,7 @@ import {
   resolveAoE,
   resolveDivineSmite,
   resolveSingleTargetSave,
+  rollSaveWithBuffs,
   checkAuraEntry,
   type DamageReactionDecisionContext,
   type DamageReactionHooks,
@@ -40,7 +43,7 @@ import {
   type OpportunityAttackHooks,
 } from './battlecast/engine/ai-turn.js';
 import { canSee, estimateActionDamage, getActiveActions, getMeleeActions } from './battlecast/engine/ai-targeting.js';
-import { abilityModifier, battlecastRandom, withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
+import { abilityModifier, battlecastRandom, rollDice, withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
 import { getEligibleWildShapeBeasts } from './battlecast/data/heroes.js';
 import { maps } from './battlecast/data/maps.js';
 import { buildMovementBlockedSet, buildSightBlockedSet } from './battlecast/types/terrain.js';
@@ -1964,6 +1967,11 @@ function applyClassFeatureAction(
     return;
   }
 
+  if (action.feature === 'quivering_palm') {
+    applyQuiveringPalmAction(state, active, action, agent, actualTurn);
+    return;
+  }
+
   if (action.feature === 'wild_shape') {
     applyWildShapeAction(state, active, action, agent);
     return;
@@ -2183,6 +2191,79 @@ function applyBrutalStrikeAction(
     tone: 'success',
     durationMs: BASE_DURATIONS.effect,
   });
+}
+
+function applyQuiveringPalmAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'class_feature' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  const target = action.targetId
+    ? state.creatures.find((creature) => creature.id === action.targetId)
+    : undefined;
+  const key = `quivering-palm:${active.id}`;
+  if (
+    active.monsterData.heroClass !== 'Monk' ||
+    (active.monsterData.heroLevel ?? 0) < 17 ||
+    active.hasActed ||
+    actualTurn.attackActionStarted ||
+    !target ||
+    target.team === active.team ||
+    !target.isAlive ||
+    target.dying ||
+    !target.activeBuffs?.some((buff) => buff.key === key)
+  ) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  target.activeBuffs = target.activeBuffs.filter((buff) => buff.key !== key);
+  const wisMod = abilityModifier(active.monsterData.abilities.wis);
+  const dc = 8 + active.monsterData.proficiencyBonus + wisMod;
+  const saveMod = getEffectiveSaveModifier(target, 'con', state);
+  const save = rollSaveWithBuffs(target, saveMod, false, dc, 'con');
+  const success = save.total >= dc;
+  const rawDamage = rollDice('10d12').total;
+  const damage = success ? Math.floor(rawDamage / 2) : rawDamage;
+
+  state.events.push({
+    kind: 'attack',
+    attackerId: active.id,
+    targetId: target.id,
+    actionName: 'Quivering Palm',
+    attackType: 'touch',
+    durationMs: BASE_DURATIONS.attack,
+  });
+  state.events.push({ kind: 'save', targetId: target.id, success, durationMs: BASE_DURATIONS.save });
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Quivering Palm',
+    details: `${active.displayName} ends Quivering Palm on ${target.displayName}; ${target.displayName} ${success ? 'resists' : 'fails'} (${save.total} vs DC ${dc}) and takes ${damage} force damage.`,
+    damage,
+    type: 'damage',
+  });
+  const before = target.currentHp;
+  state.events.push({
+    kind: 'hit',
+    targetId: target.id,
+    damage,
+    damageType: 'force',
+    critical: false,
+    targetHpBefore: before,
+    targetHpAfter: before,
+    durationMs: BASE_DURATIONS.hit,
+  });
+  const hitEvent = state.events[state.events.length - 1];
+  applyDamage(state, target, damage, 'force', active, false, true, false);
+  if (hitEvent.kind === 'hit') hitEvent.targetHpAfter = target.currentHp;
+  active.stats.actionUsage['Quivering Palm'] = (active.stats.actionUsage['Quivering Palm'] || 0) + 1;
+  active.hasActed = true;
+  actualTurn.attackRollsRemaining = 0;
+  actualTurn.pendingSmite = undefined;
 }
 
 function hasReachableMeleeTarget(state: BattleState, active: Creature): boolean {

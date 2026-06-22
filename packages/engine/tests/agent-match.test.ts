@@ -905,6 +905,58 @@ describe('agent matches', () => {
     )).toBe(false);
   });
 
+  it('exposes Monk Quivering Palm as a concrete seeded-target action', () => {
+    const state = initBattle(createBattlecastCreatures(monkQuiveringPalmScenario().combatants, true), 8);
+    const monk = state.creatures.find((creature) => creature.team === 'red');
+    const target = state.creatures.find((creature) => creature.team === 'blue');
+    if (!monk || !target) throw new Error('expected monk and target');
+    target.activeBuffs.push({
+      name: 'Quivering Palm',
+      key: `quivering-palm:${monk.id}`,
+      casterId: monk.id,
+      appliedRound: state.round,
+      endRound: Infinity,
+    });
+
+    const catalogue = generateLegalActions(state, monk, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, monk, catalogue);
+
+    expect(catalogue.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: `class_feature:quivering-palm:${target.id}`,
+        type: 'class_feature',
+        feature: 'quivering_palm',
+        targetId: target.id,
+        isBonusAction: false,
+        expectedDamage: 65,
+      }),
+    ]));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: `class_feature:quivering-palm:${target.id}`,
+        feature: 'quivering_palm',
+        description: expect.stringContaining('10d12 force damage'),
+      }),
+    ]));
+
+    const afterAttackStarted = generateLegalActions(state, monk, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: true,
+      },
+    });
+    expect(afterAttackStarted.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'quivering_palm'
+    )).toBe(false);
+  });
+
   it('asks an OpenRouter actual-action agent again after the first Extra Attack swing', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     const observedPrompts: Array<{
@@ -1889,6 +1941,74 @@ describe('agent matches', () => {
     expect(flurryResolutions.every((event) =>
       event.logs.some((log) => log.action === 'Martial Arts (Unarmed)' || log.action === 'Attack')
     )).toBe(true);
+  });
+
+  it('lets an actual-action Monk end a seeded Quivering Palm on a later turn', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let choseQuiveringPalm = false;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const quiveringPalm = actionIds.find((id) => id.startsWith('class_feature:quivering-palm:'));
+      const attack = actionIds.find((id) => id.startsWith('attack:martial-arts-unarmed:'));
+      const actionId = quiveringPalm ?? attack ?? 'end_turn';
+      if (quiveringPalm) choseQuiveringPalm = true;
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Seed Quivering Palm, then end it once the concrete action is legal.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: monkQuiveringPalmScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'baseline.random-legal',
+      maxRounds: 3,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const llmActions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.llmTrace
+    );
+    const seedResolution = llmActions.find((event) =>
+      event.logs.some((log) => log.action === 'Quivering Palm' && log.details.includes('seeds lethal vibrations'))
+    );
+    const quiveringResolution = llmActions.find((event) =>
+      event.acceptedAction.type === 'class_feature' &&
+      event.acceptedAction.feature === 'quivering_palm'
+    );
+    const monk = match.state.creatures.find((creature) => creature.team === 'red');
+    const target = match.state.creatures.find((creature) => creature.team === 'blue');
+
+    expect(seedResolution?.type).toBe('action_resolved');
+    expect(choseQuiveringPalm).toBe(true);
+    expect(quiveringResolution?.type).toBe('action_resolved');
+    if (quiveringResolution?.acceptedAction.type !== 'class_feature') throw new Error('expected Quivering Palm class feature');
+    expect(quiveringResolution.acceptedAction.feature).toBe('quivering_palm');
+    expect(quiveringResolution.round).toBeGreaterThan(seedResolution?.round ?? 0);
+    expect(quiveringResolution.logs.some((log) => log.action === 'Quivering Palm' && log.details.includes('ends Quivering Palm'))).toBe(true);
+    expect(quiveringResolution.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'save', targetId: target?.id }),
+      expect.objectContaining({ kind: 'hit', targetId: target?.id, damageType: 'force' }),
+    ]));
+    expect(target?.activeBuffs.some((buff) => buff.key === `quivering-palm:${monk?.id}`)).toBe(false);
+    expect(monk?.stats.actionUsage['Quivering Palm']).toBe(1);
   });
 
   it('lets an actual-action LLM disengage before moving without provoking opportunity attacks', async () => {
@@ -3233,6 +3353,26 @@ function monkFlurryScenario(): D20benchScenario {
     designNotes: ['test fixture'],
     combatants: [
       { monster: buildHero('Monk', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+    ],
+  };
+}
+
+function monkQuiveringPalmScenario(): D20benchScenario {
+  return {
+    id: 'test.monk-quivering-palm.v1',
+    name: 'Monk Quivering Palm Test',
+    description: 'A level-17 Monk can seed Quivering Palm with an unarmed hit and end it on a later turn.',
+    battleType: 'class-feature-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Monk', 17), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
     ],
   };

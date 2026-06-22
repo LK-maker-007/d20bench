@@ -142,6 +142,7 @@ export type LegalAction =
         | 'superior_defense'
         | 'reckless_attack'
         | 'brutal_strike'
+        | 'quivering_palm'
         | 'martial_arts_strike'
         | 'flurry_of_blows'
         | 'wild_shape'
@@ -724,6 +725,7 @@ function coreActualActions(
       isBonusAction: false,
     });
   }
+  actions.push(...quiveringPalmActions(state, active, economy));
   actions.push(...wildShapeActions(state, active, economy));
   actions.push(...monkBonusAttackActions(state, active, economy));
   actions.push(...frenzyActions(state, active, economy));
@@ -984,6 +986,41 @@ function hasReachableMeleeTarget(state: BattleState, active: Creature): boolean 
       !target.dying &&
       isTargetInRange(active, target, action)
     ));
+}
+
+function quiveringPalmActions(
+  state: BattleState,
+  active: Creature,
+  economy: { hasMainAction: boolean; attackActionStarted: boolean },
+): LegalAction[] {
+  if (active.monsterData.heroClass !== 'Monk' || (active.monsterData.heroLevel ?? 0) < 17) return [];
+  if (!economy.hasMainAction || economy.attackActionStarted || active.hasActed) return [];
+  if (active.conditions.includes('incapacitated') || active.conditions.includes('stunned') ||
+      active.conditions.includes('paralyzed') || active.conditions.includes('petrified') ||
+      active.conditions.includes('unconscious')) return [];
+  const key = `quivering-palm:${active.id}`;
+  return state.creatures
+    .filter((target) =>
+      target.team !== active.team &&
+      target.isAlive &&
+      !target.dying &&
+      target.activeBuffs?.some((buff) => buff.key === key)
+    )
+    .sort((left, right) =>
+      left.currentHp - right.currentHp ||
+      left.displayName.localeCompare(right.displayName) ||
+      left.id.localeCompare(right.id)
+    )
+    .map((target) => ({
+      id: classFeatureTargetActionId('quivering-palm', target.id),
+      type: 'class_feature' as const,
+      feature: 'quivering_palm' as const,
+      label: `End Quivering Palm on ${target.displayName}`,
+      isBonusAction: false,
+      targetId: target.id,
+      targetName: target.displayName,
+      expectedDamage: averageDamage('10d12'),
+    }));
 }
 
 function wildShapeActions(
