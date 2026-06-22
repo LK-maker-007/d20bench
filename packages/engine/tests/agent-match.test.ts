@@ -561,6 +561,154 @@ describe('agent matches', () => {
     )).toBe(false);
   });
 
+  it('exposes Barbarian Reckless Attack as a concrete pre-attack class feature action', () => {
+    const state = initBattle(createBattlecastCreatures(barbarianFrenzyScenario().combatants, true), 8);
+    const barbarian = state.creatures.find((creature) => creature.team === 'red');
+    if (!barbarian) throw new Error('expected red barbarian');
+
+    const catalogue = generateLegalActions(state, barbarian, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, barbarian, catalogue);
+
+    expect(catalogue.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'class_feature:reckless-attack',
+        type: 'class_feature',
+        feature: 'reckless_attack',
+        isBonusAction: false,
+      }),
+    ]));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'class_feature:reckless-attack',
+        feature: 'reckless_attack',
+        description: expect.stringContaining('Melee attacks this turn have Advantage'),
+      }),
+    ]));
+
+    const afterAttack = generateLegalActions(state, barbarian, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: true,
+      },
+    });
+    expect(afterAttack.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'reckless_attack'
+    )).toBe(false);
+
+    barbarian.turnFlags = { ...(barbarian.turnFlags ?? {}), reckless: true };
+    const alreadyReckless = generateLegalActions(state, barbarian, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    expect(alreadyReckless.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'reckless_attack'
+    )).toBe(false);
+  });
+
+  it('exposes Barbarian Brutal Strike as a concrete pre-attack class feature action', () => {
+    const state = initBattle(createBattlecastCreatures(barbarianBrutalStrikeScenario().combatants, true), 8);
+    const barbarian = state.creatures.find((creature) => creature.team === 'red');
+    if (!barbarian) throw new Error('expected red barbarian');
+
+    const catalogue = generateLegalActions(state, barbarian, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, barbarian, catalogue);
+
+    expect(catalogue.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'class_feature:brutal-strike',
+        type: 'class_feature',
+        feature: 'brutal_strike',
+        isBonusAction: false,
+      }),
+    ]));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'class_feature:brutal-strike',
+        feature: 'brutal_strike',
+        description: expect.stringContaining('next melee hit this turn'),
+      }),
+    ]));
+
+    const afterAttack = generateLegalActions(state, barbarian, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: true,
+      },
+    });
+    expect(afterAttack.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'brutal_strike'
+    )).toBe(false);
+
+    barbarian.turnFlags = { ...(barbarian.turnFlags ?? {}), brutalStrike: true };
+    const alreadyBrutal = generateLegalActions(state, barbarian, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    expect(alreadyBrutal.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'brutal_strike'
+    )).toBe(false);
+    expect(alreadyBrutal.actions.some((action) =>
+      action.type === 'class_feature' && action.feature === 'reckless_attack'
+    )).toBe(false);
+  });
+
+  it("exposes Ranger Nature's Veil as a concrete invisible-condition action", () => {
+    const state = initBattle(createBattlecastCreatures(rangerNaturesVeilScenario().combatants, true), 8);
+    const ranger = state.creatures.find((creature) => creature.team === 'red');
+    if (!ranger) throw new Error('expected red ranger');
+
+    const catalogue = generateLegalActions(state, ranger, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    const naturesVeil = catalogue.actions.find((action) =>
+      action.type === 'spell' && action.actionName === "Nature's Veil"
+    );
+
+    expect(naturesVeil).toEqual(expect.objectContaining({
+      id: expect.stringMatching(/^spell:nature-s-veil:/),
+      type: 'spell',
+      effectKind: 'special',
+      isBonusAction: true,
+      resourceCost: { key: 'natures-veil', amount: 1 },
+    }));
+
+    ranger.conditions.push('invisible');
+    const alreadyInvisible = generateLegalActions(state, ranger, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    expect(alreadyInvisible.actions.some((action) =>
+      action.type === 'spell' && action.actionName === "Nature's Veil"
+    )).toBe(false);
+  });
+
   it('exposes Monk Martial Arts and Flurry as post-attack concrete class feature actions', () => {
     const state = initBattle(createBattlecastCreatures(monkFlurryScenario().combatants, true), 8);
     const monk = state.creatures.find((creature) => creature.team === 'red');
@@ -1006,6 +1154,202 @@ describe('agent matches', () => {
     expect(steadyAimResolution?.logs.some((log) => log.action === 'Steady Aim')).toBe(true);
     expect(steadyAimResolution?.events.some((event) => event.kind === 'effect' && event.label === 'Steady Aim')).toBe(true);
     expect(attackResolution?.turnStep).toBe(1);
+  });
+
+  it('lets an actual-action Barbarian use Reckless Attack before choosing attacks', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let choseReckless = false;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const reactionDecline = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      const attack = actionIds.find((id) => id.startsWith('attack:'));
+      let actionId: string;
+      if (reactionDecline) {
+        actionId = reactionDecline;
+      } else if (!choseReckless && actionIds.includes('class_feature:reckless-attack')) {
+        actionId = 'class_feature:reckless-attack';
+        choseReckless = true;
+      } else if (attack) {
+        actionId = attack;
+      } else {
+        actionId = 'end_turn';
+      }
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Declare Reckless Attack, then choose concrete attacks.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: barbarianFrenzyScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const llmActions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.llmTrace
+    );
+    const recklessResolution = llmActions.find((event) =>
+      event.acceptedAction.type === 'class_feature' &&
+      event.acceptedAction.feature === 'reckless_attack'
+    );
+    const attackResolution = llmActions.find((event) => event.acceptedAction.type === 'attack');
+    const barbarian = match.state.creatures.find((creature) => creature.team === 'red');
+
+    expect(recklessResolution?.turnStep).toBe(0);
+    expect(recklessResolution?.logs.some((log) => log.action === 'Reckless Attack')).toBe(true);
+    expect(recklessResolution?.events.some((event) => event.kind === 'effect' && event.label === 'Reckless Attack')).toBe(true);
+    expect(attackResolution?.turnStep).toBe(1);
+    expect(barbarian?.stats.actionUsage['Reckless Attack']).toBe(1);
+  });
+
+  it('lets an actual-action Barbarian declare Brutal Strike before choosing attacks', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let choseBrutal = false;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const reactionDecline = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      const attack = actionIds.find((id) => id.startsWith('attack:'));
+      let actionId: string;
+      if (reactionDecline) {
+        actionId = reactionDecline;
+      } else if (!choseBrutal && actionIds.includes('class_feature:brutal-strike')) {
+        actionId = 'class_feature:brutal-strike';
+        choseBrutal = true;
+      } else if (attack) {
+        actionId = attack;
+      } else {
+        actionId = 'end_turn';
+      }
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Declare Brutal Strike, then choose concrete attacks.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: barbarianBrutalStrikeScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const llmActions = match.replay.filter((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.llmTrace
+    );
+    const brutalResolution = llmActions.find((event) =>
+      event.acceptedAction.type === 'class_feature' &&
+      event.acceptedAction.feature === 'brutal_strike'
+    );
+    const attackResolution = llmActions.find((event) => event.acceptedAction.type === 'attack');
+
+    expect(brutalResolution?.turnStep).toBe(0);
+    expect(brutalResolution?.logs.some((log) => log.action === 'Brutal Strike Declared')).toBe(true);
+    expect(brutalResolution?.events.some((event) => event.kind === 'effect' && event.label === 'Brutal Strike')).toBe(true);
+    expect(attackResolution?.turnStep).toBe(1);
+  });
+
+  it("lets an actual-action Ranger use Nature's Veil as a real invisible-condition action", async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let choseVeil = false;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const reactionDecline = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      const veil = actionIds.find((id) => id.startsWith('spell:nature-s-veil:'));
+      const attack = actionIds.find((id) => id.startsWith('attack:'));
+      let actionId: string;
+      if (reactionDecline) {
+        actionId = reactionDecline;
+      } else if (!choseVeil && veil) {
+        actionId = veil;
+        choseVeil = true;
+      } else if (attack) {
+        actionId = attack;
+      } else {
+        actionId = 'end_turn';
+      }
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Use Nature Veil, then choose concrete attacks.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: rangerNaturesVeilScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const veilResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'spell' &&
+      event.acceptedAction.actionName === "Nature's Veil"
+    );
+    const ranger = match.state.creatures.find((creature) => creature.team === 'red');
+
+    expect(veilResolution?.turnStep).toBe(0);
+    expect(veilResolution?.logs.some((log) => log.action === "Nature's Veil")).toBe(true);
+    expect(veilResolution?.logs.some((log) => log.details.includes("isn't simulated"))).toBe(false);
+    expect(veilResolution?.events.some((event) =>
+      event.kind === 'condition' && event.condition === 'invisible' && event.applied
+    )).toBe(true);
+    expect(ranger?.conditions).toContain('invisible');
+    expect(ranger?.resources['natures-veil']).toBe(2);
   });
 
   it('lets an actual-action Druid choose a Wild Shape form', async () => {
@@ -2328,6 +2672,46 @@ function barbarianFrenzyScenario(): D20benchScenario {
     designNotes: ['test fixture'],
     combatants: [
       { monster: buildHero('Barbarian', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+    ],
+  };
+}
+
+function barbarianBrutalStrikeScenario(): D20benchScenario {
+  return {
+    id: 'test.barbarian-brutal-strike.v1',
+    name: 'Barbarian Brutal Strike Test',
+    description: 'A level-9 Barbarian can declare Brutal Strike before making a concrete melee attack.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Barbarian', 9), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+    ],
+  };
+}
+
+function rangerNaturesVeilScenario(): D20benchScenario {
+  return {
+    id: 'test.ranger-natures-veil.v1',
+    name: "Ranger Nature's Veil Test",
+    description: "A level-14 Ranger can spend Nature's Veil to become invisible before attacking.",
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Ranger', 14), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
     ],
   };

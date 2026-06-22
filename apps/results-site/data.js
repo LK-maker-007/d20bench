@@ -1,6 +1,389 @@
 window.D20BENCH_RESULTS = {
-  "generatedAt": "2026-06-22T13:25:41.401Z",
+  "generatedAt": "2026-06-22T13:36:32.731Z",
   "seasons": [
+    {
+      "seasonId": "llm-actual-reckless-verify-v1",
+      "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control Barbarian Reckless Attack as a concrete pre-attack class-feature action.",
+      "generatedAt": "2026-06-22T13:35:23.722Z",
+      "startedAt": "2026-06-22T13:35:23.722Z",
+      "completedAt": "2026-06-22T13:35:44.381Z",
+      "llmActionSpace": "actual-actions-v1",
+      "initialRating": 1000,
+      "kFactor": 32,
+      "maxRounds": 1,
+      "concurrency": 4,
+      "totalMatches": 4,
+      "completedMatches": 4,
+      "failedMatches": 0,
+      "standings": [
+        {
+          "agentId": "battlecast.aggressive",
+          "rating": 1059.729526119354,
+          "matches": 4,
+          "wins": 4,
+          "losses": 0,
+          "draws": 0,
+          "score": 4
+        },
+        {
+          "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+          "rating": 986.0982942088476,
+          "matches": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "score": 0
+        },
+        {
+          "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "rating": 985.4358728782763,
+          "matches": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "score": 0
+        },
+        {
+          "agentId": "openrouter:mistralai/ministral-8b-2512",
+          "rating": 984.736306793522,
+          "matches": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "score": 0
+        },
+        {
+          "agentId": "openrouter:deepseek/deepseek-v4-flash",
+          "rating": 984,
+          "matches": 1,
+          "wins": 0,
+          "losses": 1,
+          "draws": 0,
+          "score": 0
+        }
+      ],
+      "battleTypeStandings": [
+        {
+          "battleType": "reckless-smoke",
+          "standings": [
+            {
+              "agentId": "battlecast.aggressive",
+              "rating": 1059.729526119354,
+              "matches": 4,
+              "wins": 4,
+              "losses": 0,
+              "draws": 0,
+              "score": 4
+            },
+            {
+              "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+              "rating": 986.0982942088476,
+              "matches": 1,
+              "wins": 0,
+              "losses": 1,
+              "draws": 0,
+              "score": 0
+            },
+            {
+              "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+              "rating": 985.4358728782763,
+              "matches": 1,
+              "wins": 0,
+              "losses": 1,
+              "draws": 0,
+              "score": 0
+            },
+            {
+              "agentId": "openrouter:mistralai/ministral-8b-2512",
+              "rating": 984.736306793522,
+              "matches": 1,
+              "wins": 0,
+              "losses": 1,
+              "draws": 0,
+              "score": 0
+            },
+            {
+              "agentId": "openrouter:deepseek/deepseek-v4-flash",
+              "rating": 984,
+              "matches": 1,
+              "wins": 0,
+              "losses": 1,
+              "draws": 0,
+              "score": 0
+            }
+          ]
+        }
+      ],
+      "costSummary": {
+        "totalDecisions": 27,
+        "promptTokens": 105726,
+        "completionTokens": 3480,
+        "totalTokens": 109206,
+        "estimatedCostUsd": 0.008566465,
+        "byModel": [
+          {
+            "agentId": "openrouter:mistralai/ministral-8b-2512",
+            "model": "mistralai/ministral-8b-2512",
+            "decisions": 5,
+            "promptTokens": 19855,
+            "completionTokens": 259,
+            "totalTokens": 20114,
+            "estimatedCostUsd": 0.0030171
+          },
+          {
+            "agentId": "openrouter:deepseek/deepseek-v4-flash",
+            "model": "deepseek/deepseek-v4-flash",
+            "decisions": 7,
+            "promptTokens": 29057,
+            "completionTokens": 375,
+            "totalTokens": 29432,
+            "estimatedCostUsd": 0.00268263
+          },
+          {
+            "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+            "model": "qwen/qwen3.5-flash-02-23",
+            "decisions": 6,
+            "promptTokens": 23667,
+            "completionTokens": 2522,
+            "totalTokens": 26189,
+            "estimatedCostUsd": 0.002194075
+          },
+          {
+            "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+            "model": "meta-llama/llama-3.1-8b-instruct",
+            "decisions": 9,
+            "promptTokens": 33147,
+            "completionTokens": 324,
+            "totalTokens": 33471,
+            "estimatedCostUsd": 0.00067266
+          }
+        ]
+      },
+      "failures": [],
+      "matches": [
+        {
+          "matchId": "hidden.llm-reckless-barbarian-duel.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+          "scenarioId": "hidden.llm-reckless-barbarian-duel.v1",
+          "battleType": "reckless-smoke",
+          "seed": 1,
+          "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+          "blueAgent": "battlecast.aggressive",
+          "winner": "blue",
+          "redScore": 0,
+          "blueScore": 1,
+          "redRatingBefore": 1000,
+          "blueRatingBefore": 1000,
+          "redRatingAfter": 984,
+          "blueRatingAfter": 1016,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 1000,
+          "redBattleTypeRatingAfter": 984,
+          "blueBattleTypeRatingAfter": 1016,
+          "finalStateHash": "8fac190902c4fc76c6592c254d07496539a2be980ceb8947ac7249460a4ab2b7",
+          "llmDecisions": 7,
+          "estimatedCostUsd": 0.00268263
+        },
+        {
+          "matchId": "hidden.llm-reckless-barbarian-duel.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+          "scenarioId": "hidden.llm-reckless-barbarian-duel.v1",
+          "battleType": "reckless-smoke",
+          "seed": 1,
+          "redAgent": "openrouter:mistralai/ministral-8b-2512",
+          "blueAgent": "battlecast.aggressive",
+          "winner": "blue",
+          "redScore": 0,
+          "blueScore": 1,
+          "redRatingBefore": 1000,
+          "blueRatingBefore": 1016,
+          "redRatingAfter": 984.736306793522,
+          "blueRatingAfter": 1031.263693206478,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 1016,
+          "redBattleTypeRatingAfter": 984.736306793522,
+          "blueBattleTypeRatingAfter": 1031.263693206478,
+          "finalStateHash": "8dc720d7d65244c8c08d52e617378aeaa4ba132478bb7bd574f7acb3d3e4c806",
+          "llmDecisions": 5,
+          "estimatedCostUsd": 0.0030171
+        },
+        {
+          "matchId": "hidden.llm-reckless-barbarian-duel.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+          "scenarioId": "hidden.llm-reckless-barbarian-duel.v1",
+          "battleType": "reckless-smoke",
+          "seed": 1,
+          "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+          "blueAgent": "battlecast.aggressive",
+          "winner": "blue",
+          "redScore": 0,
+          "blueScore": 1,
+          "redRatingBefore": 1000,
+          "blueRatingBefore": 1031.263693206478,
+          "redRatingAfter": 985.4358728782763,
+          "blueRatingAfter": 1045.8278203282016,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 1031.263693206478,
+          "redBattleTypeRatingAfter": 985.4358728782763,
+          "blueBattleTypeRatingAfter": 1045.8278203282016,
+          "finalStateHash": "912f470e66b494a60b7de7a58cfbaf07d03f157ce0fbaf44b7c3897d630f5989",
+          "llmDecisions": 9,
+          "estimatedCostUsd": 0.00067266
+        },
+        {
+          "matchId": "hidden.llm-reckless-barbarian-duel.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+          "scenarioId": "hidden.llm-reckless-barbarian-duel.v1",
+          "battleType": "reckless-smoke",
+          "seed": 1,
+          "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+          "blueAgent": "battlecast.aggressive",
+          "winner": "blue",
+          "redScore": 0,
+          "blueScore": 1,
+          "redRatingBefore": 1000,
+          "blueRatingBefore": 1045.8278203282016,
+          "redRatingAfter": 986.0982942088476,
+          "blueRatingAfter": 1059.729526119354,
+          "redBattleTypeRatingBefore": 1000,
+          "blueBattleTypeRatingBefore": 1045.8278203282016,
+          "redBattleTypeRatingAfter": 986.0982942088476,
+          "blueBattleTypeRatingAfter": 1059.729526119354,
+          "finalStateHash": "b782152677e224537ec0d636bdc0f34a50b582395867e6a9e50f6558c81f8f0a",
+          "llmDecisions": 6,
+          "estimatedCostUsd": 0.002194075
+        }
+      ],
+      "progress": {
+        "seasonId": "llm-actual-reckless-verify-v1",
+        "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control Barbarian Reckless Attack as a concrete pre-attack class-feature action.",
+        "status": "complete",
+        "llmActionSpace": "actual-actions-v1",
+        "startedAt": "2026-06-22T13:35:23.722Z",
+        "updatedAt": "2026-06-22T13:35:44.381Z",
+        "concurrency": 4,
+        "maxRounds": 1,
+        "totalMatches": 4,
+        "completedMatches": 4,
+        "failedMatches": 0,
+        "runningMatches": 0,
+        "costSummary": {
+          "totalDecisions": 27,
+          "promptTokens": 105726,
+          "completionTokens": 3480,
+          "totalTokens": 109206,
+          "estimatedCostUsd": 0.008566465,
+          "byModel": [
+            {
+              "agentId": "openrouter:mistralai/ministral-8b-2512",
+              "model": "mistralai/ministral-8b-2512",
+              "decisions": 5,
+              "promptTokens": 19855,
+              "completionTokens": 259,
+              "totalTokens": 20114,
+              "estimatedCostUsd": 0.0030171
+            },
+            {
+              "agentId": "openrouter:deepseek/deepseek-v4-flash",
+              "model": "deepseek/deepseek-v4-flash",
+              "decisions": 7,
+              "promptTokens": 29057,
+              "completionTokens": 375,
+              "totalTokens": 29432,
+              "estimatedCostUsd": 0.00268263
+            },
+            {
+              "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+              "model": "qwen/qwen3.5-flash-02-23",
+              "decisions": 6,
+              "promptTokens": 23667,
+              "completionTokens": 2522,
+              "totalTokens": 26189,
+              "estimatedCostUsd": 0.002194075
+            },
+            {
+              "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+              "model": "meta-llama/llama-3.1-8b-instruct",
+              "decisions": 9,
+              "promptTokens": 33147,
+              "completionTokens": 324,
+              "totalTokens": 33471,
+              "estimatedCostUsd": 0.00067266
+            }
+          ]
+        },
+        "activeMatches": [],
+        "recentMatches": [
+          {
+            "index": 3,
+            "status": "completed",
+            "scenarioId": "hidden.llm-reckless-barbarian-duel.v1",
+            "battleType": "reckless-smoke",
+            "seed": 1,
+            "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+            "blueAgent": "battlecast.aggressive",
+            "startedAt": "2026-06-22T13:35:23.886Z",
+            "completedAt": "2026-06-22T13:35:44.378Z",
+            "durationMs": 20492,
+            "matchId": "hidden.llm-reckless-barbarian-duel.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.aggressive",
+            "winner": "blue",
+            "llmDecisions": 6,
+            "estimatedCostUsd": 0.002194075,
+            "finalStateHash": "b782152677e224537ec0d636bdc0f34a50b582395867e6a9e50f6558c81f8f0a"
+          },
+          {
+            "index": 0,
+            "status": "completed",
+            "scenarioId": "hidden.llm-reckless-barbarian-duel.v1",
+            "battleType": "reckless-smoke",
+            "seed": 1,
+            "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+            "blueAgent": "battlecast.aggressive",
+            "startedAt": "2026-06-22T13:35:23.886Z",
+            "completedAt": "2026-06-22T13:35:41.927Z",
+            "durationMs": 18041,
+            "matchId": "hidden.llm-reckless-barbarian-duel.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.aggressive",
+            "winner": "blue",
+            "llmDecisions": 7,
+            "estimatedCostUsd": 0.00268263,
+            "finalStateHash": "8fac190902c4fc76c6592c254d07496539a2be980ceb8947ac7249460a4ab2b7"
+          },
+          {
+            "index": 1,
+            "status": "completed",
+            "scenarioId": "hidden.llm-reckless-barbarian-duel.v1",
+            "battleType": "reckless-smoke",
+            "seed": 1,
+            "redAgent": "openrouter:mistralai/ministral-8b-2512",
+            "blueAgent": "battlecast.aggressive",
+            "startedAt": "2026-06-22T13:35:23.886Z",
+            "completedAt": "2026-06-22T13:35:32.126Z",
+            "durationMs": 8240,
+            "matchId": "hidden.llm-reckless-barbarian-duel.v1__actual-actions-v1__1__openrouter_mistralai_ministral-8b-2512__battlecast.aggressive",
+            "winner": "blue",
+            "llmDecisions": 5,
+            "estimatedCostUsd": 0.0030171,
+            "finalStateHash": "8dc720d7d65244c8c08d52e617378aeaa4ba132478bb7bd574f7acb3d3e4c806"
+          },
+          {
+            "index": 2,
+            "status": "completed",
+            "scenarioId": "hidden.llm-reckless-barbarian-duel.v1",
+            "battleType": "reckless-smoke",
+            "seed": 1,
+            "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+            "blueAgent": "battlecast.aggressive",
+            "startedAt": "2026-06-22T13:35:23.886Z",
+            "completedAt": "2026-06-22T13:35:28.905Z",
+            "durationMs": 5019,
+            "matchId": "hidden.llm-reckless-barbarian-duel.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.aggressive",
+            "winner": "blue",
+            "llmDecisions": 9,
+            "estimatedCostUsd": 0.00067266,
+            "finalStateHash": "912f470e66b494a60b7de7a58cfbaf07d03f157ce0fbaf44b7c3897d630f5989"
+          }
+        ],
+        "failures": []
+      },
+      "sourcePath": "results/seasons/llm-actual-reckless-verify-v1/standings.json",
+      "progressPath": "results/seasons/llm-actual-reckless-verify-v1/progress.json"
+    },
     {
       "seasonId": "llm-actual-action-surge-verify-v1",
       "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control Fighter Action Surge as a concrete stepwise class-feature action.",

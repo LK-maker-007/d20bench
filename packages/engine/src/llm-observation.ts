@@ -665,6 +665,12 @@ function classFeatureDescription(action: Extract<LegalAction, { type: 'class_fea
   if (action.feature === 'action_surge') {
     return 'Spend one Action Surge use to regain a main action this turn. After this resolves, choose the next concrete action from a fresh legal-action list.';
   }
+  if (action.feature === 'reckless_attack') {
+    return 'Declare Reckless Attack before attacking. Melee attacks this turn have Advantage, and attacks against this creature have Advantage until its next turn.';
+  }
+  if (action.feature === 'brutal_strike') {
+    return 'Declare Brutal Strike before attacking. The next melee hit this turn forgoes Reckless Attack advantage and adds the Battlecast-modeled Brutal Strike damage and rider.';
+  }
   if (action.feature === 'flurry_of_blows') {
     return action.resourceCost
       ? 'Spend 1 ki and the bonus action to make the first Flurry of Blows unarmed strike. Remaining Flurry strikes are chosen as later concrete actions after seeing results.'

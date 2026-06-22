@@ -134,7 +134,15 @@ export type LegalAction =
   | {
       id: string;
       type: 'class_feature';
-      feature: 'steady_aim' | 'action_surge' | 'martial_arts_strike' | 'flurry_of_blows' | 'wild_shape' | 'frenzy';
+      feature:
+        | 'steady_aim'
+        | 'action_surge'
+        | 'reckless_attack'
+        | 'brutal_strike'
+        | 'martial_arts_strike'
+        | 'flurry_of_blows'
+        | 'wild_shape'
+        | 'frenzy';
       label: string;
       isBonusAction: boolean;
       targetId?: string;
@@ -638,6 +646,24 @@ function coreActualActions(
       resourceCost: { key: 'action-surge', amount: 1 },
     });
   }
+  if (canUseRecklessAttack(state, active, economy)) {
+    actions.push({
+      id: 'class_feature:reckless-attack',
+      type: 'class_feature',
+      feature: 'reckless_attack',
+      label: 'Reckless Attack',
+      isBonusAction: false,
+    });
+  }
+  if (canUseBrutalStrike(state, active, economy)) {
+    actions.push({
+      id: 'class_feature:brutal-strike',
+      type: 'class_feature',
+      feature: 'brutal_strike',
+      label: 'Brutal Strike',
+      isBonusAction: false,
+    });
+  }
   actions.push(...wildShapeActions(state, active, economy));
   actions.push(...monkBonusAttackActions(state, active, economy));
   actions.push(...frenzyActions(state, active, economy));
@@ -834,6 +860,46 @@ function canUseActionSurge(
   if (active.conditions.includes('incapacitated') || active.conditions.includes('unconscious')) return false;
   if (economy.hasMainAction) return false;
   return active.hasActed || economy.attackActionStarted;
+}
+
+function canUseRecklessAttack(
+  state: BattleState,
+  active: Creature,
+  economy: { hasMainAction: boolean; attackActionStarted: boolean },
+): boolean {
+  if (active.monsterData.heroClass !== 'Barbarian' || (active.monsterData.heroLevel ?? 0) < 2) return false;
+  if (!economy.hasMainAction || economy.attackActionStarted) return false;
+  if (active.turnFlags?.reckless || active.turnFlags?.brutalStrike) return false;
+  if (active.conditions.includes('incapacitated') || active.conditions.includes('unconscious')) return false;
+
+  return getActiveActions(active)
+    .filter((action) => action.type === 'melee' && action.attackBonus !== undefined && action.legendaryOnly !== true)
+    .some((action) => state.creatures.some((target) =>
+      target.team !== active.team &&
+      target.isAlive &&
+      !target.dying &&
+      isTargetInRange(active, target, action)
+    ));
+}
+
+function canUseBrutalStrike(
+  state: BattleState,
+  active: Creature,
+  economy: { hasMainAction: boolean; attackActionStarted: boolean },
+): boolean {
+  if (active.monsterData.heroClass !== 'Barbarian' || (active.monsterData.heroLevel ?? 0) < 9) return false;
+  if (!economy.hasMainAction || economy.attackActionStarted) return false;
+  if (active.turnFlags?.reckless || active.turnFlags?.brutalStrike || active.turnFlags?.brutalStrikeUsed) return false;
+  if (active.conditions.includes('incapacitated') || active.conditions.includes('unconscious')) return false;
+
+  return getActiveActions(active)
+    .filter((action) => action.type === 'melee' && action.attackBonus !== undefined && action.legendaryOnly !== true)
+    .some((action) => state.creatures.some((target) =>
+      target.team !== active.team &&
+      target.isAlive &&
+      !target.dying &&
+      isTargetInRange(active, target, action)
+    ));
 }
 
 function wildShapeActions(
@@ -1541,6 +1607,7 @@ function isWorthTargeting(target: Creature, action: MonsterAction): boolean {
   if (action.heal || action.powerWord?.kind === 'heal') {
     return target.currentHp < target.maxHp || target.dying || target.conditions.includes('unconscious');
   }
+  if (action.name === "Nature's Veil") return !target.conditions.includes('invisible');
   if (action.temporaryHp) return (target.temporaryHp ?? 0) < estimateHealing(action);
   if (action.buff) return !target.activeBuffs.some((buff) => buff.key === action.buff?.key);
   if (action.savingThrow?.conditionOnFail) {

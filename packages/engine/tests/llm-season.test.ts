@@ -17,6 +17,7 @@ import {
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
+  llmActualRecklessVerifySeason,
   llmActualRetaliationVerifySeason,
   llmFrontierModelAgents,
   llmFrontierSmartGlmTenXSeason,
@@ -294,6 +295,16 @@ describe('LLM seasons', () => {
     ]);
     expect(llmActualActionSurgeVerifySeason.pairings).toHaveLength(4);
     expect(llmActualActionSurgeVerifySeason.pairings?.every((pairing) =>
+      pairing.redAgent.startsWith('openrouter:') &&
+      pairing.blueAgent === 'battlecast.aggressive'
+    )).toBe(true);
+    expect(llmActualRecklessVerifySeason.id).toBe('llm-actual-reckless-verify-v1');
+    expect(llmActualRecklessVerifySeason.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualRecklessVerifySeason.scenarios.map((scenario) => scenario.id)).toEqual([
+      'hidden.llm-reckless-barbarian-duel.v1',
+    ]);
+    expect(llmActualRecklessVerifySeason.pairings).toHaveLength(4);
+    expect(llmActualRecklessVerifySeason.pairings?.every((pairing) =>
       pairing.redAgent.startsWith('openrouter:') &&
       pairing.blueAgent === 'battlecast.aggressive'
     )).toBe(true);

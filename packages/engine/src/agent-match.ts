@@ -1701,6 +1701,11 @@ function applySpellAction(
     : targets[0] ?? null;
   let applied = false;
 
+  if (battlecastAction.name === "Nature's Veil") {
+    applyNaturesVeilAction(state, active, action, agent);
+    return;
+  }
+
   if (battlecastAction.autoDarts) {
     applied = executeSpell(state, active, battlecastAction, primaryTarget, targets);
   } else if (battlecastAction.spellLevel !== undefined || battlecastAction.resourceCost || battlecastAction.heal || battlecastAction.temporaryHp || battlecastAction.buff || battlecastAction.powerWord) {
@@ -1735,6 +1740,60 @@ function applySpellAction(
     active.hasActed = true;
     actualTurn.attackRollsRemaining = 0;
   }
+}
+
+function applyNaturesVeilAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'spell' }>,
+  agent: Agent,
+): void {
+  const resourceCost = action.resourceCost ?? { key: 'natures-veil', amount: 1 };
+  if (
+    active.monsterData.heroClass !== 'Ranger' ||
+    (active.monsterData.heroLevel ?? 0) < 14 ||
+    active.bonusActionUsed ||
+    active.conditions.includes('invisible') ||
+    action.targetId !== active.id ||
+    !hasResource(active, resourceCost.key, resourceCost.amount)
+  ) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  consumeResource(active, resourceCost.key, resourceCost.amount);
+  active.bonusActionUsed = true;
+  active.conditions.push('invisible');
+  active.conditionTimers.push({
+    condition: 'invisible',
+    duration: 'end_of_next_turn',
+    appliedRound: state.round,
+    sourceId: active.id,
+  });
+  active.stats.actionUsage["Nature's Veil"] = (active.stats.actionUsage["Nature's Veil"] || 0) + 1;
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Invisible',
+    details: `${active.displayName} is now invisible!`,
+    type: 'condition',
+  });
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: "Nature's Veil",
+    details: `${active.displayName} uses a bonus action to become Invisible until the end of their next turn.`,
+    type: 'special',
+  });
+  state.events.push({
+    kind: 'condition',
+    creatureId: active.id,
+    condition: 'invisible',
+    applied: true,
+    durationMs: BASE_DURATIONS.condition,
+  });
 }
 
 function applyInstinctivePounce(
@@ -1860,6 +1919,16 @@ function applyClassFeatureAction(
     return;
   }
 
+  if (action.feature === 'reckless_attack') {
+    applyRecklessAttackAction(state, active, action, agent, actualTurn);
+    return;
+  }
+
+  if (action.feature === 'brutal_strike') {
+    applyBrutalStrikeAction(state, active, action, agent, actualTurn);
+    return;
+  }
+
   if (action.feature === 'wild_shape') {
     applyWildShapeAction(state, active, action, agent);
     return;
@@ -1878,6 +1947,106 @@ function applyClassFeatureAction(
   if (action.feature === 'flurry_of_blows') {
     applyMonkBonusStrike(state, active, action, agent, actualTurn, 'flurry_of_blows');
   }
+}
+
+function applyRecklessAttackAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'class_feature' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  const meleeTargetsAvailable = getActiveActions(active)
+    .filter((candidate) => candidate.type === 'melee' && candidate.attackBonus !== undefined && candidate.legendaryOnly !== true)
+    .some((candidate) => state.creatures.some((target) =>
+      target.team !== active.team &&
+      target.isAlive &&
+      !target.dying &&
+      creatureDistance(active, target) <= (candidate.reach ?? 5)
+    ));
+  if (
+    active.monsterData.heroClass !== 'Barbarian' ||
+    (active.monsterData.heroLevel ?? 0) < 2 ||
+    active.hasActed ||
+    actualTurn.attackActionStarted ||
+    active.turnFlags?.reckless ||
+    active.turnFlags?.brutalStrike ||
+    !meleeTargetsAvailable
+  ) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  active.turnFlags = {
+    ...active.turnFlags,
+    reckless: true,
+  };
+  active.stats.actionUsage['Reckless Attack'] = (active.stats.actionUsage['Reckless Attack'] || 0) + 1;
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Reckless Attack',
+    details: `${active.displayName} attacks recklessly, gaining Advantage on melee attacks this turn while attacks against them have Advantage until their next turn.`,
+    type: 'special',
+  });
+  state.events.push({
+    kind: 'effect',
+    creatureId: active.id,
+    label: 'Reckless Attack',
+    tone: 'success',
+    durationMs: BASE_DURATIONS.effect,
+  });
+}
+
+function applyBrutalStrikeAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'class_feature' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  const meleeTargetsAvailable = getActiveActions(active)
+    .filter((candidate) => candidate.type === 'melee' && candidate.attackBonus !== undefined && candidate.legendaryOnly !== true)
+    .some((candidate) => state.creatures.some((target) =>
+      target.team !== active.team &&
+      target.isAlive &&
+      !target.dying &&
+      creatureDistance(active, target) <= (candidate.reach ?? 5)
+    ));
+  if (
+    active.monsterData.heroClass !== 'Barbarian' ||
+    (active.monsterData.heroLevel ?? 0) < 9 ||
+    active.hasActed ||
+    actualTurn.attackActionStarted ||
+    active.turnFlags?.reckless ||
+    active.turnFlags?.brutalStrike ||
+    active.turnFlags?.brutalStrikeUsed ||
+    !meleeTargetsAvailable
+  ) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  active.turnFlags = {
+    ...active.turnFlags,
+    brutalStrike: true,
+  };
+  pushLog(state, {
+    round: state.round,
+    turn: state.turnIndex,
+    actor: active.displayName,
+    action: 'Brutal Strike Declared',
+    details: `${active.displayName} forgoes Reckless Attack advantage to channel Brutal Strike on the next melee hit this turn.`,
+    type: 'special',
+  });
+  state.events.push({
+    kind: 'effect',
+    creatureId: active.id,
+    label: 'Brutal Strike',
+    tone: 'success',
+    durationMs: BASE_DURATIONS.effect,
+  });
 }
 
 function applyActionSurgeAction(
