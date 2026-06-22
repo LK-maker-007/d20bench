@@ -2,8 +2,8 @@
 
 Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after filtering no-progress move_toward actions from actual-actions-v1.
 
-Generated: 2026-06-22T16:39:57.878Z
-Completed: 2026-06-22T16:50:41.026Z
+Generated: 2026-06-22T16:56:03.596Z
+Completed: 2026-06-22T16:56:03.830Z
 LLM action space: actual-actions-v1
 Concurrency: 4
 Max rounds: 3
@@ -42,6 +42,8 @@ Model delegate legal-action exposures: 0
 Model delegate selections: 0
 Stepwise model turns: 146 (519 post-action continuations, max 10 actions in one turn)
 Tool-call decisions: 520 (71 JSON fallbacks, 1 repair attempts)
+No-log movement actions: 0
+Invalid action applications: 0
 
 | Accepted Action Key | Count |
 | --- | ---: |

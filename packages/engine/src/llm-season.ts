@@ -95,6 +95,8 @@ export interface LlmSeasonHarnessAudit {
   modelToolCallDecisions: number;
   modelJsonFallbackDecisions: number;
   modelRepairAttempts: number;
+  modelNoLogMovementActions: number;
+  modelInvalidActionApplications: number;
   acceptedActionCounts: LlmAcceptedActionCount[];
 }
 
@@ -1659,6 +1661,8 @@ export function renderLlmSeasonMarkdown(result: LlmSeasonResult): string {
     `Model delegate selections: ${result.harnessAudit.modelDelegateSelections}`,
     `Stepwise model turns: ${result.harnessAudit.modelStepwiseTurns} (${result.harnessAudit.modelStepwiseContinuations} post-action continuations, max ${result.harnessAudit.maxModelActionsInTurn} actions in one turn)`,
     `Tool-call decisions: ${result.harnessAudit.modelToolCallDecisions} (${result.harnessAudit.modelJsonFallbackDecisions} JSON fallbacks, ${result.harnessAudit.modelRepairAttempts} repair attempts)`,
+    `No-log movement actions: ${result.harnessAudit.modelNoLogMovementActions}`,
+    `Invalid action applications: ${result.harnessAudit.modelInvalidActionApplications}`,
     '',
     '| Accepted Action Key | Count |',
     '| --- | ---: |',
@@ -2009,6 +2013,8 @@ export function summarizeLlmHarnessAudit(matches: AgentMatchResult[]): LlmSeason
   let modelToolCallDecisions = 0;
   let modelJsonFallbackDecisions = 0;
   let modelRepairAttempts = 0;
+  let modelNoLogMovementActions = 0;
+  let modelInvalidActionApplications = 0;
 
   for (const match of matches) {
     for (const event of match.replay) {
@@ -2027,6 +2033,15 @@ export function summarizeLlmHarnessAudit(matches: AgentMatchResult[]): LlmSeason
       modelActionResolutions += 1;
       if (event.acceptedAction.type === 'battlecast_tactic') {
         modelDelegateSelections += 1;
+      }
+      if (
+        (event.acceptedAction.type === 'move_toward' || event.acceptedAction.type === 'move_to') &&
+        event.logs.length === 0
+      ) {
+        modelNoLogMovementActions += 1;
+      }
+      if (event.logs.some((log) => isInvalidActionLog(log.action, log.details))) {
+        modelInvalidActionApplications += 1;
       }
 
       const actionKey = acceptedActionAuditKey(event.acceptedAction);
@@ -2057,10 +2072,17 @@ export function summarizeLlmHarnessAudit(matches: AgentMatchResult[]): LlmSeason
     modelToolCallDecisions,
     modelJsonFallbackDecisions,
     modelRepairAttempts,
+    modelNoLogMovementActions,
+    modelInvalidActionApplications,
     acceptedActionCounts: [...acceptedActionCounts.entries()]
       .map(([actionKey, count]) => ({ actionKey, count }))
       .sort((left, right) => right.count - left.count || left.actionKey.localeCompare(right.actionKey)),
   };
+}
+
+function isInvalidActionLog(action: string | undefined, details: string | undefined): boolean {
+  return action === 'Invalid Action' ||
+    /could not be applied|unavailable|requested .* but/i.test(details ?? '');
 }
 
 function isOpenRouterController(controller: ReplayEventController | undefined): boolean {

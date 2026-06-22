@@ -1,12 +1,12 @@
 window.D20BENCH_RESULTS = {
-  "generatedAt": "2026-06-22T16:52:40.546Z",
+  "generatedAt": "2026-06-22T16:56:18.595Z",
   "seasons": [
     {
       "seasonId": "llm-actual-cheap-verify-v12",
       "description": "Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after filtering no-progress move_toward actions from actual-actions-v1.",
-      "generatedAt": "2026-06-22T16:39:57.878Z",
-      "startedAt": "2026-06-22T16:39:57.879Z",
-      "completedAt": "2026-06-22T16:50:41.026Z",
+      "generatedAt": "2026-06-22T16:56:03.596Z",
+      "startedAt": "2026-06-22T16:56:03.597Z",
+      "completedAt": "2026-06-22T16:56:03.830Z",
       "llmActionSpace": "actual-actions-v1",
       "initialRating": 1000,
       "kFactor": 32,
@@ -187,7 +187,7 @@ window.D20BENCH_RESULTS = {
             "promptTokens": 2484570,
             "completionTokens": 147710,
             "totalTokens": 2632280,
-            "estimatedCostUsd": 0.19990165000000001
+            "estimatedCostUsd": 0.19990165000000004
           },
           {
             "agentId": "openrouter:deepseek/deepseek-v4-flash",
@@ -196,7 +196,7 @@ window.D20BENCH_RESULTS = {
             "promptTokens": 1806165,
             "completionTokens": 6479,
             "totalTokens": 1812644,
-            "estimatedCostUsd": 0.16372107000000005
+            "estimatedCostUsd": 0.1637210700000001
           },
           {
             "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
@@ -205,7 +205,7 @@ window.D20BENCH_RESULTS = {
             "promptTokens": 1972887,
             "completionTokens": 4132,
             "totalTokens": 1977019,
-            "estimatedCostUsd": 0.0395817
+            "estimatedCostUsd": 0.03958169999999998
           }
         ]
       },
@@ -220,6 +220,8 @@ window.D20BENCH_RESULTS = {
         "modelToolCallDecisions": 520,
         "modelJsonFallbackDecisions": 71,
         "modelRepairAttempts": 1,
+        "modelNoLogMovementActions": 0,
+        "modelInvalidActionApplications": 0,
         "acceptedActionCounts": [
           {
             "actionKey": "end_turn",
@@ -743,8 +745,8 @@ window.D20BENCH_RESULTS = {
         "description": "Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after filtering no-progress move_toward actions from actual-actions-v1.",
         "status": "complete",
         "llmActionSpace": "actual-actions-v1",
-        "startedAt": "2026-06-22T16:39:57.879Z",
-        "updatedAt": "2026-06-22T16:50:41.028Z",
+        "startedAt": "2026-06-22T16:56:03.597Z",
+        "updatedAt": "2026-06-22T16:56:03.838Z",
         "concurrency": 4,
         "maxRounds": 3,
         "totalMatches": 16,
@@ -774,7 +776,7 @@ window.D20BENCH_RESULTS = {
               "promptTokens": 2484570,
               "completionTokens": 147710,
               "totalTokens": 2632280,
-              "estimatedCostUsd": 0.19990165000000001
+              "estimatedCostUsd": 0.19990165000000004
             },
             {
               "agentId": "openrouter:deepseek/deepseek-v4-flash",
@@ -783,7 +785,7 @@ window.D20BENCH_RESULTS = {
               "promptTokens": 1806165,
               "completionTokens": 6479,
               "totalTokens": 1812644,
-              "estimatedCostUsd": 0.16372107000000005
+              "estimatedCostUsd": 0.1637210700000001
             },
             {
               "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
@@ -792,29 +794,12 @@ window.D20BENCH_RESULTS = {
               "promptTokens": 1972887,
               "completionTokens": 4132,
               "totalTokens": 1977019,
-              "estimatedCostUsd": 0.0395817
+              "estimatedCostUsd": 0.03958169999999998
             }
           ]
         },
         "activeMatches": [],
         "recentMatches": [
-          {
-            "index": 14,
-            "status": "completed",
-            "scenarioId": "public.hero-mirror-status-l5.v1",
-            "battleType": "hero-party-status",
-            "seed": 1,
-            "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
-            "blueAgent": "battlecast.smart",
-            "startedAt": "2026-06-22T16:44:46.415Z",
-            "completedAt": "2026-06-22T16:50:41.023Z",
-            "durationMs": 354608,
-            "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.smart",
-            "winner": "blue",
-            "llmDecisions": 53,
-            "estimatedCostUsd": 0.06228157,
-            "finalStateHash": "47e806a0a64099dd392f546e7e4a9e9d68dbe2b13e5d4590259b189d66afb22f"
-          },
           {
             "index": 15,
             "status": "completed",
@@ -833,38 +818,21 @@ window.D20BENCH_RESULTS = {
             "finalStateHash": "684a0f1abaede791899ddb49054653ba92d21df059483fcd2b80db843c8b0608"
           },
           {
-            "index": 7,
-            "status": "completed",
-            "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
-            "battleType": "hero-party-chokepoint",
-            "seed": 1,
-            "redAgent": "battlecast.smart",
-            "blueAgent": "openrouter:qwen/qwen3.5-flash-02-23",
-            "startedAt": "2026-06-22T16:41:31.452Z",
-            "completedAt": "2026-06-22T16:46:14.606Z",
-            "durationMs": 283154,
-            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_qwen_qwen3.5-flash-02-23",
-            "winner": "red",
-            "llmDecisions": 42,
-            "estimatedCostUsd": 0.05480988499999999,
-            "finalStateHash": "dabe0e715f722f8b6b41d7d071f4e1082c66ddc33384348f3e36f45d2c128853"
-          },
-          {
-            "index": 12,
+            "index": 14,
             "status": "completed",
             "scenarioId": "public.hero-mirror-status-l5.v1",
             "battleType": "hero-party-status",
             "seed": 1,
-            "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+            "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
             "blueAgent": "battlecast.smart",
-            "startedAt": "2026-06-22T16:44:23.494Z",
-            "completedAt": "2026-06-22T16:45:25.017Z",
-            "durationMs": 61523,
-            "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.smart",
+            "startedAt": "2026-06-22T16:44:46.415Z",
+            "completedAt": "2026-06-22T16:50:41.023Z",
+            "durationMs": 354608,
+            "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.smart",
             "winner": "blue",
-            "llmDecisions": 49,
-            "estimatedCostUsd": 0.013952750000000002,
-            "finalStateHash": "01c2b149354b1969a14198850b2e4fd484cfc374e8725b424b0e7a36d9bafa03"
+            "llmDecisions": 53,
+            "estimatedCostUsd": 0.06228157,
+            "finalStateHash": "47e806a0a64099dd392f546e7e4a9e9d68dbe2b13e5d4590259b189d66afb22f"
           },
           {
             "index": 13,
@@ -884,21 +852,21 @@ window.D20BENCH_RESULTS = {
             "finalStateHash": "a997d402c96747f9449c486f2c5e2ba94e238cc728c29aaeee33a01d97680450"
           },
           {
-            "index": 6,
+            "index": 12,
             "status": "completed",
-            "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
-            "battleType": "hero-party-chokepoint",
+            "scenarioId": "public.hero-mirror-status-l5.v1",
+            "battleType": "hero-party-status",
             "seed": 1,
-            "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+            "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
             "blueAgent": "battlecast.smart",
-            "startedAt": "2026-06-22T16:41:23.190Z",
-            "completedAt": "2026-06-22T16:44:46.413Z",
-            "durationMs": 203223,
-            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.smart",
+            "startedAt": "2026-06-22T16:44:23.494Z",
+            "completedAt": "2026-06-22T16:45:25.017Z",
+            "durationMs": 61523,
+            "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__openrouter_meta-llama_llama-3.1-8b-instruct__battlecast.smart",
             "winner": "blue",
-            "llmDecisions": 30,
-            "estimatedCostUsd": 0.036999559999999994,
-            "finalStateHash": "1d7e5c3a87aa0fa6f457cc045c4ba94986c3bcff20c597af0d4711e2158aa5cb"
+            "llmDecisions": 49,
+            "estimatedCostUsd": 0.013952750000000002,
+            "finalStateHash": "01c2b149354b1969a14198850b2e4fd484cfc374e8725b424b0e7a36d9bafa03"
           },
           {
             "index": 11,
@@ -918,23 +886,6 @@ window.D20BENCH_RESULTS = {
             "finalStateHash": "52733e99eb341401454d43d25a645ad66cff2de114f1c71b8ab9b1816c77cfb2"
           },
           {
-            "index": 9,
-            "status": "completed",
-            "scenarioId": "public.hero-mirror-status-l5.v1",
-            "battleType": "hero-party-status",
-            "seed": 1,
-            "redAgent": "battlecast.smart",
-            "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
-            "startedAt": "2026-06-22T16:41:55.229Z",
-            "completedAt": "2026-06-22T16:44:23.491Z",
-            "durationMs": 148262,
-            "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_deepseek_deepseek-v4-flash",
-            "winner": "red",
-            "llmDecisions": 39,
-            "estimatedCostUsd": 0.052475669999999995,
-            "finalStateHash": "627940d9c8165d2c67d7e49bc082fb42d59d64408107b7328e141ba984a04958"
-          },
-          {
             "index": 10,
             "status": "completed",
             "scenarioId": "public.hero-mirror-status-l5.v1",
@@ -950,6 +901,23 @@ window.D20BENCH_RESULTS = {
             "llmDecisions": 53,
             "estimatedCostUsd": 0.12437399999999998,
             "finalStateHash": "2153c374f86e3af480ef0e3ce3376c266464f21a049eafd74d2e246a3cc49691"
+          },
+          {
+            "index": 9,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-status-l5.v1",
+            "battleType": "hero-party-status",
+            "seed": 1,
+            "redAgent": "battlecast.smart",
+            "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+            "startedAt": "2026-06-22T16:41:55.229Z",
+            "completedAt": "2026-06-22T16:44:23.491Z",
+            "durationMs": 148262,
+            "matchId": "public.hero-mirror-status-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_deepseek_deepseek-v4-flash",
+            "winner": "red",
+            "llmDecisions": 39,
+            "estimatedCostUsd": 0.052475669999999995,
+            "finalStateHash": "627940d9c8165d2c67d7e49bc082fb42d59d64408107b7328e141ba984a04958"
           },
           {
             "index": 8,
@@ -969,38 +937,38 @@ window.D20BENCH_RESULTS = {
             "finalStateHash": "0ff030edddcb9cb5d93becf14305dd659125fab5510edf0bf490bdd0406ce4d9"
           },
           {
-            "index": 0,
-            "status": "completed",
-            "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
-            "battleType": "hero-party-chokepoint",
-            "seed": 1,
-            "redAgent": "openrouter:deepseek/deepseek-v4-flash",
-            "blueAgent": "battlecast.smart",
-            "startedAt": "2026-06-22T16:39:58.086Z",
-            "completedAt": "2026-06-22T16:41:55.226Z",
-            "durationMs": 117140,
-            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.smart",
-            "winner": "blue",
-            "llmDecisions": 26,
-            "estimatedCostUsd": 0.04079115000000001,
-            "finalStateHash": "e269d7a55f64cc453ac16e08519aface6c28018152c70653878271de4971857a"
-          },
-          {
-            "index": 1,
+            "index": 7,
             "status": "completed",
             "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
             "battleType": "hero-party-chokepoint",
             "seed": 1,
             "redAgent": "battlecast.smart",
-            "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
-            "startedAt": "2026-06-22T16:39:58.086Z",
-            "completedAt": "2026-06-22T16:41:51.322Z",
-            "durationMs": 113236,
-            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_deepseek_deepseek-v4-flash",
+            "blueAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+            "startedAt": "2026-06-22T16:41:31.452Z",
+            "completedAt": "2026-06-22T16:46:14.606Z",
+            "durationMs": 283154,
+            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_qwen_qwen3.5-flash-02-23",
             "winner": "red",
-            "llmDecisions": 23,
-            "estimatedCostUsd": 0.03740229,
-            "finalStateHash": "40e842247ec5742c28f8d1e61e526912d0b019b0c1796a593da91bedac1e9f9b"
+            "llmDecisions": 42,
+            "estimatedCostUsd": 0.05480988499999999,
+            "finalStateHash": "dabe0e715f722f8b6b41d7d071f4e1082c66ddc33384348f3e36f45d2c128853"
+          },
+          {
+            "index": 6,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+            "battleType": "hero-party-chokepoint",
+            "seed": 1,
+            "redAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+            "blueAgent": "battlecast.smart",
+            "startedAt": "2026-06-22T16:41:23.190Z",
+            "completedAt": "2026-06-22T16:44:46.413Z",
+            "durationMs": 203223,
+            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_qwen_qwen3.5-flash-02-23__battlecast.smart",
+            "winner": "blue",
+            "llmDecisions": 30,
+            "estimatedCostUsd": 0.036999559999999994,
+            "finalStateHash": "1d7e5c3a87aa0fa6f457cc045c4ba94986c3bcff20c597af0d4711e2158aa5cb"
           },
           {
             "index": 5,
@@ -1069,6 +1037,40 @@ window.D20BENCH_RESULTS = {
             "llmDecisions": 34,
             "estimatedCostUsd": 0.08650695000000003,
             "finalStateHash": "2e24cd054f0a663332604d5c47a4ae2bc6e6bc17b481866712c0c4af41fe6387"
+          },
+          {
+            "index": 1,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+            "battleType": "hero-party-chokepoint",
+            "seed": 1,
+            "redAgent": "battlecast.smart",
+            "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+            "startedAt": "2026-06-22T16:39:58.086Z",
+            "completedAt": "2026-06-22T16:41:51.322Z",
+            "durationMs": 113236,
+            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__battlecast.smart__openrouter_deepseek_deepseek-v4-flash",
+            "winner": "red",
+            "llmDecisions": 23,
+            "estimatedCostUsd": 0.03740229,
+            "finalStateHash": "40e842247ec5742c28f8d1e61e526912d0b019b0c1796a593da91bedac1e9f9b"
+          },
+          {
+            "index": 0,
+            "status": "completed",
+            "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+            "battleType": "hero-party-chokepoint",
+            "seed": 1,
+            "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+            "blueAgent": "battlecast.smart",
+            "startedAt": "2026-06-22T16:39:58.086Z",
+            "completedAt": "2026-06-22T16:41:55.226Z",
+            "durationMs": 117140,
+            "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.smart",
+            "winner": "blue",
+            "llmDecisions": 26,
+            "estimatedCostUsd": 0.04079115000000001,
+            "finalStateHash": "e269d7a55f64cc453ac16e08519aface6c28018152c70653878271de4971857a"
           }
         ],
         "failures": []

@@ -1,9 +1,9 @@
 {
   "seasonId": "llm-actual-cheap-verify-v12",
   "description": "Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after filtering no-progress move_toward actions from actual-actions-v1.",
-  "generatedAt": "2026-06-22T16:39:57.878Z",
-  "startedAt": "2026-06-22T16:39:57.879Z",
-  "completedAt": "2026-06-22T16:50:41.026Z",
+  "generatedAt": "2026-06-22T16:56:03.596Z",
+  "startedAt": "2026-06-22T16:56:03.597Z",
+  "completedAt": "2026-06-22T16:56:03.830Z",
   "llmActionSpace": "actual-actions-v1",
   "initialRating": 1000,
   "kFactor": 32,
@@ -184,7 +184,7 @@
         "promptTokens": 2484570,
         "completionTokens": 147710,
         "totalTokens": 2632280,
-        "estimatedCostUsd": 0.19990165000000001
+        "estimatedCostUsd": 0.19990165000000004
       },
       {
         "agentId": "openrouter:deepseek/deepseek-v4-flash",
@@ -193,7 +193,7 @@
         "promptTokens": 1806165,
         "completionTokens": 6479,
         "totalTokens": 1812644,
-        "estimatedCostUsd": 0.16372107000000005
+        "estimatedCostUsd": 0.1637210700000001
       },
       {
         "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
@@ -202,7 +202,7 @@
         "promptTokens": 1972887,
         "completionTokens": 4132,
         "totalTokens": 1977019,
-        "estimatedCostUsd": 0.0395817
+        "estimatedCostUsd": 0.03958169999999998
       }
     ]
   },
@@ -217,6 +217,8 @@
     "modelToolCallDecisions": 520,
     "modelJsonFallbackDecisions": 71,
     "modelRepairAttempts": 1,
+    "modelNoLogMovementActions": 0,
+    "modelInvalidActionApplications": 0,
     "acceptedActionCounts": [
       {
         "actionKey": "end_turn",
