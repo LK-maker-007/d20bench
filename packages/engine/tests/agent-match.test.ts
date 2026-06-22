@@ -288,6 +288,43 @@ describe('agent matches', () => {
     }));
   });
 
+  it('exposes multi-target Abjure Foes actions', () => {
+    const state = initBattle(createBattlecastCreatures(paladinAbjureFoesScenario().combatants, true), 12);
+    const paladin = state.creatures.find((creature) => creature.team === 'red');
+    if (!paladin) throw new Error('expected red paladin');
+
+    const catalogue = generateLegalActions(state, paladin, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 2,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, paladin, catalogue);
+    const abjure = catalogue.actions.find((action) =>
+      action.type === 'spell' &&
+      action.actionName === 'Abjure Foes' &&
+      (action.targetIds?.length ?? 0) > 1
+    );
+
+    expect(abjure).toEqual(expect.objectContaining({
+      id: expect.stringMatching(/^spell:abjure-foes:targets:/),
+      type: 'spell',
+      effectKind: 'save',
+      targetIds: expect.arrayContaining([
+        expect.stringContaining('fighter-l5-blue'),
+      ]),
+      resourceCost: { key: 'channel-divinity', amount: 1 },
+    }));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: abjure?.id,
+        effectKind: 'save',
+        targetIds: abjure?.targetIds,
+      }),
+    ]));
+  });
+
   it('exposes multiple directional Lightning Bolt actions', () => {
     const state = initBattle(createBattlecastCreatures(lightningBoltDirectionScenario().combatants, true), 12);
     const wizard = state.creatures.find((creature) => creature.team === 'red');
@@ -1254,6 +1291,59 @@ describe('agent matches', () => {
     if (missileAction?.acceptedAction.type !== 'spell') throw new Error('expected Magic Missile spell action');
     expect(new Set(missileAction.acceptedAction.targetIds).size).toBeGreaterThan(1);
     expect(missileAction.logs.filter((log) => log.action === 'Magic Missile')).toHaveLength(3);
+  });
+
+  it('executes multi-target Abjure Foes selected by an actual-action LLM', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let chosenActionId: string | undefined;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const abjure = actionIds.find((id) => id.startsWith('spell:abjure-foes:targets:') && id.split(':targets:')[1].split(',').length > 1);
+      const actionId = abjure ?? 'end_turn';
+      if (abjure) chosenActionId = actionId;
+      return jsonResponse({
+        id: `gen-${body.messages.length}-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Frighten multiple enemies with Channel Divinity.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: paladinAbjureFoesScenario(),
+      seed: 1,
+      redAgent: 'openrouter:test/tool-model',
+      blueAgent: 'battlecast.smart',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const abjureResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.agentId === 'openrouter:test/tool-model' &&
+      event.acceptedAction.type === 'spell' &&
+      event.acceptedAction.actionName === 'Abjure Foes'
+    );
+    const paladin = match.state.creatures.find((creature) => creature.team === 'red');
+
+    expect(chosenActionId).toEqual(expect.stringMatching(/^spell:abjure-foes:targets:/));
+    expect(abjureResolution?.type).toBe('action_resolved');
+    if (abjureResolution?.acceptedAction.type !== 'spell') throw new Error('expected Abjure Foes spell action');
+    expect(abjureResolution.acceptedAction.targetIds?.length).toBeGreaterThan(1);
+    expect(abjureResolution.logs.some((log) => log.action === 'Abjure Foes')).toBe(true);
+    expect(paladin?.stats.actionUsage['Abjure Foes']).toBe(1);
   });
 
   it('executes a selected directional Lightning Bolt with the chosen aim point', async () => {
@@ -2839,6 +2929,28 @@ function magicMissileSplitScenario(): D20benchScenario {
       { monster: buildHero('Wizard', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 7, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 8, y: 3 } },
+    ],
+  };
+}
+
+function paladinAbjureFoesScenario(): D20benchScenario {
+  return {
+    id: 'test.paladin-abjure-foes.v1',
+    name: 'Paladin Abjure Foes Test',
+    description: 'A level-9 Paladin can spend Channel Divinity to force multiple nearby enemies to save against Frightened.',
+    battleType: 'class-feature-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 12,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Paladin', 9), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 5, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 6, y: 3 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 7, y: 4 } },
     ],
   };
 }

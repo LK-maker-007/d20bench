@@ -368,6 +368,10 @@ export function randomRayActionId(actionName: string, targetId: string): string 
 }
 
 export function autoDartActionId(actionName: string, targetIds: string[]): string {
+  return multiTargetSpellActionId(actionName, targetIds);
+}
+
+export function multiTargetSpellActionId(actionName: string, targetIds: string[]): string {
   return `spell:${slugActionName(actionName)}:targets:${targetIds.join(',')}`;
 }
 
@@ -1341,6 +1345,11 @@ function generateConcreteSpellActions(
       continue;
     }
 
+    if (action.targetScope === 'area_enemies' && action.savingThrow) {
+      actions.push(...nonGeometricEnemySaveActions(state, active, action));
+      continue;
+    }
+
     if (action.targetScope === 'all_allies_in_area') {
       const group = groupAllyTargets(state, active, action);
       if ((group.targetIds?.length ?? 0) > 0) actions.push(group);
@@ -1596,6 +1605,69 @@ function groupAllyTargets(state: BattleState, active: Creature, action: MonsterA
     spellLevel: action.spellLevel,
     resourceCost: action.resourceCost,
   };
+}
+
+function nonGeometricEnemySaveActions(state: BattleState, active: Creature, action: MonsterAction): Array<Extract<LegalAction, { type: 'spell' }>> {
+  const maxTargets = maxNonGeometricEnemySaveTargets(active, action);
+  const candidates = targetCandidates(state, active, action)
+    .filter((target) => targetMatchesAction(active, target, action))
+    .filter((target) => canReachActionTarget(active, target, action))
+    .filter((target) => isWorthTargeting(target, action))
+    .sort((left, right) =>
+      right.currentHp - left.currentHp ||
+      right.maxHp - left.maxHp ||
+      left.displayName.localeCompare(right.displayName) ||
+      left.id.localeCompare(right.id)
+    )
+    .slice(0, 6);
+  const groups = targetCombinations(candidates, Math.min(maxTargets, candidates.length))
+    .sort((left, right) =>
+      right.length - left.length ||
+      sumHp(right) - sumHp(left) ||
+      targetListSortKey(left).localeCompare(targetListSortKey(right))
+    )
+    .slice(0, 24);
+
+  return groups.map((targets) => ({
+    id: multiTargetSpellActionId(action.name, targets.map((target) => target.id)),
+    type: 'spell' as const,
+    actionName: action.name,
+    effectKind: 'save' as const,
+    targetId: targets[0]?.id,
+    targetName: targets[0]?.displayName,
+    targetIds: targets.map((target) => target.id),
+    targetNames: targets.map((target) => target.displayName),
+    expectedDamage: action.savingThrow?.damageOnFail ? estimateActionDamage(action) : undefined,
+    isBonusAction: action.isBonusAction,
+    spellLevel: action.spellLevel,
+    resourceCost: action.resourceCost,
+  }));
+}
+
+function maxNonGeometricEnemySaveTargets(active: Creature, action: MonsterAction): number {
+  if (action.name === 'Abjure Foes' && active.monsterData.heroClass === 'Paladin') {
+    return Math.max(1, abilityModifier(active.monsterData.abilities.cha));
+  }
+  return 6;
+}
+
+function targetCombinations(targets: Creature[], maxSize: number): Creature[][] {
+  const groups: Creature[][] = [];
+  const visit = (start: number, current: Creature[]) => {
+    if (current.length > 0) groups.push([...current]);
+    if (current.length >= maxSize) return;
+    for (let index = start; index < targets.length; index += 1) {
+      current.push(targets[index]);
+      visit(index + 1, current);
+      current.pop();
+    }
+  };
+  visit(0, []);
+  return groups;
+}
+
+function sumHp(targets: Creature[]): number {
+  return targets.reduce((sum, target) => sum + target.currentHp, 0);
 }
 
 function spellActionForTarget(action: MonsterAction, target: Creature): Extract<LegalAction, { type: 'spell' }> {

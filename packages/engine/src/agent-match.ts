@@ -1734,7 +1734,7 @@ function applySpellAction(
   if (battlecastAction.autoDarts) {
     applied = executeSpell(state, active, battlecastAction, primaryTarget, targets);
   } else if (battlecastAction.spellLevel !== undefined || battlecastAction.resourceCost || battlecastAction.heal || battlecastAction.temporaryHp || battlecastAction.buff || battlecastAction.powerWord) {
-    const aoeTargets = battlecastAction.savingThrow?.area
+    const aoeTargets = battlecastAction.savingThrow?.area || (battlecastAction.targetScope === 'area_enemies' && targets.length > 1)
       ? targets.length > 0 ? targets : getAoETargets(state, active, battlecastAction)
       : undefined;
     applied = executeSpell(state, active, battlecastAction, primaryTarget, aoeTargets, action.center, action.direction);
