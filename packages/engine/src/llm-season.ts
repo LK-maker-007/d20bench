@@ -104,6 +104,8 @@ export interface LlmSeasonAuditOptions {
   requireComplete?: boolean;
   requireActualActionFairness?: boolean;
   requireStepwise?: boolean;
+  recomputedHarnessAudit?: LlmSeasonHarnessAudit;
+  recomputedMatchCount?: number;
 }
 
 export interface LlmSeasonAuditCheck {
@@ -2174,6 +2176,26 @@ export function auditLlmSeasonResult(
     });
   }
 
+  if (options.recomputedMatchCount !== undefined) {
+    checks.push({
+      id: 'checkpoint-match-count',
+      label: 'Checkpoint match count matches published result',
+      ok: options.recomputedMatchCount === result.completedMatches,
+      expected: `${result.completedMatches} checkpoint matches`,
+      actual: `${options.recomputedMatchCount} checkpoint matches`,
+    });
+  }
+
+  if (audit && options.recomputedHarnessAudit) {
+    checks.push({
+      id: 'harness-audit-matches-checkpoints',
+      label: 'Published harness audit matches completed-match checkpoints',
+      ok: harnessAuditsEqual(audit, options.recomputedHarnessAudit),
+      expected: 'published harnessAudit equals recomputed checkpoint audit',
+      actual: harnessAuditsEqual(audit, options.recomputedHarnessAudit),
+    });
+  }
+
   return {
     seasonId: result.seasonId,
     ok: checks.every((check) => check.ok),
@@ -2181,6 +2203,18 @@ export function auditLlmSeasonResult(
     checks,
     harnessAudit: audit,
   };
+}
+
+export async function loadCompletedLlmMatchesFromCheckpoint(
+  path: string,
+  config: LlmSeasonConfig,
+): Promise<AgentMatchResult[]> {
+  const records = await loadCompletedMatchCheckpoints(path, config.id, createLlmMatchFixtures(config));
+  return records.map((record) => record.match);
+}
+
+function harnessAuditsEqual(left: LlmSeasonHarnessAudit, right: LlmSeasonHarnessAudit): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function isInvalidActionLog(action: string | undefined, details: string | undefined): boolean {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import { isAgentId, isOpenRouterAgentId, listAgentIds, type AgentId } from './agents.js';
@@ -13,10 +13,12 @@ import { getSeasonById, publicBaselineSeason, seasons } from './seasons.js';
 import {
   auditLlmSeasonResult,
   getLlmSeasonById,
+  loadCompletedLlmMatchesFromCheckpoint,
   llmFrontierSmartSeason,
   llmSeasons,
   renderLlmSeasonMarkdown,
   runLlmSeason,
+  summarizeLlmHarnessAudit,
   type LlmSeasonResult,
 } from './llm-season.js';
 
@@ -251,10 +253,16 @@ async function commandLlmAudit(options: ParsedArgs['options']): Promise<void> {
   const result = JSON.parse(await readFile(join(outDir, 'standings.json'), 'utf8')) as LlmSeasonResult;
   const allowDelegates = options['allow-delegates'] === true || options['allow-delegates'] === 'true';
   const requireActualActions = options['require-actual-actions'] === true || options['require-actual-actions'] === 'true';
+  const checkpointPath = join(outDir, 'completed-matches.jsonl');
+  const checkpointMatches = await pathExists(checkpointPath)
+    ? await loadCompletedLlmMatchesFromCheckpoint(checkpointPath, getLlmSeasonById(result.seasonId))
+    : undefined;
   const audit = auditLlmSeasonResult(result, {
     requireComplete: options['allow-incomplete'] !== true && options['allow-incomplete'] !== 'true',
     requireActualActionFairness: allowDelegates ? false : requireActualActions ? true : undefined,
     requireStepwise: options['require-stepwise'] === true || options['require-stepwise'] === 'true',
+    recomputedHarnessAudit: checkpointMatches ? summarizeLlmHarnessAudit(checkpointMatches) : undefined,
+    recomputedMatchCount: checkpointMatches?.length,
   });
 
   console.log(JSON.stringify(audit, null, 2));
@@ -333,6 +341,15 @@ function parseOptionalPositiveNumber(value: string | boolean | undefined, label:
 async function writeJson(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function printHelp(): void {

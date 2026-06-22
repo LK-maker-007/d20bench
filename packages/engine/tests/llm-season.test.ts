@@ -580,34 +580,37 @@ describe('LLM seasons', () => {
   });
 
   it('audits published actual-action season harness counters', () => {
+    const harnessAudit = {
+      modelTurnStarts: 4,
+      modelActionResolutions: 8,
+      modelDelegateLegalActionExposures: 0,
+      modelDelegateSelections: 0,
+      modelStepwiseTurns: 2,
+      modelStepwiseContinuations: 4,
+      maxModelActionsInTurn: 3,
+      modelToolCallDecisions: 8,
+      modelJsonFallbackDecisions: 0,
+      modelRepairAttempts: 0,
+      modelNoLogMovementActions: 0,
+      modelInvalidActionApplications: 0,
+      acceptedActionCounts: [
+        { actionKey: 'attack:Longsword', count: 4 },
+      ],
+    };
     const result = {
       seasonId: 'llm-actual-audit-test',
       llmActionSpace: 'actual-actions-v1',
       totalMatches: 2,
       completedMatches: 2,
       failedMatches: 0,
-      harnessAudit: {
-        modelTurnStarts: 4,
-        modelActionResolutions: 8,
-        modelDelegateLegalActionExposures: 0,
-        modelDelegateSelections: 0,
-        modelStepwiseTurns: 2,
-        modelStepwiseContinuations: 4,
-        maxModelActionsInTurn: 3,
-        modelToolCallDecisions: 8,
-        modelJsonFallbackDecisions: 0,
-        modelRepairAttempts: 0,
-        modelNoLogMovementActions: 0,
-        modelInvalidActionApplications: 0,
-        acceptedActionCounts: [
-          { actionKey: 'attack:Longsword', count: 4 },
-        ],
-      },
+      harnessAudit,
     } as Pick<LlmSeasonResult, 'seasonId' | 'llmActionSpace' | 'totalMatches' | 'completedMatches' | 'failedMatches' | 'harnessAudit'>;
 
     const audit = auditLlmSeasonResult(result, {
       requireComplete: true,
       requireStepwise: true,
+      recomputedHarnessAudit: harnessAudit,
+      recomputedMatchCount: 2,
     });
 
     expect(audit.ok).toBe(true);
@@ -619,6 +622,50 @@ describe('LLM seasons', () => {
       ['no-invalid-action-applications', true],
       ['no-no-effect-movement-actions', true],
       ['stepwise-model-turns-present', true],
+      ['checkpoint-match-count', true],
+      ['harness-audit-matches-checkpoints', true],
+    ]);
+  });
+
+  it('fails published season audits when checkpoint recomputation disagrees', () => {
+    const publishedAudit = {
+      modelTurnStarts: 1,
+      modelActionResolutions: 1,
+      modelDelegateLegalActionExposures: 0,
+      modelDelegateSelections: 0,
+      modelStepwiseTurns: 1,
+      modelStepwiseContinuations: 1,
+      maxModelActionsInTurn: 2,
+      modelToolCallDecisions: 1,
+      modelJsonFallbackDecisions: 0,
+      modelRepairAttempts: 0,
+      modelNoLogMovementActions: 0,
+      modelInvalidActionApplications: 0,
+      acceptedActionCounts: [{ actionKey: 'attack:Longsword', count: 1 }],
+    };
+    const recomputedAudit = {
+      ...publishedAudit,
+      modelActionResolutions: 2,
+      acceptedActionCounts: [{ actionKey: 'attack:Longsword', count: 2 }],
+    };
+    const result = {
+      seasonId: 'llm-actual-audit-test',
+      llmActionSpace: 'actual-actions-v1',
+      totalMatches: 2,
+      completedMatches: 2,
+      failedMatches: 0,
+      harnessAudit: publishedAudit,
+    } as Pick<LlmSeasonResult, 'seasonId' | 'llmActionSpace' | 'totalMatches' | 'completedMatches' | 'failedMatches' | 'harnessAudit'>;
+
+    const audit = auditLlmSeasonResult(result, {
+      recomputedHarnessAudit: recomputedAudit,
+      recomputedMatchCount: 1,
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.checks.filter((check) => !check.ok).map((check) => check.id)).toEqual([
+      'checkpoint-match-count',
+      'harness-audit-matches-checkpoints',
     ]);
   });
 

@@ -148,7 +148,7 @@ Audit a completed actual-action season before treating it as publishable:
 npm run d20bench -- llm audit --season llm-actual-cheap-verify-v12 --require-stepwise
 ```
 
-This reads `results/seasons/<season-id>/standings.json` and fails nonzero if the published harness audit is missing, the season is incomplete, an `actual-actions-v1` model saw or selected a Battlecast delegate, a model action was applied as invalid, or a model movement action produced no effect. `--allow-incomplete` can be used for cost-capped exploratory runs that are intentionally partial.
+This reads `results/seasons/<season-id>/standings.json` and fails nonzero if the published harness audit is missing, the season is incomplete, an `actual-actions-v1` model saw or selected a Battlecast delegate, a model action was applied as invalid, or a model movement action produced no effect. When local `completed-matches.jsonl` checkpoints are present, the command also recomputes the harness audit from the archived replays and fails if the published counters are stale or mismatched. `--allow-incomplete` can be used for cost-capped exploratory runs that are intentionally partial.
 
 ## Current Scope
 
