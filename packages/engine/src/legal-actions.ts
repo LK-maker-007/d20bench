@@ -102,6 +102,19 @@ export type LegalAction =
     }
   | {
       id: string;
+      type: 'spell_retarget';
+      spellName: 'Hex';
+      buffKey: 'hex';
+      oldTargetId: string;
+      oldTargetName: string;
+      targetId: string;
+      targetName: string;
+      rangeFt: number;
+      isBonusAction: true;
+      damageRider?: string;
+    }
+  | {
+      id: string;
       type: 'smite';
       smite: 'divine_smite' | 'decline';
       targetId: string;
@@ -427,6 +440,10 @@ export function linkedBonusDamageActionId(buffKey: string, targetId: string): st
   return `linked_bonus_damage:${slugActionName(buffKey)}:${targetId}`;
 }
 
+export function spellRetargetActionId(spellName: string, oldTargetId: string, targetId: string): string {
+  return `spell_retarget:${slugActionName(spellName)}:${oldTargetId}:${targetId}`;
+}
+
 export function divineSmiteActionId(resourceKey: string): string {
   return `smite:divine-smite:${resourceKey}`;
 }
@@ -708,6 +725,7 @@ function coreActualActions(
   }
   if (economy.hasBonusAction) {
     actions.push(...linkedBonusDamageActions(state, active));
+    actions.push(...hexRetargetActions(state, active));
   }
   if (hasMainActionAvailable && canTakeDefensiveAction(active)) {
     actions.push({ id: 'dodge', type: 'dodge' });
@@ -889,6 +907,48 @@ function linkedBonusDamageActions(state: BattleState, active: Creature): LegalAc
     expectedDamage: averageDamage(chosen.buff.bonusActionDamage),
     isBonusAction: true as const,
   }];
+}
+
+function hexRetargetActions(state: BattleState, active: Creature): LegalAction[] {
+  if (active.bonusActionUsed || !active.isAlive || active.dying) return [];
+  const oldTarget = state.creatures.find((creature) =>
+    !creature.isAlive &&
+    creature.activeBuffs?.some((buff) => buff.key === 'hex' && buff.casterId === active.id)
+  );
+  if (!oldTarget) return [];
+  const oldBuff = oldTarget.activeBuffs.find((buff) => buff.key === 'hex' && buff.casterId === active.id);
+  if (!oldBuff) return [];
+  const hexAction = active.monsterData.actions.find((action) => action.name === 'Hex');
+  if (!hexAction) return [];
+  const range = hexAction.range?.normal ?? 90;
+
+  return state.creatures
+    .filter((target) =>
+      target.team !== active.team &&
+      target.isAlive &&
+      !target.dying &&
+      creatureDistance(active, target) <= range &&
+      !(target.activeBuffs ?? []).some((buff) => buff.key === 'hex' && buff.casterId === active.id)
+    )
+    .sort((left, right) =>
+      right.currentHp - left.currentHp ||
+      right.maxHp - left.maxHp ||
+      left.displayName.localeCompare(right.displayName) ||
+      left.id.localeCompare(right.id)
+    )
+    .map((target) => ({
+      id: spellRetargetActionId('Hex', oldTarget.id, target.id),
+      type: 'spell_retarget' as const,
+      spellName: 'Hex' as const,
+      buffKey: 'hex' as const,
+      oldTargetId: oldTarget.id,
+      oldTargetName: oldTarget.displayName,
+      targetId: target.id,
+      targetName: target.displayName,
+      rangeFt: range,
+      isBonusAction: true as const,
+      damageRider: oldBuff.damageRider,
+    }));
 }
 
 function smiteActions(

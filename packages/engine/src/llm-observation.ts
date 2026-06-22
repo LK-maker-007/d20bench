@@ -266,6 +266,9 @@ export interface LlmActionView {
   targetLabel?: string;
   targetRelation?: LlmCreatureView['relation'];
   targetTeam?: LlmCreatureView['team'];
+  oldTargetId?: string;
+  oldTargetName?: string;
+  oldTargetLabel?: string;
   targetIds?: string[];
   targetNames?: string[];
   destination?: { x: number; y: number };
@@ -298,6 +301,7 @@ export interface LlmActionView {
   resourceCost?: { key: string; amount: number };
   buffKey?: string;
   damageDice?: string;
+  damageRider?: string;
   rangeFt?: number;
   setupAction?: boolean;
   beastName?: string;
@@ -566,6 +570,29 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       expectedDamage: Number(action.expectedDamage.toFixed(2)),
       isBonusAction: true,
       description: 'Spend the bonus action on an existing linked spell effect. This does not cast a new spell or spend a spell slot; after the damage resolves, choose the next concrete action if action economy remains.',
+    };
+  }
+
+  if (action.type === 'spell_retarget') {
+    const target = creatureById.get(action.targetId);
+    const oldTarget = creatureById.get(action.oldTargetId);
+    return {
+      id: action.id,
+      type: action.type,
+      label: `Move ${action.spellName} from ${oldTarget?.label ?? action.oldTargetName} to ${target?.label ?? action.targetName}`,
+      targetId: action.targetId,
+      targetName: action.targetName,
+      targetLabel: target?.label,
+      targetRelation: target?.relation,
+      targetTeam: target?.team,
+      oldTargetId: action.oldTargetId,
+      oldTargetName: action.oldTargetName,
+      oldTargetLabel: oldTarget?.label,
+      buffKey: action.buffKey,
+      rangeFt: action.rangeFt,
+      isBonusAction: true,
+      damageRider: action.damageRider,
+      description: 'Spend the bonus action to move the existing Hex from a dead target to this living enemy. This does not cast a new spell or spend a spell slot.',
     };
   }
 

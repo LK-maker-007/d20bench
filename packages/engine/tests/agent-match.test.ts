@@ -17,6 +17,7 @@ import { buildHero } from '../src/battlecast/data/heroes.js';
 import { initBattle, resolveAttack, resolveDivineSmite } from '../src/battlecast/engine/combat.js';
 import { withBattlecastRng } from '../src/battlecast/engine/dice.js';
 import { getActiveActions } from '../src/battlecast/engine/ai-targeting.js';
+import { retargetHex } from '../src/battlecast/engine/ai-spellcasting.js';
 import { createBattlecastCreatures } from '../src/battlecast-runner.js';
 
 const originalFetch = globalThis.fetch;
@@ -399,6 +400,66 @@ describe('agent matches', () => {
       },
     });
     expect(afterBonusAction.actions.some((candidate) => candidate.type === 'linked_bonus_damage')).toBe(false);
+  });
+
+  it('exposes Hex retargeting as a concrete bonus action', () => {
+    const state = initBattle(createBattlecastCreatures(hexRetargetScenario().combatants, true), 20);
+    const warlock = state.creatures.find((creature) => creature.monsterData.heroClass === 'Warlock');
+    const oldTarget = state.creatures.find((creature) => creature.team === 'blue' && creature.position.x === 8);
+    const newTarget = state.creatures.find((creature) => creature.team === 'blue' && creature.position.x === 9);
+    if (!warlock || !oldTarget || !newTarget) throw new Error('expected Warlock and Hex targets');
+
+    oldTarget.isAlive = false;
+    oldTarget.currentHp = 0;
+    warlock.concentratingOn = 'hex';
+    oldTarget.activeBuffs.push({
+      name: 'Hex',
+      key: 'hex',
+      casterId: warlock.id,
+      appliedRound: 1,
+      endRound: 30,
+      requiresConcentration: true,
+      damageRider: '1d6 necrotic',
+    });
+
+    const catalogue = generateLegalActions(state, warlock, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: false,
+      },
+    });
+    const observation = buildLlmBattleObservation(state, warlock, catalogue);
+    const actionId = `spell_retarget:hex:${oldTarget.id}:${newTarget.id}`;
+
+    expect(catalogue.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: actionId,
+        type: 'spell_retarget',
+        spellName: 'Hex',
+        buffKey: 'hex',
+        oldTargetId: oldTarget.id,
+        targetId: newTarget.id,
+        isBonusAction: true,
+        damageRider: '1d6 necrotic',
+      }),
+    ]));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: actionId,
+        type: 'spell_retarget',
+        label: expect.stringContaining('Move Hex'),
+        oldTargetId: oldTarget.id,
+        targetId: newTarget.id,
+        description: expect.stringContaining('does not cast a new spell'),
+      }),
+    ]));
+
+    expect(retargetHex(state, warlock, oldTarget, newTarget)).toBe(true);
+    expect(warlock.bonusActionUsed).toBe(true);
+    expect(oldTarget.activeBuffs.some((buff) => buff.key === 'hex' && buff.casterId === warlock.id)).toBe(false);
+    expect(newTarget.activeBuffs.some((buff) => buff.key === 'hex' && buff.casterId === warlock.id)).toBe(true);
+    expect(state.logs.some((log) => log.action === 'Hex' && log.details.includes(newTarget.displayName))).toBe(true);
   });
 
   it('exposes Eldritch Blast beams as stepwise attack actions', () => {
@@ -3405,6 +3466,27 @@ function witchBoltLinkedDamageScenario(): D20benchScenario {
         team: 'blue',
         position: { x: 8, y: 8 },
       },
+    ],
+  };
+}
+
+function hexRetargetScenario(): D20benchScenario {
+  return {
+    id: 'test.hex-retarget.v1',
+    name: 'Hex Retarget Test',
+    description: 'A Warlock can move an existing Hex from a dead target to a new living enemy.',
+    battleType: 'spell-followup-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 20,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Warlock', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 1), team: 'blue', position: { x: 8, y: 8 } },
+      { monster: buildHero('Fighter', 1), team: 'blue', position: { x: 9, y: 8 } },
     ],
   };
 }

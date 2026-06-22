@@ -417,14 +417,12 @@ function executeHealPlan(state: BattleState, caster: Creature, plan: HealPlan): 
   return executeSpell(state, caster, plan.spell, plan.target);
 }
 
-function tryRetargetHex(state: BattleState, creature: Creature, enemies: Creature[]): boolean {
+export function tryRetargetHex(state: BattleState, creature: Creature, enemies: Creature[]): boolean {
   if (creature.bonusActionUsed) return false;
   const oldTarget = state.creatures.find(c =>
     !c.isAlive && c.activeBuffs?.some(b => b.key === 'hex' && b.casterId === creature.id)
   );
   if (!oldTarget) return false;
-  const oldBuff = oldTarget.activeBuffs.find(b => b.key === 'hex' && b.casterId === creature.id);
-  if (!oldBuff) return false;
 
   const hexAction = creature.monsterData.actions.find(a => a.name === 'Hex');
   const range = hexAction?.range?.normal ?? 90;
@@ -435,6 +433,19 @@ function tryRetargetHex(state: BattleState, creature: Creature, enemies: Creatur
     )
     .sort((a, b) => b.currentHp - a.currentHp)[0];
   if (!target) return false;
+
+  return retargetHex(state, creature, oldTarget, target);
+}
+
+export function retargetHex(state: BattleState, creature: Creature, oldTarget: Creature, target: Creature): boolean {
+  if (creature.bonusActionUsed) return false;
+  if (!target.isAlive || target.team === creature.team) return false;
+  const oldBuff = oldTarget.activeBuffs.find(b => b.key === 'hex' && b.casterId === creature.id);
+  if (!oldBuff) return false;
+  const hexAction = creature.monsterData.actions.find(a => a.name === 'Hex');
+  const range = hexAction?.range?.normal ?? 90;
+  if (creatureDistance(creature, target) > range) return false;
+  if ((target.activeBuffs ?? []).some(b => b.key === 'hex' && b.casterId === creature.id)) return false;
 
   oldTarget.activeBuffs = oldTarget.activeBuffs.filter(b => !(b.key === 'hex' && b.casterId === creature.id));
   addBuff(target, {

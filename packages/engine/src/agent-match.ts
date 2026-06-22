@@ -46,6 +46,7 @@ import {
   type OpportunityAttackDecisionContext,
   type OpportunityAttackHooks,
 } from './battlecast/engine/ai-turn.js';
+import { retargetHex } from './battlecast/engine/ai-spellcasting.js';
 import { canSee, estimateActionDamage, getActiveActions, getMeleeActions } from './battlecast/engine/ai-targeting.js';
 import { abilityModifier, battlecastRandom, rollDice, withBattlecastRng, withBattlecastRngAsync } from './battlecast/engine/dice.js';
 import { getEligibleWildShapeBeasts } from './battlecast/data/heroes.js';
@@ -1011,6 +1012,11 @@ async function applyActualLegalAction(input: {
     return { ended: shouldEndActualTurn(active, actualTurn) };
   }
 
+  if (action.type === 'spell_retarget') {
+    applySpellRetargetAction(state, active, action, agent);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
   if (action.type === 'disengage') {
     applyDisengageAction(state, active, action, actualTurn);
     return { ended: shouldEndActualTurn(active, actualTurn) };
@@ -1293,6 +1299,25 @@ function applyLinkedBonusDamageAction(
     creatureDistance(active, target) <= (buff.bonusActionDamageRange ?? Infinity)
   );
   if (!linked || !tryUseBonusActionDamageBuff(state, active)) {
+    pushInvalidActionLog(state, active, agent, action.id);
+  }
+}
+
+function applySpellRetargetAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'spell_retarget' }>,
+  agent: Agent,
+): void {
+  const oldTarget = state.creatures.find((creature) => creature.id === action.oldTargetId);
+  const target = state.creatures.find((creature) => creature.id === action.targetId);
+  if (
+    action.spellName !== 'Hex' ||
+    action.buffKey !== 'hex' ||
+    !oldTarget ||
+    !target ||
+    !retargetHex(state, active, oldTarget, target)
+  ) {
     pushInvalidActionLog(state, active, agent, action.id);
   }
 }
