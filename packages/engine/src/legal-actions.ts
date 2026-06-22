@@ -72,6 +72,18 @@ export type LegalAction =
       targetName: string;
     }
   | {
+      id: string;
+      type: 'smite';
+      smite: 'divine_smite' | 'decline';
+      targetId: string;
+      targetName: string;
+      resourceKey?: string;
+      resourceCost?: { key: string; amount: number };
+      slotLevel?: number;
+      expectedDamage?: number;
+      isCritical?: boolean;
+    }
+  | {
       id: 'dash';
       type: 'dash';
       extraMovement: number;
@@ -139,6 +151,12 @@ export interface GenerateLegalActionsOptions {
     attackRollsRemaining?: number;
     attackActionStarted?: boolean;
     flurryStrikesRemaining?: number;
+    pendingSmite?: {
+      targetId: string;
+      targetName: string;
+      actionName: string;
+      isCritical: boolean;
+    };
   };
 }
 
@@ -167,6 +185,16 @@ export function generateLegalActions(
     : hasMainAction;
   const hasBonusAction = active.bonusActionUsed !== true;
   const flurryStrikesRemaining = options.actualTurnContext?.flurryStrikesRemaining ?? 0;
+  const pendingSmite = options.actualTurnContext?.pendingSmite;
+
+  if (options.includeActualActions && pendingSmite) {
+    return {
+      activeCreatureId: active.id,
+      activeCreatureName: active.displayName,
+      actionSpace,
+      actions: smiteActions(active, pendingSmite),
+    };
+  }
 
   for (const action of activeActions) {
     if (isConcreteSpellAction(action) && options.includeActualActions && !isAttackRollCantripAction(action)) continue;
@@ -273,6 +301,10 @@ export function helpActionId(targetId: string): string {
   return `help:${targetId}`;
 }
 
+export function divineSmiteActionId(resourceKey: string): string {
+  return `smite:divine-smite:${resourceKey}`;
+}
+
 export function battlecastTacticActionId(tactic: TacticType): string {
   return `battlecast_tactic:${tactic}`;
 }
@@ -377,6 +409,60 @@ function helpActions(state: BattleState, active: Creature): LegalAction[] {
       targetId: target.id,
       targetName: target.displayName,
     }));
+}
+
+function smiteActions(
+  active: Creature,
+  pending: { targetId: string; targetName: string; actionName: string; isCritical: boolean },
+): LegalAction[] {
+  const smiteAction = getActiveActions(active).find((action) =>
+    action.name === pending.actionName && action.smiteOnHit
+  );
+  const actions: LegalAction[] = [];
+  if (smiteAction?.smiteOnHit && hasResource(active, 'free-divine-smite')) {
+    actions.push(smiteActionForResource(smiteAction, pending, 'free-divine-smite', 1));
+  }
+  if (smiteAction?.smiteOnHit) {
+    for (let slotLevel = 1; slotLevel <= 9; slotLevel += 1) {
+      const resourceKey = `slot-${slotLevel}`;
+      if (hasResource(active, resourceKey)) {
+        actions.push(smiteActionForResource(smiteAction, pending, resourceKey, slotLevel));
+      }
+    }
+  }
+  actions.push({
+    id: 'smite:decline',
+    type: 'smite',
+    smite: 'decline',
+    targetId: pending.targetId,
+    targetName: pending.targetName,
+    isCritical: pending.isCritical,
+  });
+  return actions;
+}
+
+function smiteActionForResource(
+  action: MonsterAction,
+  pending: { targetId: string; targetName: string; actionName: string; isCritical: boolean },
+  resourceKey: string,
+  slotLevel: number,
+): Extract<LegalAction, { type: 'smite' }> {
+  const diceCount = action.smiteOnHit?.dicePerSlotLevel[slotLevel - 1]
+    ?? action.smiteOnHit?.dicePerSlotLevel[0]
+    ?? 2;
+  const diceExpression = `${pending.isCritical ? diceCount * 2 : diceCount}d${action.smiteOnHit?.die ?? 8}`;
+  return {
+    id: divineSmiteActionId(resourceKey),
+    type: 'smite',
+    smite: 'divine_smite',
+    targetId: pending.targetId,
+    targetName: pending.targetName,
+    resourceKey,
+    resourceCost: { key: resourceKey, amount: 1 },
+    slotLevel,
+    expectedDamage: averageDamage(diceExpression),
+    isCritical: pending.isCritical,
+  };
 }
 
 function movementAllowance(active: Creature, state: BattleState): number {

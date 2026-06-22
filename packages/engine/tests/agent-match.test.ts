@@ -14,7 +14,7 @@ import {
   type D20benchScenario,
 } from '../src/index.js';
 import { buildHero } from '../src/battlecast/data/heroes.js';
-import { initBattle, resolveAttack } from '../src/battlecast/engine/combat.js';
+import { initBattle, resolveAttack, resolveDivineSmite } from '../src/battlecast/engine/combat.js';
 import { withBattlecastRng } from '../src/battlecast/engine/dice.js';
 import { getActiveActions } from '../src/battlecast/engine/ai-targeting.js';
 import { createBattlecastCreatures } from '../src/battlecast-runner.js';
@@ -1238,6 +1238,100 @@ describe('agent matches', () => {
     expect(state.events.some((event) => event.kind === 'hit' && event.targetId === target.id)).toBe(true);
   });
 
+  it('defers Paladin Divine Smite into explicit actual-action choices', () => {
+    const state = initBattle(createBattlecastCreatures(paladinSmiteScenario().combatants, true), 8);
+    const paladin = state.creatures.find((creature) => creature.monsterData.heroClass === 'Paladin');
+    const target = state.creatures.find((creature) => creature.team === 'blue');
+    if (!paladin || !target) throw new Error('expected Paladin smite scenario');
+    const attack = getActiveActions(paladin).find((action) => action.smiteOnHit);
+    if (!attack) throw new Error('expected smite-capable attack');
+    const freeBefore = paladin.resources['free-divine-smite'];
+
+    const result = withBattlecastRng(sequenceRng([0.8, 0.5]), () =>
+      resolveAttack(state, paladin, target, attack, { deferSmite: true })
+    );
+    const catalogue = generateLegalActions(state, paladin, {
+      includeActualActions: true,
+      actualTurnContext: {
+        attackRollsRemaining: 1,
+        attackActionStarted: true,
+        pendingSmite: {
+          targetId: target.id,
+          targetName: target.displayName,
+          actionName: attack.name,
+          isCritical: false,
+        },
+      },
+    });
+    const observation = buildLlmBattleObservation(state, paladin, catalogue);
+
+    expect(result).toEqual(expect.objectContaining({
+      hit: true,
+      smiteEligible: true,
+      actionName: attack.name,
+    }));
+    expect(paladin.resources['free-divine-smite']).toBe(freeBefore);
+    expect(state.logs.some((log) => log.action === 'Divine Smite')).toBe(false);
+    expect(catalogue.actions.map((action) => action.type)).toEqual(
+      expect.arrayContaining(['smite']),
+    );
+    expect(catalogue.actions.every((action) => action.type === 'smite')).toBe(true);
+    expect(catalogue.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'smite:divine-smite:free-divine-smite',
+        type: 'smite',
+        smite: 'divine_smite',
+        resourceCost: { key: 'free-divine-smite', amount: 1 },
+        expectedDamage: 9,
+      }),
+      expect.objectContaining({
+        id: 'smite:decline',
+        type: 'smite',
+        smite: 'decline',
+      }),
+    ]));
+    expect(observation.legalActions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'smite:divine-smite:free-divine-smite',
+        smite: 'divine_smite',
+        targetId: target.id,
+        description: expect.stringContaining('Spend the listed resource'),
+      }),
+    ]));
+  });
+
+  it('applies a selected deferred Paladin Divine Smite resource', () => {
+    const state = initBattle(createBattlecastCreatures(paladinSmiteScenario().combatants, true), 8);
+    const paladin = state.creatures.find((creature) => creature.monsterData.heroClass === 'Paladin');
+    const target = state.creatures.find((creature) => creature.team === 'blue');
+    if (!paladin || !target) throw new Error('expected Paladin smite scenario');
+    const attack = getActiveActions(paladin).find((action) => action.smiteOnHit);
+    if (!attack) throw new Error('expected smite-capable attack');
+
+    withBattlecastRng(sequenceRng([0.8, 0.5]), () => {
+      resolveAttack(state, paladin, target, attack, { deferSmite: true });
+    });
+    const hpAfterWeapon = target.currentHp;
+    const applied = withBattlecastRng(sequenceRng([0.5, 0.5]), () =>
+      resolveDivineSmite(
+        state,
+        paladin,
+        target,
+        attack,
+        { resourceKey: 'free-divine-smite', slotLevel: 1, freeUse: true },
+        false,
+      )
+    );
+
+    expect(applied).toBe(true);
+    expect(paladin.resources['free-divine-smite']).toBe(0);
+    expect(target.currentHp).toBeLessThan(hpAfterWeapon);
+    expect(state.logs.some((log) =>
+      log.action === 'Divine Smite' &&
+      log.details.includes('free use')
+    )).toBe(true);
+  });
+
   it('uses distinct match ids for full-turn LLM action-space matches', () => {
     const primitive = runAgentMatch({
       scenario: goblinDuelScenario,
@@ -1355,6 +1449,26 @@ function helpOpeningScenario(): D20benchScenario {
       { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'red', position: { x: 2, y: 3 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 4 } },
+    ],
+  };
+}
+
+function paladinSmiteScenario(): D20benchScenario {
+  return {
+    id: 'test.paladin-smite.v1',
+    name: 'Paladin Smite Test',
+    description: 'A level-5 Paladin can choose whether to spend Divine Smite after a melee hit.',
+    battleType: 'duel-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Paladin', 5), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
     ],
   };
 }

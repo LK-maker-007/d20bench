@@ -279,6 +279,8 @@ export interface LlmActionView {
   extraMovement?: number;
   isBonusAction?: boolean;
   possibleEffects?: string[];
+  smite?: Extract<LegalAction, { type: 'smite' }>['smite'];
+  isCritical?: boolean;
   spellLevel?: number;
   resourceCost?: { key: string; amount: number };
   beastName?: string;
@@ -472,6 +474,29 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       targetRelation: target?.relation,
       targetTeam: target?.team,
       description: 'Spend the main action to give the next attack roll against this adjacent target Advantage before this creature next acts.',
+    };
+  }
+
+  if (action.type === 'smite') {
+    const target = creatureById.get(action.targetId);
+    return {
+      id: action.id,
+      type: action.type,
+      label: action.smite === 'decline'
+        ? `Decline Divine Smite against ${target?.label ?? action.targetName}`
+        : `Divine Smite against ${target?.label ?? action.targetName}${action.slotLevel ? ` (slot ${action.slotLevel})` : ''}`,
+      targetId: action.targetId,
+      targetName: action.targetName,
+      targetLabel: target?.label,
+      targetRelation: target?.relation,
+      targetTeam: target?.team,
+      smite: action.smite,
+      expectedDamage: action.expectedDamage === undefined ? undefined : Number(action.expectedDamage.toFixed(2)),
+      resourceCost: action.resourceCost,
+      isCritical: action.isCritical,
+      description: action.smite === 'decline'
+        ? 'Resolve the hit without spending a Divine Smite resource, then continue the turn if action economy remains.'
+        : 'Spend the listed resource now to add Divine Smite radiant damage to the hit that just landed.',
     };
   }
 

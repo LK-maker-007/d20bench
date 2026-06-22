@@ -29,6 +29,14 @@ export interface BattleLog {
 
 export type TacticType = 'aggressive' | 'smart' | 'kiting' | 'defensive';
 
+export interface ResolveAttackResult {
+  hit: boolean;
+  critical: boolean;
+  targetId: string;
+  actionName: string;
+  smiteEligible: boolean;
+}
+
 export interface TeamTactics {
   red: TacticType;
   blue: TacticType;
@@ -3560,29 +3568,28 @@ function resolveAttack(
   attacker: Creature,
   target: Creature,
   action: MonsterAction,
-  opts?: { cause?: 'opportunity' }
-): void {
-  if (!action.attackBonus && action.attackBonus !== 0) return;
-  if (!target.isAlive) return;
-  if (action.type === 'multiattack') return;
+  opts?: { cause?: 'opportunity'; deferSmite?: boolean }
+): ResolveAttackResult | undefined {
+  if (!action.attackBonus && action.attackBonus !== 0) return undefined;
+  if (!target.isAlive) return undefined;
+  if (action.type === 'multiattack') return undefined;
   if (hasTotalCoverFromContainer(target, attacker)) {
     logTotalCoverFromContainer(state, attacker, target, action.name);
-    return;
+    return undefined;
   }
 
   if (action.spellLevel !== undefined && action.attackBonus !== undefined && target.id !== attacker.id) {
     const reflection = resolveSpellReflection(state, attacker, target, 'rangedSpellAttack', action.name);
-    if (reflection === 'unaffected') return;
+    if (reflection === 'unaffected') return undefined;
     if (reflection === 'reflected') {
-      resolveAttack(state, attacker, attacker, action, opts);
-      return;
+      return resolveAttack(state, attacker, attacker, action, opts);
     }
   }
 
   // Range / altitude / line-of-sight gate - out-of-range attacks auto-fail
   // (already logged) without rolling.
   const dist = validateAttackRange(state, attacker, target, action);
-  if (dist === null) return;
+  if (dist === null) return undefined;
 
   // A valid melee swing engages the attacker this turn. Used by the
   // flying-OA-exemption rule (a flyer that bit something had to drop to
@@ -3763,7 +3770,13 @@ function resolveAttack(
     });
     applyWeaponMasteryOnMiss(state, attacker, target, action);
     tryApplyPotentCantripMiss(state, attacker, target, action);
-    return;
+    return {
+      hit: false,
+      critical: false,
+      targetId: target.id,
+      actionName: action.name,
+      smiteEligible: false,
+    };
   }
 
   if (isCrit || combatProwessHit || roll.total >= ac) {
@@ -3888,34 +3901,13 @@ function resolveAttack(
       seedQuiveringPalm(state, attacker, target, action);
     }
 
-    // Divine Smite
-    if (action.smiteOnHit && attacker.monsterData.isHero && target.isAlive) {
-      let slotLevel = lowestAvailableSlot(attacker);
-      let usedFreeSmite = false;
-      if (hasResource(attacker, 'free-divine-smite')) {
-        consumeResource(attacker, 'free-divine-smite');
-        slotLevel = 1;
-        usedFreeSmite = true;
-      } else if (slotLevel !== null) {
-        consumeResource(attacker, `slot-${slotLevel}`);
-      }
-      if (slotLevel !== null) {
-        const diceCount = action.smiteOnHit.dicePerSlotLevel[slotLevel - 1]
-          ?? action.smiteOnHit.dicePerSlotLevel[0];
-        const smiteExpr = `${diceCount}d${action.smiteOnHit.die}`;
-        const smite = rollDamage(smiteExpr, isCrit);
-        pushLog(state, {
-          round: state.round, turn: state.turnIndex,
-          actor: attacker.displayName, action: 'Divine Smite',
-          details: `${attacker.displayName} smites for ${smite.total} ${action.smiteOnHit.damageType} damage (${usedFreeSmite ? 'free use' : `slot-${slotLevel}`})!`,
-          damage: smite.total, type: 'damage',
-        });
-        const beforeHp = target.currentHp;
-        const ev = pushHitEvent(state, target.id, smite.total, action.smiteOnHit.damageType, false, beforeHp);
-        applyDamage(state, target, smite.total, action.smiteOnHit.damageType, attacker, true, true, isCrit);
-        ev.targetHpAfter = target.currentHp;
-        applySmiteOfProtection(state, attacker);
-      }
+    const smiteWindowEligible = !!(action.smiteOnHit && attacker.monsterData.isHero && target.isAlive);
+    // Divine Smite. Battlecast tactics keep the copied automatic behavior;
+    // D20bench actual-action agents can defer it into an explicit follow-up
+    // choice after seeing the hit result.
+    if (smiteWindowEligible && !opts?.deferSmite) {
+      const autoChoice = chooseAutomaticDivineSmite(attacker);
+      if (autoChoice) resolveDivineSmite(state, attacker, target, action, autoChoice, isCrit);
     }
 
     // Buff-sourced damage riders (Hex, Hunter's Mark)
@@ -4093,6 +4085,58 @@ function resolveAttack(
     grantStudiedAttacksAdvantage(state, attacker, target, action);
     tryApplyPotentCantripMiss(state, attacker, target, action);
   }
+
+  const hit = isCrit || combatProwessHit || roll.total >= ac;
+  return {
+    hit,
+    critical: isCrit,
+    targetId: target.id,
+    actionName: action.name,
+    smiteEligible: hit && !!(action.smiteOnHit && attacker.monsterData.isHero && target.isAlive),
+  };
+}
+
+export interface DivineSmiteChoice {
+  resourceKey: string;
+  slotLevel: number;
+  freeUse: boolean;
+}
+
+function chooseAutomaticDivineSmite(attacker: Creature): DivineSmiteChoice | undefined {
+  if (hasResource(attacker, 'free-divine-smite')) {
+    return { resourceKey: 'free-divine-smite', slotLevel: 1, freeUse: true };
+  }
+  const slotLevel = lowestAvailableSlot(attacker);
+  return slotLevel === null ? undefined : { resourceKey: `slot-${slotLevel}`, slotLevel, freeUse: false };
+}
+
+function resolveDivineSmite(
+  state: BattleState,
+  attacker: Creature,
+  target: Creature,
+  action: MonsterAction,
+  choice: DivineSmiteChoice,
+  isCrit: boolean,
+): boolean {
+  if (!action.smiteOnHit || !attacker.monsterData.isHero || !target.isAlive) return false;
+  if (!hasResource(attacker, choice.resourceKey)) return false;
+  consumeResource(attacker, choice.resourceKey);
+  const diceCount = action.smiteOnHit.dicePerSlotLevel[choice.slotLevel - 1]
+    ?? action.smiteOnHit.dicePerSlotLevel[0];
+  const smiteExpr = `${diceCount}d${action.smiteOnHit.die}`;
+  const smite = rollDamage(smiteExpr, isCrit);
+  pushLog(state, {
+    round: state.round, turn: state.turnIndex,
+    actor: attacker.displayName, action: 'Divine Smite',
+    details: `${attacker.displayName} smites for ${smite.total} ${action.smiteOnHit.damageType} damage (${choice.freeUse ? 'free use' : `slot-${choice.slotLevel}`})!`,
+    damage: smite.total, type: 'damage',
+  });
+  const beforeHp = target.currentHp;
+  const ev = pushHitEvent(state, target.id, smite.total, action.smiteOnHit.damageType, false, beforeHp);
+  applyDamage(state, target, smite.total, action.smiteOnHit.damageType, attacker, true, true, isCrit);
+  ev.targetHpAfter = target.currentHp;
+  applySmiteOfProtection(state, attacker);
+  return true;
 }
 
 // Single-target save resolution + AoE resolution + AoE target picking
@@ -4207,7 +4251,7 @@ function checkBattleComplete(state: BattleState): void {
 // resetTurnFlags) plus the concentration-aura helpers (attachConcentrationAura,
 // processConcentrationAuras, checkAuraEntry) live in ./combat-buffs.
 
-export { distance, getFootprintSize, creatureDistance, isPositionBlocked, getEnemies, getAllies, getAliveCreatures, getStandingCreatures, getRecoverableCreatures, getCreatureById, resolveAttack, isInMeleeRange, applyDamage, applyCondition, resolveConditionOnHit, processRegeneration, processRecharges, checkBattleComplete, hasAdvantage, hasDisadvantage, isInCone, isInLine, runDeathSave, stabiliseDyingAlly, revertWildShape, hasThiefsReflexes };
+export { distance, getFootprintSize, creatureDistance, isPositionBlocked, getEnemies, getAllies, getAliveCreatures, getStandingCreatures, getRecoverableCreatures, getCreatureById, resolveAttack, resolveDivineSmite, isInMeleeRange, applyDamage, applyCondition, resolveConditionOnHit, processRegeneration, processRecharges, checkBattleComplete, hasAdvantage, hasDisadvantage, isInCone, isInLine, runDeathSave, stabiliseDyingAlly, revertWildShape, hasThiefsReflexes };
 // AoE resolution lives in ./combat-aoe; re-export so external imports work.
 export {
   getSingleTargetVisual, resolveSingleTargetSave,

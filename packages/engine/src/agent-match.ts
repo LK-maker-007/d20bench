@@ -16,8 +16,10 @@ import {
   pushLog,
   resolveAttack,
   resolveAoE,
+  resolveDivineSmite,
   resolveSingleTargetSave,
   checkAuraEntry,
+  type DivineSmiteChoice,
   type TacticType,
   type BattleState,
 } from './battlecast/engine/combat.js';
@@ -395,6 +397,12 @@ interface ActualTurnContext {
   attackRollsRemaining: number;
   attackActionStarted: boolean;
   flurryStrikesRemaining: number;
+  pendingSmite?: {
+    targetId: string;
+    targetName: string;
+    actionName: string;
+    isCritical: boolean;
+  };
   disengaged: boolean;
   ended: boolean;
 }
@@ -526,7 +534,7 @@ async function runStepwiseOpenRouterTurn(input: {
     disengaged: false,
     ended: false,
   };
-  const maxSteps = 8;
+  const maxSteps = 12;
   let step = 0;
 
   while (!input.state.isComplete && input.active.isAlive && !actualTurn.ended && step < maxSteps) {
@@ -725,6 +733,11 @@ function applyActualLegalAction(
     return { ended: shouldEndActualTurn(active, actualTurn) };
   }
 
+  if (action.type === 'smite') {
+    applySmiteAction(state, active, action, agent, actualTurn);
+    return { ended: shouldEndActualTurn(active, actualTurn) };
+  }
+
   if (action.type === 'attack') {
     applyAttackAction(state, active, action, agent, actualTurn);
     return { ended: shouldEndActualTurn(active, actualTurn) };
@@ -759,7 +772,17 @@ function applyAttackAction(
     return;
   }
 
-  resolveAttack(state, active, target, battlecastAction);
+  const result = resolveAttack(state, active, target, battlecastAction, { deferSmite: true });
+  if (result?.smiteEligible && battlecastAction.smiteOnHit) {
+    actualTurn.pendingSmite = {
+      targetId: target.id,
+      targetName: target.displayName,
+      actionName: battlecastAction.name,
+      isCritical: result.critical,
+    };
+  } else {
+    actualTurn.pendingSmite = undefined;
+  }
   actualTurn.attackActionStarted = true;
   actualTurn.attackRollsRemaining = Math.max(0, actualTurn.attackRollsRemaining - 1);
   if (actualTurn.attackRollsRemaining === 0) {
@@ -808,6 +831,53 @@ function applyRandomRayAction(
   if (actualTurn.attackRollsRemaining === 0) {
     active.hasActed = true;
   }
+}
+
+function applySmiteAction(
+  state: BattleState,
+  active: Creature,
+  action: Extract<LegalAction, { type: 'smite' }>,
+  agent: Agent,
+  actualTurn: ActualTurnContext,
+): void {
+  const pending = actualTurn.pendingSmite;
+  if (!pending || action.targetId !== pending.targetId) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+
+  if (action.smite === 'decline') {
+    actualTurn.pendingSmite = undefined;
+    pushLog(state, {
+      round: state.round,
+      turn: state.turnIndex,
+      actor: active.displayName,
+      action: 'Divine Smite',
+      details: `${active.displayName} does not spend a Divine Smite resource on this hit.`,
+      type: 'special',
+    });
+    return;
+  }
+
+  const target = state.creatures.find((creature) => creature.id === pending.targetId);
+  const battlecastAction = getActiveActions(active).find((candidate) =>
+    candidate.name === pending.actionName && candidate.smiteOnHit
+  );
+  const choice = smiteChoiceFromAction(action);
+  if (!target || !battlecastAction || !choice || !resolveDivineSmite(state, active, target, battlecastAction, choice, pending.isCritical)) {
+    pushInvalidActionLog(state, active, agent, action.id);
+    return;
+  }
+  actualTurn.pendingSmite = undefined;
+}
+
+function smiteChoiceFromAction(action: Extract<LegalAction, { type: 'smite' }>): DivineSmiteChoice | undefined {
+  if (action.smite !== 'divine_smite' || !action.resourceKey || !action.slotLevel) return undefined;
+  return {
+    resourceKey: action.resourceKey,
+    slotLevel: action.slotLevel,
+    freeUse: action.resourceKey === 'free-divine-smite',
+  };
 }
 
 function applyDodgeAction(
@@ -1311,6 +1381,7 @@ function withOpenHandFlurryFlag(active: Creature, fn: () => void): void {
 
 function shouldEndActualTurn(active: Creature, actualTurn: ActualTurnContext): boolean {
   if (actualTurn.ended) return true;
+  if (actualTurn.pendingSmite) return false;
   if (actualTurn.flurryStrikesRemaining > 0) return false;
   const hasMainAction = !active.hasActed || (actualTurn.attackActionStarted && actualTurn.attackRollsRemaining > 0);
   const hasBonusAction = active.bonusActionUsed !== true;

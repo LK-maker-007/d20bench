@@ -442,7 +442,14 @@ export const llmActualCheapVerifyV7Season: LlmSeasonConfig = {
   description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after exposing Dodge and Help as concrete actual actions.',
 };
 
+export const llmActualCheapVerifyV8Season: LlmSeasonConfig = {
+  ...llmActualCheapVerifySeason,
+  id: 'llm-actual-cheap-verify-v8',
+  description: 'Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after making Paladin Divine Smite an explicit post-hit action choice.',
+};
+
 export const llmSeasons = [
+  llmActualCheapVerifyV8Season,
   llmActualCheapVerifyV7Season,
   llmActualCheapVerifyV6Season,
   llmActualCheapVerifyV5Season,
