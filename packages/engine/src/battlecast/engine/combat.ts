@@ -37,6 +37,29 @@ export interface ResolveAttackResult {
   smiteEligible: boolean;
 }
 
+export interface DamageReactionDecisionContext {
+  reaction: 'uncanny_dodge';
+  target: Creature;
+  attacker: Creature | null;
+  incomingDamage: number;
+  damageType: string;
+  isAttack: boolean;
+  isCritical: boolean;
+}
+
+export interface DamageReactionHooks {
+  chooseDamageReaction?: (context: DamageReactionDecisionContext) => 'use' | 'decline' | undefined;
+  beforeDamageReaction?: (
+    context: DamageReactionDecisionContext,
+    decision: 'use' | 'decline',
+  ) => { logsBefore: number; eventsBefore: number } | undefined;
+  afterDamageReaction?: (
+    context: DamageReactionDecisionContext,
+    decision: 'use' | 'decline',
+    before: { logsBefore: number; eventsBefore: number } | undefined,
+  ) => void;
+}
+
 export interface TeamTactics {
   red: TacticType;
   blue: TacticType;
@@ -111,6 +134,7 @@ export interface BattleState {
    * Speed for creatures without a swim speed.
    */
   movementEnvironment?: 'land' | 'underwater';
+  damageReactionHooks?: DamageReactionHooks;
 }
 
 export function pushLog(state: BattleState, entry: Omit<BattleLog, 'eventIndex'>): void {
@@ -2896,6 +2920,66 @@ function applyMonkDeflectDamage(
   return reduced;
 }
 
+function canUseUncannyDodge(target: Creature, damage: number, isAttack: boolean): boolean {
+  if (!isAttack || damage <= 0) return false;
+  if (target.monsterData.heroClass !== 'Rogue' || (target.monsterData.heroLevel ?? 0) < 5) return false;
+  if (target.reactionUsed) return false;
+  return !target.conditions.includes('incapacitated') &&
+    !target.conditions.includes('stunned') &&
+    !target.conditions.includes('paralyzed') &&
+    !target.conditions.includes('petrified') &&
+    !target.conditions.includes('unconscious');
+}
+
+function applyUncannyDodgeReaction(
+  state: BattleState,
+  target: Creature,
+  attacker: Creature | null,
+  damage: number,
+  damageType: string,
+  isAttack: boolean,
+  isCritical: boolean,
+): number {
+  if (!canUseUncannyDodge(target, damage, isAttack)) return damage;
+  const context: DamageReactionDecisionContext = {
+    reaction: 'uncanny_dodge',
+    target,
+    attacker,
+    incomingDamage: damage,
+    damageType,
+    isAttack,
+    isCritical,
+  };
+  const decision = state.damageReactionHooks?.chooseDamageReaction?.(context);
+  if (decision === 'decline') {
+    const before = state.damageReactionHooks?.beforeDamageReaction?.(context, decision);
+    pushLog(state, {
+      round: state.round,
+      turn: state.turnIndex,
+      actor: target.displayName,
+      action: 'Uncanny Dodge Declined',
+      details: `${target.displayName} does not spend a reaction to halve the ${damageType} attack damage.`,
+      type: 'info',
+    });
+    state.damageReactionHooks?.afterDamageReaction?.(context, decision, before);
+    return damage;
+  }
+
+  const beforeHook = state.damageReactionHooks?.beforeDamageReaction?.(context, 'use');
+  target.reactionUsed = true;
+  const before = damage;
+  const reduced = Math.floor(damage / 2);
+  pushLog(state, {
+    round: state.round, turn: state.turnIndex,
+    actor: target.displayName, action: 'Uncanny Dodge',
+    details: `${target.displayName} uses Uncanny Dodge! Damage halved: ${before} → ${reduced}.`,
+    type: 'info'
+  });
+  target.stats.actionUsage['Uncanny Dodge'] = (target.stats.actionUsage['Uncanny Dodge'] || 0) + 1;
+  state.damageReactionHooks?.afterDamageReaction?.(context, 'use', beforeHook);
+  return reduced;
+}
+
 function applyDamage(state: BattleState, target: Creature, damage: number, damageType: string, attacker: Creature | null, isAttack: boolean = false, isMagical: boolean = false, isCritical: boolean = false): number {
   const resisted = resolveDamageResistance(state, target, damage, damageType, isMagical, attacker);
   if (resisted.immune) return 0;
@@ -2972,22 +3056,7 @@ function applyDamage(state: BattleState, target: Creature, damage: number, damag
 
   damage = applySuperiorHuntersDefense(state, target, damage, damageType);
 
-  // Uncanny Dodge (Rogue L5+): reaction to halve damage from one attack
-  // (not saves). Guarded against dying targets above - an unconscious
-  // Rogue can't take a reaction.
-  if (isAttack && target.monsterData.heroClass === 'Rogue' && (target.monsterData.heroLevel ?? 0) >= 5
-      && !target.reactionUsed && damage > 0) {
-    target.reactionUsed = true;
-    const before = damage;
-    damage = Math.floor(damage / 2);
-    pushLog(state, {
-      round: state.round, turn: state.turnIndex,
-      actor: target.displayName, action: 'Uncanny Dodge',
-      details: `${target.displayName} uses Uncanny Dodge! Damage halved: ${before} → ${damage}.`,
-      type: 'info'
-    });
-    target.stats.actionUsage['Uncanny Dodge'] = (target.stats.actionUsage['Uncanny Dodge'] || 0) + 1;
-  }
+  damage = applyUncannyDodgeReaction(state, target, attacker, damage, damageType, isAttack, isCritical);
 
   const tempBefore = target.temporaryHp ?? 0;
   if (tempBefore > 0 && damage > 0) {

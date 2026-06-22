@@ -3,9 +3,12 @@
 // Copied from Battlecast and adapted for D20bench so Battlecast-style call
 // sites can use a seeded RNG without threading it through every rules helper.
 
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import { createRng, type RandomSeed, type RandomSource } from '../../random.js';
 
 let currentRng: RandomSource | null = null;
+const rngStorage = new AsyncLocalStorage<RandomSource | null>();
 
 export function setBattlecastRng(rng: RandomSource | null): void {
   currentRng = rng;
@@ -16,27 +19,17 @@ export function seedBattlecastRng(seed: RandomSeed): void {
 }
 
 export function withBattlecastRng<T>(rngOrSeed: RandomSource | RandomSeed, fn: () => T): T {
-  const previous = currentRng;
-  currentRng = isRandomSource(rngOrSeed) ? rngOrSeed : createRng(rngOrSeed);
-  try {
-    return fn();
-  } finally {
-    currentRng = previous;
-  }
+  const rng = isRandomSource(rngOrSeed) ? rngOrSeed : createRng(rngOrSeed);
+  return rngStorage.run(rng, fn);
 }
 
 export async function withBattlecastRngAsync<T>(rngOrSeed: RandomSource | RandomSeed, fn: () => Promise<T>): Promise<T> {
-  const previous = currentRng;
-  currentRng = isRandomSource(rngOrSeed) ? rngOrSeed : createRng(rngOrSeed);
-  try {
-    return await fn();
-  } finally {
-    currentRng = previous;
-  }
+  const rng = isRandomSource(rngOrSeed) ? rngOrSeed : createRng(rngOrSeed);
+  return rngStorage.run(rng, fn);
 }
 
 export function battlecastRandom(): number {
-  return currentRng?.next() ?? Math.random();
+  return (rngStorage.getStore() ?? currentRng)?.next() ?? Math.random();
 }
 
 function isRandomSource(value: RandomSource | RandomSeed): value is RandomSource {

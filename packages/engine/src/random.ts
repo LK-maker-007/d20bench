@@ -45,6 +45,10 @@ export class SeededRng implements RandomSource {
   snapshot(): number {
     return this.state >>> 0;
   }
+
+  restore(snapshot: number): void {
+    this.state = snapshot >>> 0;
+  }
 }
 
 export function createRng(seed: RandomSeed): SeededRng {

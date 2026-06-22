@@ -21,6 +21,8 @@ import {
   resolveDivineSmite,
   resolveSingleTargetSave,
   checkAuraEntry,
+  type DamageReactionDecisionContext,
+  type DamageReactionHooks,
   type DivineSmiteChoice,
   type TacticType,
   type BattleState,
@@ -48,6 +50,7 @@ import {
   findLegalAction,
   generateLegalActions,
   generateOpportunityReactionActions,
+  generateUncannyDodgeReactionActions,
   type LegalAction,
   type LegalActionCatalogue,
 } from './legal-actions.js';
@@ -204,8 +207,9 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
   const red = getAgent(spec.redAgent);
   const blue = getAgent(spec.blueAgent);
   const agentRng = createRng(`${spec.seed}:agents:${spec.redAgent}:${spec.blueAgent}`);
+  const battleRng = createRng(spec.seed);
 
-  return withBattlecastRngAsync(spec.seed, async () => {
+  return withBattlecastRngAsync(battleRng, async () => {
     const state = initAgentBattleState(spec.scenario);
     configureBattlecastTacticsForAgents(state, red, blue);
     const replay: ReplayEvent[] = [];
@@ -286,7 +290,21 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
             controllers: { red, blue },
             decisions: reactions,
           });
-          applyBattlecastTacticTurn(state, active, agent.tactic, turnStart.turnStartAlreadyProcessed, opportunityAttacks);
+          const damageReactionDecisions: DamageReactionMap = new Map();
+          await applyBattlecastTacticTurnWithDynamicDamageReactions({
+            state,
+            active,
+            tactic: agent.tactic,
+            turnStartAlreadyProcessed: turnStart.turnStartAlreadyProcessed,
+            opportunityAttacks,
+            replay,
+            matchId,
+            controllers: { red, blue },
+            decisions: damageReactionDecisions,
+            agentRng,
+            battleRng,
+            traceSink: spec.llmDecisionTraceSink,
+          });
           checkBattleComplete(state);
 
           const acceptedAction = createBattlecastTacticAction(agent.tactic);
@@ -487,6 +505,29 @@ interface PreparedOpportunityReaction {
 }
 
 type OpportunityReactionMap = Map<string, PreparedOpportunityReaction>;
+
+interface PreparedDamageReaction {
+  agent: Extract<Agent, { kind: 'openrouter-llm' }>;
+  catalogue: LegalActionCatalogue;
+  requestedActionId: string;
+  acceptedAction: Extract<LegalAction, { type: 'reaction' }>;
+  llmTrace: OpenRouterDecisionTrace;
+}
+
+type DamageReactionMap = Map<string, PreparedDamageReaction>;
+
+interface PendingDamageReactionRequest {
+  triggerKey: string;
+  context: DamageReactionDecisionContext;
+  agent: Extract<Agent, { kind: 'openrouter-llm' }>;
+}
+
+class PendingDamageReactionDecision extends Error {
+  constructor(readonly request: PendingDamageReactionRequest) {
+    super('OpenRouter damage reaction decision required');
+    this.name = 'PendingDamageReactionDecision';
+  }
+}
 
 function processManualAgentTurnStart(input: {
   state: BattleState;
@@ -743,13 +784,85 @@ function applyBattlecastTacticTurn(
   tactic: TacticType,
   turnStartAlreadyProcessed = false,
   opportunityAttacks?: OpportunityAttackHooks,
+  damageReactions?: DamageReactionHooks,
 ): void {
   state.teamTactics = {
     ...state.teamTactics,
     [active.team]: tactic,
   };
   active.stats.roundsSurvived = state.round;
-  executeTurn(state, active, { turnStartAlreadyProcessed, opportunityAttacks });
+  executeTurn(state, active, { turnStartAlreadyProcessed, opportunityAttacks, damageReactions });
+}
+
+async function applyBattlecastTacticTurnWithDynamicDamageReactions(input: {
+  state: BattleState;
+  active: Creature;
+  tactic: TacticType;
+  turnStartAlreadyProcessed: boolean;
+  opportunityAttacks: OpportunityAttackHooks;
+  replay: ReplayEvent[];
+  matchId: string;
+  controllers: MatchControllers;
+  decisions: DamageReactionMap;
+  agentRng: ReturnType<typeof createRng>;
+  battleRng: ReturnType<typeof createRng>;
+  traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
+}): Promise<void> {
+  const maxReactionPrompts = 20;
+  for (let attempt = 0; attempt <= maxReactionPrompts; attempt += 1) {
+    const stateSnapshot = cloneBattleState(input.state);
+    const replayLength = input.replay.length;
+    const rngSnapshot = input.battleRng.snapshot();
+    const damageReactions = createDamageReactionHooks({
+      state: input.state,
+      replay: input.replay,
+      matchId: input.matchId,
+      controllers: input.controllers,
+      decisions: input.decisions,
+    });
+    const active = input.state.creatures.find((creature) => creature.id === input.active.id);
+    if (!active) {
+      throw new Error(`Active creature ${input.active.id} disappeared during ${input.matchId}`);
+    }
+
+    try {
+      applyBattlecastTacticTurn(
+        input.state,
+        active,
+        input.tactic,
+        input.turnStartAlreadyProcessed,
+        input.opportunityAttacks,
+        damageReactions,
+      );
+      return;
+    } catch (error) {
+      if (!(error instanceof PendingDamageReactionDecision)) throw error;
+      const prepared = await chooseDamageReactionAtTrigger({
+        state: input.state,
+        request: error.request,
+        agentRng: input.agentRng,
+        matchId: input.matchId,
+        traceSink: input.traceSink,
+      });
+      input.decisions.set(error.request.triggerKey, prepared);
+      restoreBattleState(input.state, stateSnapshot);
+      input.replay.length = replayLength;
+      input.battleRng.restore(rngSnapshot);
+    }
+  }
+
+  throw new Error(`Exceeded ${maxReactionPrompts} pending damage reaction prompts in ${input.matchId}`);
+}
+
+function cloneBattleState(state: BattleState): BattleState {
+  return structuredClone(state) as BattleState;
+}
+
+function restoreBattleState(target: BattleState, snapshot: BattleState): void {
+  for (const key of Object.keys(target) as Array<keyof BattleState>) {
+    delete target[key];
+  }
+  Object.assign(target, cloneBattleState(snapshot));
 }
 
 function createActionCatalogueForAgent(
@@ -1178,6 +1291,48 @@ function shouldPredeclareBattlecastOpportunityReactions(active: Creature, tactic
   return !hasMelee && hasRanged;
 }
 
+async function chooseDamageReactionAtTrigger(input: {
+  state: BattleState;
+  request: PendingDamageReactionRequest;
+  agentRng: ReturnType<typeof createRng>;
+  matchId: string;
+  traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
+}): Promise<PreparedDamageReaction> {
+  const { context, agent } = input.request;
+  if (!context.attacker) {
+    throw new Error(`Cannot ask ${agent.id} for ${context.reaction} without an attacker`);
+  }
+  const catalogue = generateUncannyDodgeReactionActions(context.target, context.attacker, {
+    incomingDamage: context.incomingDamage,
+    damageType: context.damageType,
+  });
+  const selection = await chooseOpenRouterAction(agent, {
+    state: input.state,
+    activeCreature: context.target,
+    catalogue,
+    rng: input.agentRng,
+    traceMeta: {
+      matchId: input.matchId,
+      round: input.state.round,
+      turnIndex: input.state.turnIndex,
+      activeCreatureId: context.target.id,
+      activeCreatureName: context.target.displayName,
+      agentId: agent.id,
+    },
+    traceSink: input.traceSink,
+  });
+  if (selection.acceptedAction.type !== 'reaction') {
+    throw new Error(`${agent.id} selected non-reaction action ${selection.acceptedAction.id} for ${context.reaction}`);
+  }
+  return {
+    agent,
+    catalogue,
+    requestedActionId: selection.requestedActionId,
+    acceptedAction: selection.acceptedAction,
+    llmTrace: selection.trace,
+  };
+}
+
 async function chooseOpportunityReaction(input: {
   state: BattleState;
   reactor: Creature;
@@ -1285,6 +1440,84 @@ function createOpportunityAttackHooks(input: {
   };
 }
 
+function createDamageReactionHooks(input: {
+  state: BattleState;
+  replay: ReplayEvent[];
+  matchId: string;
+  controllers: MatchControllers;
+  decisions: DamageReactionMap;
+}): DamageReactionHooks {
+  const started = new WeakSet<DamageReactionDecisionContext>();
+  const triggerKeys = new WeakMap<DamageReactionDecisionContext, string>();
+  let triggerIndex = 0;
+  return {
+    chooseDamageReaction: (context) => {
+      const controller = controllerForCreature(context.target, input.controllers);
+      if (controller.kind !== 'openrouter-llm') return undefined;
+      const attacker = context.attacker;
+      if (!attacker) return 'decline';
+      const triggerKey = damageReactionTriggerKey(context, triggerIndex);
+      triggerIndex += 1;
+      triggerKeys.set(context, triggerKey);
+      const decision = input.decisions.get(triggerKey);
+      if (!decision) {
+        throw new PendingDamageReactionDecision({ triggerKey, context, agent: controller });
+      }
+      return decision.acceptedAction.reaction === context.reaction ? 'use' : 'decline';
+    },
+    beforeDamageReaction: (context, _decision) => {
+      const triggerKey = triggerKeys.get(context);
+      if (!triggerKey) return undefined;
+      const prepared = input.decisions.get(triggerKey);
+      if (!prepared || started.has(context)) return undefined;
+      started.add(context);
+      input.replay.push({
+        type: 'turn_started',
+        matchId: input.matchId,
+        round: input.state.round,
+        turnIndex: input.state.turnIndex,
+        activeCreatureId: context.target.id,
+        activeCreatureName: context.target.displayName,
+        controller: describeAgentController(prepared.agent),
+        legalActions: prepared.catalogue.actions,
+        stateHash: hashBattlecastState(input.state),
+      });
+      return {
+        logsBefore: input.state.logs.length,
+        eventsBefore: input.state.events.length,
+      };
+    },
+    afterDamageReaction: (context, decision, before) => {
+      const triggerKey = triggerKeys.get(context);
+      if (!triggerKey) return;
+      const prepared = input.decisions.get(triggerKey);
+      if (!prepared || !before) return;
+      const acceptedAction = {
+        ...prepared.acceptedAction,
+        incomingDamage: context.incomingDamage,
+        damageType: context.damageType,
+        expectedDamageReduction: decision === 'use'
+          ? context.incomingDamage - Math.floor(context.incomingDamage / 2)
+          : 0,
+      };
+      input.replay.push({
+        type: 'action_resolved',
+        matchId: input.matchId,
+        round: input.state.round,
+        turnIndex: input.state.turnIndex,
+        activeCreatureId: context.target.id,
+        agentId: prepared.agent.id,
+        requestedActionId: prepared.requestedActionId,
+        acceptedAction,
+        llmTrace: prepared.llmTrace,
+        logs: input.state.logs.slice(before.logsBefore),
+        events: input.state.events.slice(before.eventsBefore),
+        stateHash: hashBattlecastState(input.state),
+      });
+    },
+  };
+}
+
 function opportunityReactionTriggers(
   state: BattleState,
   mover: Creature,
@@ -1329,6 +1562,15 @@ function canMakeOpportunityAttack(reactor: Creature, mover: Creature): boolean {
 
 function opportunityReactionKey(reactor: Creature, mover: Creature): string {
   return `${reactor.id}->${mover.id}`;
+}
+
+function damageReactionTriggerKey(context: DamageReactionDecisionContext, triggerIndex: number): string {
+  return [
+    context.target.id,
+    context.attacker?.id ?? 'no-attacker',
+    context.reaction,
+    triggerIndex,
+  ].join(':');
 }
 
 function controllerForCreature(creature: Creature, controllers: MatchControllers): Agent {

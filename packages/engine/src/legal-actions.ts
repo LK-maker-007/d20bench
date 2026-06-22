@@ -86,11 +86,15 @@ export type LegalAction =
   | {
       id: string;
       type: 'reaction';
-      reaction: 'opportunity_attack' | 'decline';
+      reaction: 'opportunity_attack' | 'uncanny_dodge' | 'decline';
+      reactionTrigger?: 'opportunity_attack' | 'attack_damage';
       actionName?: string;
       targetId: string;
       targetName: string;
       expectedDamage?: number;
+      incomingDamage?: number;
+      damageType?: string;
+      expectedDamageReduction?: number;
     }
   | {
       id: 'dash';
@@ -322,6 +326,14 @@ export function declineOpportunityAttackActionId(targetId: string): string {
   return `reaction:decline-opportunity-attack:${targetId}`;
 }
 
+export function uncannyDodgeActionId(attackerId: string): string {
+  return `reaction:uncanny-dodge:${attackerId}`;
+}
+
+export function declineUncannyDodgeActionId(attackerId: string): string {
+  return `reaction:decline-uncanny-dodge:${attackerId}`;
+}
+
 export function battlecastTacticActionId(tactic: TacticType): string {
   return `battlecast_tactic:${tactic}`;
 }
@@ -356,6 +368,7 @@ export function generateOpportunityReactionActions(
       id: opportunityAttackActionId(action.name, target.id),
       type: 'reaction' as const,
       reaction: 'opportunity_attack' as const,
+      reactionTrigger: 'opportunity_attack' as const,
       actionName: action.name,
       targetId: target.id,
       targetName: target.displayName,
@@ -365,12 +378,53 @@ export function generateOpportunityReactionActions(
     id: declineOpportunityAttackActionId(target.id),
     type: 'reaction',
     reaction: 'decline',
+    reactionTrigger: 'opportunity_attack',
     targetId: target.id,
     targetName: target.displayName,
   });
   return {
     activeCreatureId: reactor.id,
     activeCreatureName: reactor.displayName,
+    actionSpace: 'actual-actions-v1',
+    actions,
+  };
+}
+
+export function generateUncannyDodgeReactionActions(
+  defender: Creature,
+  attacker: Creature,
+  trigger?: { incomingDamage: number; damageType: string },
+): LegalActionCatalogue {
+  const expectedDamageReduction = trigger
+    ? trigger.incomingDamage - Math.floor(trigger.incomingDamage / 2)
+    : undefined;
+  const actions: LegalAction[] = [
+    {
+      id: uncannyDodgeActionId(attacker.id),
+      type: 'reaction',
+      reaction: 'uncanny_dodge',
+      reactionTrigger: 'attack_damage',
+      targetId: attacker.id,
+      targetName: attacker.displayName,
+      incomingDamage: trigger?.incomingDamage,
+      damageType: trigger?.damageType,
+      expectedDamageReduction,
+    },
+    {
+      id: declineUncannyDodgeActionId(attacker.id),
+      type: 'reaction',
+      reaction: 'decline',
+      reactionTrigger: 'attack_damage',
+      targetId: attacker.id,
+      targetName: attacker.displayName,
+      incomingDamage: trigger?.incomingDamage,
+      damageType: trigger?.damageType,
+      expectedDamageReduction: 0,
+    },
+  ];
+  return {
+    activeCreatureId: defender.id,
+    activeCreatureName: defender.displayName,
     actionSpace: 'actual-actions-v1',
     actions,
   };

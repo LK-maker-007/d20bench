@@ -12,6 +12,7 @@ import {
   llmActualCheapVerifyV7Season,
   llmActualCheapVerifyV8Season,
   llmActualCheapVerifyV9Season,
+  llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
   llmFrontierModelAgents,
   llmFrontierSmartGlmTenXSeason,
@@ -242,6 +243,14 @@ describe('LLM seasons', () => {
     expect(llmActualReactionVerifySeason.pairings).toHaveLength(4);
     expect(llmActualReactionVerifySeason.pairings?.every((pairing) =>
       pairing.redAgent === 'battlecast.kiting' &&
+      pairing.blueAgent.startsWith('openrouter:')
+    )).toBe(true);
+    expect(llmActualMitigationVerifySeason.id).toBe('llm-actual-mitigation-verify-v3');
+    expect(llmActualMitigationVerifySeason.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualMitigationVerifySeason.scenarios.map((scenario) => scenario.battleType)).toEqual(['mitigation-smoke']);
+    expect(llmActualMitigationVerifySeason.pairings).toHaveLength(4);
+    expect(llmActualMitigationVerifySeason.pairings?.every((pairing) =>
+      pairing.redAgent === 'battlecast.aggressive' &&
       pairing.blueAgent.startsWith('openrouter:')
     )).toBe(true);
   });

@@ -23,6 +23,18 @@ async function readJsonIfExists(filePath) {
   }
 }
 
+async function fileExists(filePath) {
+  try {
+    await readFile(filePath);
+    return true;
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+
 async function listDirectories(dir) {
   try {
     const entries = await readdir(dir, { withFileTypes: true });
@@ -50,6 +62,9 @@ async function readSeasons() {
   const seasons = [];
 
   for (const seasonId of seasonIds) {
+    if (await fileExists(path.join(resultsRoot, "seasons", seasonId, ".d20bench-ignore"))) {
+      continue;
+    }
     const jsonPath = path.join(resultsRoot, "seasons", seasonId, "standings.json");
     const progressPath = path.join(resultsRoot, "seasons", seasonId, "progress.json");
     const season = await readJsonIfExists(jsonPath);

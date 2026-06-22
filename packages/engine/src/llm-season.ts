@@ -245,6 +245,27 @@ export const llmActualReactionVerifyScenario: D20benchScenario = {
   ],
 };
 
+export const llmActualMitigationVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-mitigation-rogue-duel.v1',
+  name: 'LLM Mitigation Rogue Duel',
+  description: 'A Battlecast Aggressive Fighter attacks an OpenRouter Rogue that should choose whether to spend Uncanny Dodge.',
+  battleType: 'mitigation-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['reaction', 'uncanny-dodge', 'damage-mitigation'],
+  designNotes: [
+    'Designed as a live-model harness validation for defensive reactions.',
+    'The Fighter is intentionally high level so at least one attack should hit and trigger the Rogue mitigation window.',
+  ],
+  combatants: [
+    { monster: buildHero('Fighter', 20), team: 'red', position: { x: 2, y: 2 } },
+    { monster: buildHero('Rogue', 5), team: 'blue', position: { x: 2, y: 3 } },
+  ],
+};
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -496,7 +517,28 @@ export const llmActualReactionVerifySeason: LlmSeasonConfig = {
   concurrency: 4,
 };
 
+export const llmActualMitigationVerifySeason: LlmSeasonConfig = {
+  id: 'llm-actual-mitigation-verify-v3',
+  description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control trigger-time Uncanny Dodge mitigation against a Battlecast Aggressive attacker with isolated async Battlecast RNG.',
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    'battlecast.aggressive',
+  ],
+  scenarios: [llmActualMitigationVerifyScenario],
+  seeds: [1],
+  maxRounds: 1,
+  pairings: llmActualCheapVerifyModelAgents.map((model) => ({
+    redAgent: 'battlecast.aggressive' as const,
+    blueAgent: model,
+  })),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
 export const llmSeasons = [
+  llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
   llmActualCheapVerifyV9Season,
   llmActualCheapVerifyV8Season,

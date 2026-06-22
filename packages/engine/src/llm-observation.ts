@@ -276,11 +276,15 @@ export interface LlmActionView {
   feature?: Extract<LegalAction, { type: 'class_feature' }>['feature'];
   expectedDamage?: number;
   expectedHealing?: number;
+  incomingDamage?: number;
+  damageType?: string;
+  expectedDamageReduction?: number;
   extraMovement?: number;
   isBonusAction?: boolean;
   possibleEffects?: string[];
   smite?: Extract<LegalAction, { type: 'smite' }>['smite'];
   reaction?: Extract<LegalAction, { type: 'reaction' }>['reaction'];
+  reactionTrigger?: Extract<LegalAction, { type: 'reaction' }>['reactionTrigger'];
   isCritical?: boolean;
   spellLevel?: number;
   resourceCost?: { key: string; amount: number };
@@ -503,22 +507,29 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
 
   if (action.type === 'reaction') {
     const target = creatureById.get(action.targetId);
+    const isDamageMitigation = action.reactionTrigger === 'attack_damage';
     return {
       id: action.id,
       type: action.type,
-      label: action.reaction === 'decline'
-        ? `Decline opportunity attack against ${target?.label ?? action.targetName}`
-        : `Opportunity attack ${target?.label ?? action.targetName} with ${action.actionName}`,
+      label: reactionActionLabel(action, target?.label ?? action.targetName),
       targetId: action.targetId,
       targetName: action.targetName,
       targetLabel: target?.label,
       targetRelation: target?.relation,
       targetTeam: target?.team,
       reaction: action.reaction,
+      reactionTrigger: action.reactionTrigger,
       expectedDamage: action.expectedDamage === undefined ? undefined : Number(action.expectedDamage.toFixed(2)),
-      description: action.reaction === 'decline'
-        ? 'Do not spend this reaction on the opportunity attack trigger.'
-        : 'Spend the reaction now to make the listed melee opportunity attack against the creature leaving reach.',
+      incomingDamage: action.incomingDamage,
+      damageType: action.damageType,
+      expectedDamageReduction: action.expectedDamageReduction,
+      description: isDamageMitigation
+        ? action.reaction === 'decline'
+          ? 'Do not spend this reaction on the next eligible attack-damage mitigation trigger from this attacker.'
+          : 'Spend the reaction on the next eligible attack damage from this attacker to halve the damage with Uncanny Dodge.'
+        : action.reaction === 'decline'
+          ? 'Do not spend this reaction on the opportunity attack trigger.'
+          : 'Spend the reaction now to make the listed melee opportunity attack against the creature leaving reach.',
     };
   }
 
@@ -670,6 +681,18 @@ function spellActionLabel(
   const targetSuffix = targetText ? ` targeting ${targetText}` : '';
   const economy = action.isBonusAction ? 'bonus action ' : '';
   return `${economy}${action.actionName}${centerText}${directionText}${targetSuffix}`;
+}
+
+function reactionActionLabel(
+  action: Extract<LegalAction, { type: 'reaction' }>,
+  targetLabel: string,
+): string {
+  if (action.reactionTrigger === 'attack_damage') {
+    if (action.reaction === 'decline') return `Decline Uncanny Dodge against ${targetLabel}`;
+    return `Use Uncanny Dodge against ${targetLabel}`;
+  }
+  if (action.reaction === 'decline') return `Decline opportunity attack against ${targetLabel}`;
+  return `Opportunity attack ${targetLabel} with ${action.actionName}`;
 }
 
 function abilityView(creature: Creature): Record<AbilityKey, LlmAbilityView> {

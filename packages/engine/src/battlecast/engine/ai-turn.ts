@@ -6,7 +6,7 @@ import {
   resolveAttack, resolveAoE, resolveSingleTargetSave, getAoETargets, pickRangedSphereCenter,
   executeSpell, applyHealing,
   processRegeneration, processRecharges, checkBattleComplete, applyDamage, applyCondition, pushLog,
-  type TacticType,
+  type DamageReactionHooks, type TacticType,
   hasBuff, hasResource, consumeResource, addBuff,
   processConcentrationAuras, checkAuraEntry, expireSourceTurnBuffs,
   runDeathSave, stabiliseDyingAlly,
@@ -1509,10 +1509,18 @@ export interface OpportunityAttackHooks {
 export function executeTurn(
   state: BattleState,
   creature: Creature,
-  options: { turnStartAlreadyProcessed?: boolean; opportunityAttacks?: OpportunityAttackHooks } = {},
+  options: {
+    turnStartAlreadyProcessed?: boolean;
+    opportunityAttacks?: OpportunityAttackHooks;
+    damageReactions?: DamageReactionHooks;
+  } = {},
 ): void {
   if (!options.turnStartAlreadyProcessed && !beginBattlecastControlledTurn(state, creature)) return;
   if (!creature.isAlive || state.isComplete) return;
+  const previousDamageReactionHooks = state.damageReactionHooks;
+  if (options.damageReactions) {
+    state.damageReactionHooks = options.damageReactions;
+  }
   try {
   handlePassiveAuras(state, creature);
 
@@ -2192,6 +2200,7 @@ export function executeTurn(
   creature.hasActed = true;
   checkBattleComplete(state);
   } finally {
+    state.damageReactionHooks = previousDamageReactionHooks;
     processHydraEndOfTurn(state, creature);
     processTargetTurnEndOngoingEffects(state, creature);
   }

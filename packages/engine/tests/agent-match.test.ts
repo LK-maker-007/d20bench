@@ -562,8 +562,11 @@ describe('agent matches', () => {
 
   it('asks an OpenRouter actual-action agent again after the first Extra Attack swing', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    const observedPrompts: Array<{ recentLogs?: string[] }> = [];
     globalThis.fetch = vi.fn(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
+      const userMessage = body.messages.find((message: { role: string }) => message.role === 'user');
+      observedPrompts.push(JSON.parse(String(userMessage.content)));
       const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
       const actionId = actionIds.find((id) => id.startsWith('attack:')) ?? 'end_turn';
       return jsonResponse({
@@ -605,9 +608,16 @@ describe('agent matches', () => {
     );
 
     expect(llmTurnStarts.some((event) => event.legalActions.some((action) => action.type === 'battlecast_tactic'))).toBe(false);
-    expect(llmActions.filter((event) => event.acceptedAction.type === 'attack')).toHaveLength(2);
-    expect(llmActions.filter((event) => event.acceptedAction.type === 'attack').map((event) => event.turnStep)).toEqual([0, 1]);
+    const attackResolutions = llmActions.filter((event) => event.acceptedAction.type === 'attack');
+    expect(attackResolutions).toHaveLength(2);
+    expect(attackResolutions.map((event) => event.turnStep)).toEqual([0, 1]);
     expect(llmActions.some((event) => (event.turnStep ?? 0) > 1)).toBe(true);
+    const firstAttackLog = attackResolutions[0]?.logs?.[0];
+    expect(firstAttackLog).toBeDefined();
+    const formattedFirstAttackLog = firstAttackLog
+      ? `R${firstAttackLog.round} T${firstAttackLog.turn} ${firstAttackLog.actor} ${firstAttackLog.action}: ${firstAttackLog.details}`
+      : '';
+    expect(observedPrompts[1]?.recentLogs).toContain(formattedFirstAttackLog);
   });
 
   it('asks an OpenRouter Warlock again after the first Eldritch Blast beam', async () => {
@@ -825,12 +835,13 @@ describe('agent matches', () => {
     globalThis.fetch = vi.fn(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
-      const preferred = callIndex === 0
+      const reactionDecline = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      const preferred = reactionDecline ?? (callIndex === 0
         ? 'class_feature:steady-aim'
         : callIndex === 1
           ? actionIds.find((id) => id.startsWith('attack:'))
-          : 'end_turn';
-      callIndex += 1;
+          : 'end_turn');
+      if (!reactionDecline) callIndex += 1;
       const actionId = preferred && actionIds.includes(preferred) ? preferred : 'end_turn';
       return jsonResponse({
         id: `gen-${callIndex}-${actionId}`,
@@ -1195,6 +1206,73 @@ describe('agent matches', () => {
     expect(reactionResolution?.logs.some((log) => log.action === 'Opportunity Attack')).toBe(true);
   });
 
+  it('asks OpenRouter for Uncanny Dodge at the damage trigger during Battlecast attack turns', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    const observedReactionIds: string[][] = [];
+    const observedReactionPrompts: Array<{ legalActions?: Array<{ id: string; incomingDamage?: number }>; recentLogs?: string[] }> = [];
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const userMessage = body.messages.find((message: { role: string }) => message.role === 'user');
+      const observation = JSON.parse(String(userMessage.content));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const uncanny = actionIds.find((id) => id.startsWith('reaction:uncanny-dodge:'));
+      if (uncanny) {
+        observedReactionIds.push([...actionIds]);
+        observedReactionPrompts.push(observation);
+      }
+      const actionId = uncanny ?? 'end_turn';
+      return jsonResponse({
+        id: `gen-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Spend the reaction to reduce attack damage.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: fighterThreatensRogueScenario(),
+      seed: 1,
+      redAgent: 'battlecast.aggressive',
+      blueAgent: 'openrouter:test/tool-model',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const reactionResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.acceptedAction.type === 'reaction' &&
+      event.acceptedAction.reaction === 'uncanny_dodge'
+    );
+
+    expect(observedReactionIds.length).toBeGreaterThanOrEqual(1);
+    expect(reactionResolution?.type).toBe('action_resolved');
+    expect(reactionResolution?.agentId).toBe('openrouter:test/tool-model');
+    expect(reactionResolution?.acceptedAction).toEqual(expect.objectContaining({
+      reaction: 'uncanny_dodge',
+      incomingDamage: expect.any(Number),
+      expectedDamageReduction: expect.any(Number),
+    }));
+    const promptedUncanny = observedReactionPrompts[0]?.legalActions?.find((action) =>
+      action.id.startsWith('reaction:uncanny-dodge:')
+    );
+    expect(promptedUncanny?.incomingDamage).toBe(reactionResolution?.acceptedAction.incomingDamage);
+    expect(observedReactionPrompts[0]?.recentLogs?.some((log) =>
+      log.includes('hits Rogue L5') && log.includes('damage')
+    )).toBe(true);
+    expect(reactionResolution?.logs.some((log) => log.action === 'Uncanny Dodge')).toBe(true);
+  });
+
   it('lets an actual-action LLM Dodge and keep the defensive flag until its next turn', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     let callIndex = 0;
@@ -1549,6 +1627,26 @@ function adjacentRangerKitesFighterScenario(): D20benchScenario {
     combatants: [
       { monster: buildHero('Ranger', 5), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+    ],
+  };
+}
+
+function fighterThreatensRogueScenario(): D20benchScenario {
+  return {
+    id: 'test.fighter-threatens-rogue.v1',
+    name: 'Fighter Threatens Rogue',
+    description: 'A Battlecast Fighter attacks an OpenRouter-controlled Rogue that can spend Uncanny Dodge.',
+    battleType: 'reaction-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Fighter', 20), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Rogue', 5), team: 'blue', position: { x: 2, y: 3 } },
     ],
   };
 }
