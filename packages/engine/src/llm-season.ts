@@ -329,6 +329,59 @@ export const llmActualRetaliationVerifyScenario: D20benchScenario = {
   ],
 };
 
+function highArmorFighter(level: number, ac: number) {
+  const fighter = buildHero('Fighter', level);
+  return {
+    ...fighter,
+    name: `${fighter.name} AC${ac}`,
+    ac,
+  };
+}
+
+export const llmActualCuttingWordsAttackVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-cutting-words-attack-party.v1',
+  name: 'LLM Cutting Words Attack Roll Party',
+  description: 'A Battlecast Aggressive Fighter attacks a tuned-AC ally while an OpenRouter Bard should choose whether to spend Cutting Words on the attack roll.',
+  battleType: 'cutting-words-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['reaction', 'cutting-words', 'attack-roll'],
+  designNotes: [
+    'Designed as a live-model harness validation for Bard Cutting Words attack-roll timing.',
+    'The attacking Fighter and protected Fighter AC are tuned so seed 1 produces a non-critical hit inside the Bardic Inspiration die window.',
+  ],
+  combatants: [
+    { monster: buildHero('Fighter', 10), team: 'red', position: { x: 2, y: 2 } },
+    { monster: highArmorFighter(5, 22), team: 'blue', position: { x: 2, y: 3 } },
+    { monster: buildHero('Bard', 5), team: 'blue', position: { x: 4, y: 3 } },
+  ],
+};
+
+export const llmActualCuttingWordsDamageVerifyScenario: D20benchScenario = {
+  id: 'hidden.llm-cutting-words-damage-party.v1',
+  name: 'LLM Cutting Words Damage Roll Party',
+  description: 'A Battlecast Aggressive Fighter lands a strong hit while an OpenRouter Bard should choose whether to spend Cutting Words on the damage roll.',
+  battleType: 'cutting-words-smoke',
+  visibility: 'hidden',
+  rulesetId: 'battlecast-srd-2024',
+  dataPackId: 'battlecast-heroes',
+  scenarioVersion: '1.0.0',
+  gridSize: 8,
+  tacticalTags: ['reaction', 'cutting-words', 'damage-roll'],
+  designNotes: [
+    'Designed as a live-model harness validation for Bard Cutting Words damage-roll timing.',
+    'The attacking Fighter is intentionally high level so at least one attack should hit and expose the damage-roll trigger.',
+  ],
+  combatants: [
+    { monster: buildHero('Fighter', 20), team: 'red', position: { x: 2, y: 2 } },
+    { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+    { monster: buildHero('Bard', 5), team: 'blue', position: { x: 4, y: 3 } },
+  ],
+};
+
 export const llmSmokeSeason: LlmSeasonConfig = {
   id: 'llm-smoke-v0',
   description: 'First bounded LLM smoke season on the public goblin duel, using latest Kimi, GLM 5.2, latest DeepSeek, and cheap smaller OpenRouter models.',
@@ -643,7 +696,31 @@ export const llmActualRetaliationVerifySeason: LlmSeasonConfig = {
   concurrency: 4,
 };
 
+export const llmActualCuttingWordsVerifySeason: LlmSeasonConfig = {
+  id: 'llm-actual-cutting-words-verify-v1',
+  description: 'Focused delegate-free actual-action validation where cheap OpenRouter models control trigger-time Bard Cutting Words attack-roll and damage-roll reactions.',
+  agents: [
+    ...llmActualCheapVerifyModelAgents,
+    'battlecast.aggressive',
+  ],
+  scenarios: [
+    llmActualCuttingWordsAttackVerifyScenario,
+    llmActualCuttingWordsDamageVerifyScenario,
+  ],
+  seeds: [1],
+  maxRounds: 1,
+  pairings: llmActualCheapVerifyModelAgents.map((model) => ({
+    redAgent: 'battlecast.aggressive' as const,
+    blueAgent: model,
+  })),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
 export const llmSeasons = [
+  llmActualCuttingWordsVerifySeason,
   llmActualRetaliationVerifySeason,
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,

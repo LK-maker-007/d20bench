@@ -278,6 +278,12 @@ export interface LlmActionView {
   expectedHealing?: number;
   incomingDamage?: number;
   damageType?: string;
+  attackRollTotal?: number;
+  targetAc?: number;
+  maxRollReduction?: number;
+  expectedRollReduction?: number;
+  actualRollReduction?: number;
+  preventedHit?: boolean;
   expectedDamageReduction?: number;
   actualDamageReduction?: number;
   extraMovement?: number;
@@ -509,7 +515,9 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
 
   if (action.type === 'reaction') {
     const target = creatureById.get(action.targetId);
-    const isDamageMitigation = action.reactionTrigger === 'attack_damage';
+    const isInterruptReaction = action.reactionTrigger === 'attack_damage' ||
+      action.reactionTrigger === 'attack_roll' ||
+      action.reactionTrigger === 'damage_roll';
     return {
       id: action.id,
       type: action.type,
@@ -525,9 +533,16 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
       expectedDamage: action.expectedDamage === undefined ? undefined : Number(action.expectedDamage.toFixed(2)),
       incomingDamage: action.incomingDamage,
       damageType: action.damageType,
+      attackRollTotal: action.attackRollTotal,
+      targetAc: action.targetAc,
+      maxRollReduction: action.maxRollReduction,
+      expectedRollReduction: action.expectedRollReduction === undefined ? undefined : Number(action.expectedRollReduction.toFixed(2)),
+      actualRollReduction: action.actualRollReduction,
+      preventedHit: action.preventedHit,
       expectedDamageReduction: action.expectedDamageReduction,
       actualDamageReduction: action.actualDamageReduction,
-      description: isDamageMitigation
+      resourceCost: action.resourceCost,
+      description: isInterruptReaction
         ? damageReactionDescription(action)
         : action.reaction === 'decline'
           ? 'Do not spend this reaction on the opportunity attack trigger.'
@@ -697,11 +712,18 @@ function reactionActionLabel(
     }
     return `Use ${name} against ${targetLabel}`;
   }
+  if (action.reactionTrigger === 'attack_roll' || action.reactionTrigger === 'damage_roll') {
+    const name = damageReactionName(action.reactionFeature ?? action.reaction);
+    if (action.reaction === 'decline') return `Decline ${name} against ${targetLabel}`;
+    return `Use ${name} against ${targetLabel}`;
+  }
   if (action.reaction === 'decline') return `Decline opportunity attack against ${targetLabel}`;
   return `Opportunity attack ${targetLabel} with ${action.actionName}`;
 }
 
 function damageReactionName(reaction: Extract<LegalAction, { type: 'reaction' }>['reaction'] | NonNullable<Extract<LegalAction, { type: 'reaction' }>['reactionFeature']>): string {
+  if (reaction === 'cutting_words_attack') return 'Cutting Words on attack roll';
+  if (reaction === 'cutting_words_damage') return 'Cutting Words on damage roll';
   if (reaction === 'monk_deflect') return 'Deflect Attacks';
   if (reaction === 'superior_hunters_defense') return "Superior Hunter's Defense";
   if (reaction === 'retaliation') return 'Retaliation';
@@ -712,10 +734,22 @@ function damageReactionName(reaction: Extract<LegalAction, { type: 'reaction' }>
 function damageReactionDescription(action: Extract<LegalAction, { type: 'reaction' }>): string {
   const name = damageReactionName(action.reactionFeature ?? action.reaction);
   if (action.reaction === 'decline') {
+    if ((action.reactionFeature ?? action.reaction) === 'cutting_words_attack') {
+      return 'Do not spend Bardic Inspiration and a reaction to reduce this attack roll.';
+    }
+    if ((action.reactionFeature ?? action.reaction) === 'cutting_words_damage') {
+      return 'Do not spend Bardic Inspiration and a reaction to reduce this damage roll.';
+    }
     if ((action.reactionFeature ?? action.reaction) === 'retaliation') {
       return 'Do not spend this reaction on the Retaliation trigger from this adjacent attacker.';
     }
     return `Do not spend this reaction on this ${name} attack-damage mitigation trigger from this attacker.`;
+  }
+  if ((action.reactionFeature ?? action.reaction) === 'cutting_words_attack') {
+    return 'Spend Bardic Inspiration and a reaction now to roll the Bardic Inspiration die and subtract it from the triggering attack roll before hit resolution.';
+  }
+  if ((action.reactionFeature ?? action.reaction) === 'cutting_words_damage') {
+    return 'Spend Bardic Inspiration and a reaction now to roll the Bardic Inspiration die and subtract it from the triggering damage roll.';
   }
   if ((action.reactionFeature ?? action.reaction) === 'retaliation') {
     return 'Spend the reaction to make the listed melee Retaliation attack against the adjacent creature that damaged this Barbarian.';

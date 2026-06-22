@@ -87,17 +87,39 @@ export type LegalAction =
   | {
       id: string;
       type: 'reaction';
-      reaction: 'opportunity_attack' | 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'retaliation' | 'decline';
-      reactionFeature?: 'opportunity_attack' | 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'retaliation';
-      reactionTrigger?: 'opportunity_attack' | 'attack_damage';
+      reaction:
+        | 'opportunity_attack'
+        | 'uncanny_dodge'
+        | 'monk_deflect'
+        | 'superior_hunters_defense'
+        | 'retaliation'
+        | 'cutting_words_attack'
+        | 'cutting_words_damage'
+        | 'decline';
+      reactionFeature?:
+        | 'opportunity_attack'
+        | 'uncanny_dodge'
+        | 'monk_deflect'
+        | 'superior_hunters_defense'
+        | 'retaliation'
+        | 'cutting_words_attack'
+        | 'cutting_words_damage';
+      reactionTrigger?: 'opportunity_attack' | 'attack_damage' | 'attack_roll' | 'damage_roll';
       actionName?: string;
       targetId: string;
       targetName: string;
       expectedDamage?: number;
       incomingDamage?: number;
       damageType?: string;
+      attackRollTotal?: number;
+      targetAc?: number;
+      maxRollReduction?: number;
+      expectedRollReduction?: number;
+      actualRollReduction?: number;
+      preventedHit?: boolean;
       expectedDamageReduction?: number;
       actualDamageReduction?: number;
+      resourceCost?: { key: string; amount: number };
     }
   | {
       id: 'dash';
@@ -361,6 +383,22 @@ export function declineRetaliationActionId(attackerId: string): string {
   return `reaction:decline-retaliation:${attackerId}`;
 }
 
+export function cuttingWordsAttackActionId(attackerId: string): string {
+  return `reaction:cutting-words-attack:${attackerId}`;
+}
+
+export function declineCuttingWordsAttackActionId(attackerId: string): string {
+  return `reaction:decline-cutting-words-attack:${attackerId}`;
+}
+
+export function cuttingWordsDamageActionId(attackerId: string): string {
+  return `reaction:cutting-words-damage:${attackerId}`;
+}
+
+export function declineCuttingWordsDamageActionId(attackerId: string): string {
+  return `reaction:decline-cutting-words-damage:${attackerId}`;
+}
+
 export function battlecastTacticActionId(tactic: TacticType): string {
   return `battlecast_tactic:${tactic}`;
 }
@@ -483,6 +521,69 @@ export function generateDamageReactionActions(
     activeCreatureName: defender.displayName,
     actionSpace: 'actual-actions-v1',
     actions,
+  };
+}
+
+export function generateCuttingWordsReactionActions(
+  bard: Creature,
+  attacker: Creature,
+  mode: 'attack' | 'damage',
+  trigger: {
+    incomingDamage?: number;
+    damageType?: string;
+    attackRollTotal?: number;
+    targetAc?: number;
+    maxRollReduction?: number;
+    expectedRollReduction?: number;
+  } = {},
+): LegalActionCatalogue {
+  const die = bardicInspirationDieForLevel(bard.monsterData.heroLevel ?? 1);
+  const maxRollReduction = trigger.maxRollReduction ?? maxRollForSingleDie(die);
+  const expectedRollReduction = trigger.expectedRollReduction ?? averageDamage(die);
+  const reaction = mode === 'attack' ? 'cutting_words_attack' : 'cutting_words_damage';
+  const reactionTrigger = mode === 'attack' ? 'attack_roll' : 'damage_roll';
+  const useId = mode === 'attack'
+    ? cuttingWordsAttackActionId(attacker.id)
+    : cuttingWordsDamageActionId(attacker.id);
+  const declineId = mode === 'attack'
+    ? declineCuttingWordsAttackActionId(attacker.id)
+    : declineCuttingWordsDamageActionId(attacker.id);
+  const expectedDamageReduction = mode === 'damage' && trigger.incomingDamage !== undefined
+    ? Math.min(trigger.incomingDamage, expectedRollReduction)
+    : undefined;
+  const common = {
+    reactionFeature: reaction,
+    reactionTrigger,
+    targetId: attacker.id,
+    targetName: attacker.displayName,
+    incomingDamage: mode === 'damage' ? trigger.incomingDamage : undefined,
+    damageType: trigger.damageType,
+    attackRollTotal: trigger.attackRollTotal,
+    targetAc: trigger.targetAc,
+    maxRollReduction,
+    expectedRollReduction,
+    expectedDamageReduction,
+  } satisfies Partial<Extract<LegalAction, { type: 'reaction' }>>;
+
+  return {
+    activeCreatureId: bard.id,
+    activeCreatureName: bard.displayName,
+    actionSpace: 'actual-actions-v1',
+    actions: [
+      {
+        id: useId,
+        type: 'reaction',
+        reaction,
+        resourceCost: { key: 'bardic-inspiration', amount: 1 },
+        ...common,
+      },
+      {
+        id: declineId,
+        type: 'reaction',
+        reaction: 'decline',
+        ...common,
+      },
+    ],
   };
 }
 
@@ -658,6 +759,18 @@ function expectedDamageReactionReduction(
     return Math.min(incomingDamage, averageDamage('1d10') + dexMod + level);
   }
   return incomingDamage - Math.floor(incomingDamage / 2);
+}
+
+function bardicInspirationDieForLevel(level: number): '1d6' | '1d8' | '1d10' | '1d12' {
+  if (level >= 15) return '1d12';
+  if (level >= 10) return '1d10';
+  if (level >= 5) return '1d8';
+  return '1d6';
+}
+
+function maxRollForSingleDie(die: string): number {
+  const match = /^1d(\d+)$/.exec(die);
+  return match ? Number(match[1]) : 0;
 }
 
 function retaliationMeleeAction(defender: Creature): MonsterAction | undefined {

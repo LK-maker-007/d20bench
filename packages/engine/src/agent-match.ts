@@ -48,6 +48,7 @@ import {
   createBattlecastTacticAction,
   estimateAttackRollBudget,
   findLegalAction,
+  generateCuttingWordsReactionActions,
   generateDamageReactionActions,
   generateLegalActions,
   generateOpportunityReactionActions,
@@ -1377,21 +1378,36 @@ async function chooseDamageReactionAtTrigger(input: {
   if (!context.attacker) {
     throw new Error(`Cannot ask ${agent.id} for ${context.reaction} without an attacker`);
   }
-  const catalogue = generateDamageReactionActions(context.target, context.attacker, context.reaction, {
-    incomingDamage: context.incomingDamage,
-    damageType: context.damageType,
-  });
+  const reactor = damageReactionActor(context);
+  const catalogue = context.reaction === 'cutting_words_attack' || context.reaction === 'cutting_words_damage'
+    ? generateCuttingWordsReactionActions(
+        reactor,
+        context.attacker,
+        context.reaction === 'cutting_words_attack' ? 'attack' : 'damage',
+        {
+          incomingDamage: context.incomingDamage,
+          damageType: context.damageType,
+          attackRollTotal: context.attackRollTotal,
+          targetAc: context.targetAc,
+          maxRollReduction: context.maxRollReduction,
+          expectedRollReduction: context.expectedRollReduction,
+        },
+      )
+    : generateDamageReactionActions(context.target, context.attacker, context.reaction, {
+        incomingDamage: context.incomingDamage,
+        damageType: context.damageType,
+      });
   const selection = await chooseOpenRouterAction(agent, {
     state: input.state,
-    activeCreature: context.target,
+    activeCreature: reactor,
     catalogue,
     rng: input.agentRng,
     traceMeta: {
       matchId: input.matchId,
       round: input.state.round,
       turnIndex: input.state.turnIndex,
-      activeCreatureId: context.target.id,
-      activeCreatureName: context.target.displayName,
+      activeCreatureId: reactor.id,
+      activeCreatureName: reactor.displayName,
       agentId: agent.id,
     },
     traceSink: input.traceSink,
@@ -1527,7 +1543,8 @@ function createDamageReactionHooks(input: {
   let triggerIndex = 0;
   return {
     chooseDamageReaction: (context) => {
-      const controller = controllerForCreature(context.target, input.controllers);
+      const reactor = damageReactionActor(context);
+      const controller = controllerForCreature(reactor, input.controllers);
       if (controller.kind !== 'openrouter-llm') return undefined;
       const attacker = context.attacker;
       if (!attacker) return 'decline';
@@ -1551,8 +1568,8 @@ function createDamageReactionHooks(input: {
         matchId: input.matchId,
         round: input.state.round,
         turnIndex: input.state.turnIndex,
-        activeCreatureId: context.target.id,
-        activeCreatureName: context.target.displayName,
+        activeCreatureId: damageReactionActor(context).id,
+        activeCreatureName: damageReactionActor(context).displayName,
         controller: describeAgentController(prepared.agent),
         legalActions: prepared.catalogue.actions,
         stateHash: hashBattlecastState(input.state),
@@ -1573,13 +1590,19 @@ function createDamageReactionHooks(input: {
         damageType: context.damageType,
         expectedDamageReduction: decision === 'use' ? prepared.acceptedAction.expectedDamageReduction : 0,
         actualDamageReduction: decision === 'use' ? context.actualDamageReduction : 0,
+        attackRollTotal: context.attackRollTotal,
+        targetAc: context.targetAc,
+        maxRollReduction: context.maxRollReduction,
+        expectedRollReduction: context.expectedRollReduction,
+        actualRollReduction: decision === 'use' ? context.actualRollReduction : 0,
+        preventedHit: decision === 'use' ? context.preventedHit : false,
       };
       input.replay.push({
         type: 'action_resolved',
         matchId: input.matchId,
         round: input.state.round,
         turnIndex: input.state.turnIndex,
-        activeCreatureId: context.target.id,
+        activeCreatureId: damageReactionActor(context).id,
         agentId: prepared.agent.id,
         requestedActionId: prepared.requestedActionId,
         acceptedAction,
@@ -1590,6 +1613,10 @@ function createDamageReactionHooks(input: {
       });
     },
   };
+}
+
+function damageReactionActor(context: DamageReactionDecisionContext): Creature {
+  return context.reactor ?? context.target;
 }
 
 function opportunityReactionTriggers(
@@ -1640,6 +1667,7 @@ function opportunityReactionKey(reactor: Creature, mover: Creature): string {
 
 function damageReactionTriggerKey(context: DamageReactionDecisionContext, triggerIndex: number): string {
   return [
+    context.reactor?.id ?? context.target.id,
     context.target.id,
     context.attacker?.id ?? 'no-attacker',
     context.reaction,

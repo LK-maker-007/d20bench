@@ -38,13 +38,26 @@ export interface ResolveAttackResult {
 }
 
 export interface DamageReactionDecisionContext {
-  reaction: 'uncanny_dodge' | 'monk_deflect' | 'superior_hunters_defense' | 'retaliation';
+  reaction:
+    | 'uncanny_dodge'
+    | 'monk_deflect'
+    | 'superior_hunters_defense'
+    | 'retaliation'
+    | 'cutting_words_attack'
+    | 'cutting_words_damage';
   target: Creature;
+  reactor?: Creature;
   attacker: Creature | null;
   incomingDamage: number;
   damageType: string;
   isAttack: boolean;
   isCritical: boolean;
+  attackRollTotal?: number;
+  targetAc?: number;
+  maxRollReduction?: number;
+  expectedRollReduction?: number;
+  actualRollReduction?: number;
+  preventedHit?: boolean;
   actualDamageReduction?: number;
 }
 
@@ -3679,11 +3692,44 @@ function applyCuttingWordsToAttackRoll(
   const bard = findCuttingWordsBard(state, target, attacker);
   if (!bard) return;
   const die = bardicInspirationDieForLevel(bard.monsterData.heroLevel ?? 1);
-  if (roll.total - maxRollForDie(die) >= ac) return;
+  const maxReduction = maxRollForDie(die);
+  if (roll.total - maxReduction >= ac) return;
+  const context: DamageReactionDecisionContext = {
+    reaction: 'cutting_words_attack',
+    target,
+    reactor: bard,
+    attacker,
+    incomingDamage: 0,
+    damageType: 'attack roll',
+    isAttack: true,
+    isCritical: false,
+    attackRollTotal: roll.total,
+    targetAc: ac,
+    maxRollReduction: maxReduction,
+    expectedRollReduction: (maxReduction + 1) / 2,
+  };
+  const decision = state.damageReactionHooks?.chooseDamageReaction?.(context);
+  if (decision === 'decline') {
+    const beforeHook = state.damageReactionHooks?.beforeDamageReaction?.(context, decision);
+    pushLog(state, {
+      round: state.round,
+      turn: state.turnIndex,
+      actor: bard.displayName,
+      action: 'Cutting Words Declined',
+      details: `${bard.displayName} does not spend Bardic Inspiration to penalize ${attacker.displayName}'s attack roll.`,
+      type: 'info',
+    });
+    state.damageReactionHooks?.afterDamageReaction?.(context, decision, beforeHook);
+    return;
+  }
+  const beforeHook = state.damageReactionHooks?.beforeDamageReaction?.(context, 'use');
   const penalty = rollDice(die).total;
   useCuttingWords(state, bard, attacker, penalty, 'attack');
   roll.total -= penalty;
   roll.modifier -= penalty;
+  context.actualRollReduction = penalty;
+  context.preventedHit = roll.total < ac;
+  state.damageReactionHooks?.afterDamageReaction?.(context, 'use', beforeHook);
 }
 
 function applyPeerlessSkillToAttackRoll(
@@ -3733,9 +3779,41 @@ function applyCuttingWordsToDamageRoll(
   const bard = findCuttingWordsBard(state, target, attacker);
   if (!bard) return damage;
   const die = bardicInspirationDieForLevel(bard.monsterData.heroLevel ?? 1);
+  const maxReduction = maxRollForDie(die);
+  const context: DamageReactionDecisionContext = {
+    reaction: 'cutting_words_damage',
+    target,
+    reactor: bard,
+    attacker,
+    incomingDamage: damage,
+    damageType: 'damage roll',
+    isAttack: true,
+    isCritical: false,
+    maxRollReduction: maxReduction,
+    expectedRollReduction: (maxReduction + 1) / 2,
+  };
+  const decision = state.damageReactionHooks?.chooseDamageReaction?.(context);
+  if (decision === 'decline') {
+    const beforeHook = state.damageReactionHooks?.beforeDamageReaction?.(context, decision);
+    pushLog(state, {
+      round: state.round,
+      turn: state.turnIndex,
+      actor: bard.displayName,
+      action: 'Cutting Words Declined',
+      details: `${bard.displayName} does not spend Bardic Inspiration to reduce ${attacker.displayName}'s damage roll.`,
+      type: 'info',
+    });
+    state.damageReactionHooks?.afterDamageReaction?.(context, decision, beforeHook);
+    return damage;
+  }
+  const beforeHook = state.damageReactionHooks?.beforeDamageReaction?.(context, 'use');
   const reduction = Math.min(damage, rollDice(die).total);
   useCuttingWords(state, bard, attacker, reduction, 'damage');
-  return Math.max(0, damage - reduction);
+  const reduced = Math.max(0, damage - reduction);
+  context.actualDamageReduction = damage - reduced;
+  context.actualRollReduction = reduction;
+  state.damageReactionHooks?.afterDamageReaction?.(context, 'use', beforeHook);
+  return reduced;
 }
 
 function resolveAttack(

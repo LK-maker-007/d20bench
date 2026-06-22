@@ -1535,6 +1535,119 @@ describe('agent matches', () => {
     expect(reactionResolution?.logs.some((log) => log.action === 'Retaliation')).toBe(true);
   });
 
+  it('surfaces Bard Cutting Words attack-roll context through reaction hooks', () => {
+    const state = initBattle(createBattlecastCreatures(fighterThreatensBardPartyScenario(5).combatants, true), 8);
+    const attacker = state.creatures.find((creature) => creature.team === 'red');
+    const target = state.creatures.find((creature) => creature.team === 'blue' && creature.monsterData.heroClass === 'Fighter');
+    const bard = state.creatures.find((creature) => creature.team === 'blue' && creature.monsterData.heroClass === 'Bard');
+    if (!attacker || !target || !bard) throw new Error('expected Fighter plus Bard party');
+    const attack = getActiveActions(attacker).find((action) => action.type === 'melee' && action.attackBonus !== undefined);
+    if (!attack) throw new Error('expected melee attack');
+
+    let observedContext: unknown;
+    state.damageReactionHooks = {
+      chooseDamageReaction: (context) => {
+        if (context.reaction === 'cutting_words_attack') observedContext = context;
+        return 'decline';
+      },
+    };
+
+    withBattlecastRng(sequenceRng([0.67, 0.5, 0.5]), () => {
+      resolveAttack(state, attacker, target, attack);
+    });
+
+    expect(observedContext).toEqual(expect.objectContaining({
+      reaction: 'cutting_words_attack',
+      target,
+      reactor: bard,
+      attacker,
+      attackRollTotal: expect.any(Number),
+      targetAc: expect.any(Number),
+      maxRollReduction: 8,
+      expectedRollReduction: 4.5,
+    }));
+    expect(state.logs.some((log) => log.action === 'Cutting Words Declined')).toBe(true);
+  });
+
+  it('asks OpenRouter Bard for Cutting Words at the damage-roll trigger during Battlecast attack turns', async () => {
+    process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
+    let observedPrompt: {
+      activeCreature?: { heroClass?: string };
+      legalActions?: Array<{
+        id: string;
+        reactionFeature?: string;
+        incomingDamage?: number;
+        expectedDamageReduction?: number;
+        resourceCost?: { key: string; amount: number };
+      }>;
+    } | undefined;
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init?.body));
+      const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const cuttingDamage = actionIds.find((id) => id.startsWith('reaction:cutting-words-damage:'));
+      const declineCuttingAttack = actionIds.find((id) => id.startsWith('reaction:decline-cutting-words-attack:'));
+      let actionId: string;
+      if (cuttingDamage) {
+        const userMessage = body.messages.find((message: { role: string }) => message.role === 'user');
+        observedPrompt = JSON.parse(String(userMessage.content));
+        actionId = cuttingDamage;
+      } else {
+        actionId = declineCuttingAttack ?? 'end_turn';
+      }
+      return jsonResponse({
+        id: `gen-${actionId}`,
+        model: 'test/tool-model',
+        choices: [{
+          finish_reason: 'tool_calls',
+          message: {
+            tool_calls: [{
+              id: 'call-test',
+              type: 'function',
+              function: {
+                name: 'choose_d20bench_action',
+                arguments: JSON.stringify({ actionId, rationale: 'Spend Cutting Words on the damage roll.' }),
+              },
+            }],
+          },
+        }],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+      });
+    }) as typeof fetch;
+
+    const match = await runAgentMatchAsync({
+      scenario: fighterThreatensBardPartyScenario(20),
+      seed: 1,
+      redAgent: 'battlecast.aggressive',
+      blueAgent: 'openrouter:test/tool-model',
+      maxRounds: 1,
+      llmActionSpace: 'actual-actions-v1',
+    });
+    const reactionResolution = match.replay.find((event) =>
+      event.type === 'action_resolved' &&
+      event.acceptedAction.type === 'reaction' &&
+      event.acceptedAction.reaction === 'cutting_words_damage'
+    );
+    const bard = match.state.creatures.find((creature) => creature.team === 'blue' && creature.monsterData.heroClass === 'Bard');
+
+    expect(observedPrompt?.activeCreature?.heroClass).toBe('Bard');
+    expect(observedPrompt?.legalActions?.some((action) =>
+      action.id.startsWith('reaction:cutting-words-damage:') &&
+      action.reactionFeature === 'cutting_words_damage' &&
+      typeof action.incomingDamage === 'number' &&
+      typeof action.expectedDamageReduction === 'number' &&
+      action.resourceCost?.key === 'bardic-inspiration'
+    )).toBe(true);
+    expect(reactionResolution?.type).toBe('action_resolved');
+    expect(reactionResolution?.activeCreatureId).toBe(bard?.id);
+    expect(reactionResolution?.acceptedAction).toEqual(expect.objectContaining({
+      reaction: 'cutting_words_damage',
+      reactionFeature: 'cutting_words_damage',
+      incomingDamage: expect.any(Number),
+      actualDamageReduction: expect.any(Number),
+    }));
+    expect(reactionResolution?.logs.some((log) => log.action === 'Cutting Words')).toBe(true);
+  });
+
   it('lets an actual-action LLM Dodge and keep the defensive flag until its next turn', async () => {
     process.env.OPENROUTER_API_KEY = 'test-openrouter-key';
     let callIndex = 0;
@@ -2133,6 +2246,27 @@ function fighterThreatensHeroScenario(heroClass: Parameters<typeof buildHero>[0]
     combatants: [
       { monster: buildHero('Fighter', 20), team: 'red', position: { x: 2, y: 2 } },
       { monster: buildHero(heroClass, level), team: 'blue', position: { x: 2, y: 3 } },
+    ],
+  };
+}
+
+function fighterThreatensBardPartyScenario(redLevel: number): D20benchScenario {
+  return {
+    id: `test.fighter-threatens-bard-party-l${redLevel}.v1`,
+    name: `Fighter L${redLevel} Threatens Bard Party`,
+    description: 'A Battlecast Fighter attacks an OpenRouter-controlled party with a Bard ally that can use Cutting Words.',
+    battleType: 'reaction-smoke',
+    visibility: 'hidden',
+    rulesetId: 'test-rules',
+    dataPackId: 'test-data',
+    scenarioVersion: '1.0.0',
+    gridSize: 8,
+    tacticalTags: ['test', 'reaction'],
+    designNotes: ['test fixture'],
+    combatants: [
+      { monster: buildHero('Fighter', redLevel), team: 'red', position: { x: 2, y: 2 } },
+      { monster: buildHero('Fighter', 5), team: 'blue', position: { x: 2, y: 3 } },
+      { monster: buildHero('Bard', 5), team: 'blue', position: { x: 4, y: 3 } },
     ],
   };
 }

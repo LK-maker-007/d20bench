@@ -12,6 +12,7 @@ import {
   llmActualCheapVerifyV7Season,
   llmActualCheapVerifyV8Season,
   llmActualCheapVerifyV9Season,
+  llmActualCuttingWordsVerifySeason,
   llmActualDeflectVerifySeason,
   llmActualMitigationVerifySeason,
   llmActualReactionVerifySeason,
@@ -271,6 +272,17 @@ describe('LLM seasons', () => {
     expect(llmActualRetaliationVerifySeason.scenarios.map((scenario) => scenario.battleType)).toEqual(['retaliation-smoke']);
     expect(llmActualRetaliationVerifySeason.pairings).toHaveLength(4);
     expect(llmActualRetaliationVerifySeason.pairings?.every((pairing) =>
+      pairing.redAgent === 'battlecast.aggressive' &&
+      pairing.blueAgent.startsWith('openrouter:')
+    )).toBe(true);
+    expect(llmActualCuttingWordsVerifySeason.id).toBe('llm-actual-cutting-words-verify-v1');
+    expect(llmActualCuttingWordsVerifySeason.llmActionSpace).toBe('actual-actions-v1');
+    expect(llmActualCuttingWordsVerifySeason.scenarios.map((scenario) => scenario.id)).toEqual([
+      'hidden.llm-cutting-words-attack-party.v1',
+      'hidden.llm-cutting-words-damage-party.v1',
+    ]);
+    expect(llmActualCuttingWordsVerifySeason.pairings).toHaveLength(4);
+    expect(llmActualCuttingWordsVerifySeason.pairings?.every((pairing) =>
       pairing.redAgent === 'battlecast.aggressive' &&
       pairing.blueAgent.startsWith('openrouter:')
     )).toBe(true);
