@@ -2,7 +2,12 @@
   'use strict';
 
   const INDEX = (window.D20BENCH_REPLAY_INDEX || { matches: [] });
-  const CELL_MAX = 44;
+  const bootQuery = new URLSearchParams(window.location.search);
+  const CELL_MAX = Number(bootQuery.get('cell')) > 0 ? Number(bootQuery.get('cell')) : 44;
+  // Freeze-frame mode for screenshots: &p=0.45 renders the current beat's
+  // transient effects (attack lines, AoE circles, damage floaters) at a
+  // fixed progress instead of animating them away.
+  const FREEZE_PROGRESS = bootQuery.has('p') ? Math.max(0, Math.min(1, Number(bootQuery.get('p')))) : null;
   const TEAM_COLORS = { red: '#e11d48', blue: '#2563eb' };
   const DMG_COLORS = {
     fire: '#ea580c', cold: '#0284c7', acid: '#16a34a', lightning: '#ca8a04',
@@ -296,7 +301,9 @@
     const beat = state.timeline[state.cursor];
     if (!beat) { setPlaying(false); draw(0); return; }
     const duration = Math.max(60, (beat.durationMs ?? beat.ev?.durationMs ?? 400) / state.speed);
-    const progress = Math.min(1, (now - state.beatStart) / duration);
+    const progress = FREEZE_PROGRESS !== null && !state.playing
+      ? FREEZE_PROGRESS
+      : Math.min(1, (now - state.beatStart) / duration);
     if (state.playing && progress >= 1) {
       advanceBeat(now);
     }
@@ -507,7 +514,7 @@
 
     const beat = state.timeline[state.cursor];
     const overridePos = new Map();
-    if (beat?.kind === 'anim' && beat.ev.kind === 'move' && state.playing) {
+    if (beat?.kind === 'anim' && beat.ev.kind === 'move' && (state.playing || FREEZE_PROGRESS !== null)) {
       const path = beat.ev.path && beat.ev.path.length > 1 ? beat.ev.path : [beat.ev.from, beat.ev.to];
       const eased = easeInOutCubic(progress);
       const idx = Math.min(path.length - 2, Math.floor(eased * (path.length - 1)));
@@ -518,9 +525,15 @@
       });
     }
 
-    if (beat?.kind === 'anim' && beat.ev.kind === 'aoe') {
-      const center = cellCenter(beat.ev.center, geo);
-      const radius = (beat.ev.radius / 5) * cell * Math.min(1, progress * 1.4);
+    let aoeEv = beat?.kind === 'anim' && beat.ev.kind === 'aoe' ? beat.ev : null;
+    let aoeProgress = progress;
+    if (!aoeEv && FREEZE_PROGRESS !== null && beat?.kind === 'anim' && beat.ev.kind === 'aoeDamage') {
+      const prev = state.timeline[state.cursor - 1];
+      if (prev?.kind === 'anim' && prev.ev.kind === 'aoe') { aoeEv = prev.ev; aoeProgress = 1; }
+    }
+    if (aoeEv) {
+      const center = cellCenter(aoeEv.center, geo);
+      const radius = (aoeEv.radius / 5) * cell * Math.min(1, aoeProgress * 1.4);
       ctx.beginPath();
       ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(234, 88, 12, 0.18)';
