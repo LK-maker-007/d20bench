@@ -15,6 +15,7 @@ replays/
 artifacts/
 completed-matches.jsonl
 raw-decisions.jsonl
+apps/replay-viewer/data/
 .env
 .env.*
 !.env.example

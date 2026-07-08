@@ -13,6 +13,8 @@
     "d20bench": "node packages/engine/dist/cli.js",
     "results:site:data": "node scripts/build-results-site-data.mjs",
     "results:site:serve": "vite --host 127.0.0.1 --port 4173 .",
+    "replays:data": "node scripts/build-replay-viewer-data.mjs",
+    "replays:serve": "python3 -m http.server 8734 --directory apps/replay-viewer",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -b --pretty false"
