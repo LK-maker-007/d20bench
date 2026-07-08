@@ -149,6 +149,12 @@ export interface BattleState {
    */
   movementEnvironment?: 'land' | 'underwater';
   damageReactionHooks?: DamageReactionHooks;
+  /**
+   * Round cap enforced by the match runner, when there is one. Exposed so
+   * agent observations can tell models the match length and that a capped
+   * match is scored by total remaining HP.
+   */
+  matchMaxRounds?: number;
 }
 
 export function pushLog(state: BattleState, entry: Omit<BattleLog, 'eventIndex'>): void {

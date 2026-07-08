@@ -73,7 +73,7 @@ describe('OpenRouter action selection', () => {
     expect(rawTraces).toHaveLength(1);
     expect(rawTraces[0].parseStatus).toBe('accepted');
     expect(requests[0].response_format).toBeUndefined();
-    expect(requests[0].temperature).toBeUndefined();
+    expect(requests[0].temperature).toBe(0.2);
     expect(requests[0].tools[0].function.name).toBe('choose_d20bench_action');
     expect(requests[0].tools[0].function.parameters.properties.actionId.enum).toEqual(
       context.catalogue.actions.map((action) => action.id),

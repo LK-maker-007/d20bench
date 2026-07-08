@@ -48,8 +48,9 @@ interface OpenRouterToolDecision {
 
 const openRouterRequestTimeoutMs = 90_000;
 const toolName = 'choose_d20bench_action';
-const defaultMaxCompletionTokens = 2048;
+const defaultMaxCompletionTokens = 8192;
 const glmMaxCompletionTokens = 8192;
+const defaultTemperature = 0.2;
 const defaultDecisionAttempts = 3;
 const modelsWithoutForcedToolChoice = new Set<string>();
 
@@ -390,6 +391,8 @@ function buildOpenRouterToolRequest(input: {
       role: 'system',
       content: [
         'You are controlling one creature in a deterministic D20bench tactical combat benchmark.',
+        'Your team wins by defeating every enemy creature. If the match reaches the round cap in observation.maxRounds undecided, the team with the higher total remaining HP wins, so trading damage efficiently, healing, and staying alive all score.',
+        'Grid geometry: positions are 5-ft grid squares. Diagonal steps cost the same as straight steps, so the distance between two squares in feet is 5 * max(|dx|, |dy|). Speeds, ranges, reach, distanceFt, and distanceFromActiveFt values are all in feet.',
         `You must call the ${toolName} tool exactly once.`,
         'Choose exactly one actionId from the tool enum. Do not answer in text.',
         'The actionId must match one enum value exactly. Do not use action names, spell names, weapon names, labels, target names, or partial ids.',
@@ -419,6 +422,7 @@ function buildOpenRouterToolRequest(input: {
   return {
     model: input.model,
     max_tokens: openRouterMaxCompletionTokens(input.model),
+    temperature: openRouterTemperature(),
     provider: {
       require_parameters: true,
     },
@@ -625,6 +629,15 @@ function openRouterMaxCompletionTokens(model: string): number {
 
 function openRouterDecisionAttempts(): number {
   return numberEnv('D20BENCH_OPENROUTER_TOOL_ATTEMPTS') ?? defaultDecisionAttempts;
+}
+
+function openRouterTemperature(): number {
+  const raw = process.env.D20BENCH_OPENROUTER_TEMPERATURE;
+  if (raw !== undefined && raw !== '') {
+    const value = Number(raw);
+    if (Number.isFinite(value) && value >= 0) return value;
+  }
+  return defaultTemperature;
 }
 
 function numberEnv(key: string): number | undefined {

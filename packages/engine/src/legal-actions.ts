@@ -62,6 +62,7 @@ export type LegalAction =
       type: 'move_to';
       destination: { x: number; y: number };
       distanceFt: number;
+      nearestEnemyDistanceAfterFt?: number;
     }
   | {
       id: 'dodge';
@@ -1402,12 +1403,20 @@ function generateMoveToActions(
   active: Creature,
   reachable = reachableMovementDestinations(active, state),
 ): LegalAction[] {
+  const enemies = state.creatures.filter((creature) =>
+    creature.team !== active.team && creature.isAlive && !creature.dying
+  );
   return selectMovementDestinations(state, active, reachable)
     .map((destination) => ({
       id: moveToActionId(destination),
       type: 'move_to' as const,
       destination: { x: destination.x, y: destination.y },
       distanceFt: destination.distanceFt,
+      nearestEnemyDistanceAfterFt: enemies.length > 0
+        ? Math.min(...enemies.map((enemy) =>
+            creatureDistance({ ...active, position: { x: destination.x, y: destination.y } }, enemy)
+          ))
+        : undefined,
     }));
 }
 
@@ -1435,7 +1444,7 @@ function selectMovementDestinations(
   };
   const addByCoord = (coord: { x: number; y: number }) => add(byKey.get(`${coord.x},${coord.y}`));
 
-  const maxDestinations = 16;
+  const maxDestinations = 48;
   const enemies = state.creatures.filter((creature) =>
     creature.team !== active.team && creature.isAlive && !creature.dying
   );
@@ -1447,19 +1456,26 @@ function selectMovementDestinations(
         left.x - right.x ||
         left.y - right.y
       )
-      .slice(0, 2)) {
+      .slice(0, 4)) {
       add(destination);
     }
   }
 
   const maxSquares = Math.floor(active.movementRemaining / 5);
-  for (const dx of [-1, 0, 1]) {
-    for (const dy of [-1, 0, 1]) {
-      if (dx === 0 && dy === 0) continue;
-      addByCoord({
-        x: active.position.x + dx * maxSquares,
-        y: active.position.y + dy * maxSquares,
-      });
+  const compassRadii = [...new Set([
+    maxSquares,
+    Math.ceil(maxSquares / 2),
+    Math.ceil(maxSquares / 4),
+  ])].filter((radius) => radius >= 1);
+  for (const radius of compassRadii) {
+    for (const dx of [-1, 0, 1]) {
+      for (const dy of [-1, 0, 1]) {
+        if (dx === 0 && dy === 0) continue;
+        addByCoord({
+          x: active.position.x + dx * radius,
+          y: active.position.y + dy * radius,
+        });
+      }
     }
   }
 

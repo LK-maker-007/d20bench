@@ -1,5 +1,6 @@
 import {
   TACTIC_LABELS,
+  creatureDistance,
   getActiveSize,
   getActiveSpeed,
   type BattleState,
@@ -235,6 +236,7 @@ export interface LlmCreatureView {
   size: string;
   creatureType: string;
   position: { x: number; y: number };
+  distanceFromActiveFt?: number;
   speed: Speed;
   speedRemaining: number;
   initiative: number;
@@ -273,6 +275,7 @@ export interface LlmActionView {
   targetNames?: string[];
   destination?: { x: number; y: number };
   distanceFt?: number;
+  nearestEnemyDistanceAfterFt?: number;
   center?: { x: number; y: number };
   direction?: { x: number; y: number };
   effectKind?: Extract<LegalAction, { type: 'spell' }>['effectKind'];
@@ -317,15 +320,18 @@ export interface LlmActionView {
 
 export interface LlmGridView {
   size?: number;
+  cellSizeFt: number;
+  distanceRule: string;
   movementBlocked: string[];
   sightBlocked: string[];
 }
 
 export interface LlmBattleObservation {
-  schemaVersion: 'd20bench.llm_observation.v2';
+  schemaVersion: 'd20bench.llm_observation.v3';
   objective: string;
   actionSpace: LegalActionSpace;
   round: number;
+  maxRounds?: number;
   turnIndex: number;
   actionEconomy?: ActualActionEconomySnapshot;
   teamTactics: BattleState['teamTactics'];
@@ -364,10 +370,11 @@ export function buildLlmBattleObservation(
   const activeCreatureView = creatureById.get(activeCreature.id) ?? creatureView(state, activeCreature, activeCreature);
 
   return {
-    schemaVersion: 'd20bench.llm_observation.v2',
-    objective: objectiveForActionSpace(actionSpace),
+    schemaVersion: 'd20bench.llm_observation.v3',
+    objective: objectiveForActionSpace(actionSpace, state.matchMaxRounds),
     actionSpace,
     round: state.round,
+    maxRounds: state.matchMaxRounds,
     turnIndex: state.turnIndex,
     actionEconomy: catalogue.actionEconomy,
     teamTactics: state.teamTactics,
@@ -379,11 +386,13 @@ export function buildLlmBattleObservation(
     tacticReference: actionSpace === 'battlecast-full-turn' ? tacticReference() : [],
     grid: {
       size: state.gridSize,
+      cellSizeFt: 5,
+      distanceRule: 'Positions are grid squares. One square is 5 ft. Diagonal steps cost the same as straight steps, so distance in feet = 5 * max(|dx|, |dy|). Speeds, ranges, reach, and every *Ft field are in feet.',
       movementBlocked: sortedCells(state.terrainBlocked),
       sightBlocked: sortedCells(state.terrainSightBlocked),
     },
     legalActions: catalogue.actions.map((action) => actionView(action, creatureById)),
-    recentLogs: state.logs.slice(-8).map((log) =>
+    recentLogs: state.logs.slice(-30).map((log) =>
       `R${log.round} T${log.turn} ${log.actor} ${log.action}: ${log.details}`
     ),
   };
@@ -409,6 +418,7 @@ function creatureView(state: BattleState, creature: Creature, activeCreature: Cr
     size: getActiveSize(creature),
     creatureType: data.type,
     position: creature.position,
+    distanceFromActiveFt: relation === 'self' ? undefined : creatureDistance(activeCreature, creature),
     speed: getActiveSpeed(creature),
     speedRemaining: creature.movementRemaining,
     initiative: creature.initiative,
@@ -470,9 +480,12 @@ function actionView(action: LegalAction, creatureById: Map<string, LlmCreatureVi
     return {
       id: action.id,
       type: action.type,
-      label: `Move to (${action.destination.x},${action.destination.y})`,
+      label: action.nearestEnemyDistanceAfterFt === undefined
+        ? `Move to (${action.destination.x},${action.destination.y})`
+        : `Move to (${action.destination.x},${action.destination.y}), nearest enemy would be ${action.nearestEnemyDistanceAfterFt} ft away`,
       destination: action.destination,
       distanceFt: action.distanceFt,
+      nearestEnemyDistanceAfterFt: action.nearestEnemyDistanceAfterFt,
     };
   }
 
@@ -786,14 +799,20 @@ function isSetupClassFeature(action: Extract<LegalAction, { type: 'class_feature
     action.feature === 'steady_aim';
 }
 
-function objectiveForActionSpace(actionSpace: LegalActionSpace): string {
+function objectiveForActionSpace(actionSpace: LegalActionSpace, maxRounds?: number): string {
+  const winCondition = [
+    'Your goal is to win the battle: your team wins when every enemy creature is defeated.',
+    maxRounds !== undefined
+      ? `If the battle is still undecided after round ${maxRounds}, the winner is the team with the higher total remaining HP, so dealing damage, healing allies, and avoiding damage all directly affect the result.`
+      : 'If the battle reaches the round cap undecided, the winner is the team with the higher total remaining HP, so dealing damage, healing allies, and avoiding damage all directly affect the result.',
+  ].join(' ');
   if (actionSpace === 'battlecast-full-turn') {
-    return 'Choose exactly one legal action id for the active creature. Full-turn Battlecast delegate actions execute movement, spells, healing, buffs, AoE, and attacks through the copied Battlecast rules. Use creature actions, defenses, resources, recharges, buffs, condition timers, and tacticReference to choose the best delegate.';
+    return `${winCondition} Choose exactly one legal action id for the active creature. Full-turn Battlecast delegate actions execute movement, spells, healing, buffs, AoE, and attacks through the copied Battlecast rules. Use creature actions, defenses, resources, recharges, buffs, condition timers, and tacticReference to choose the best delegate.`;
   }
   if (actionSpace === 'actual-actions-v1') {
-    return 'Choose exactly one concrete legal action id for the active creature. Delegates and strategy labels are not available. Legal class-feature setup actions marked setupAction resolve first and then return a fresh legal-action list before attacks. The engine applies the chosen action through Battlecast rules, shows the result in logs, and if this creature still has movement, attacks, a bonus action, a reaction trigger, or a post-hit choice remaining, you will be asked to choose the next concrete action from a fresh legal-action list.';
+    return `${winCondition} Choose exactly one concrete legal action id for the active creature. Delegates and strategy labels are not available. Legal class-feature setup actions marked setupAction resolve first and then return a fresh legal-action list before attacks. The engine applies the chosen action through Battlecast rules, shows the result in logs, and if this creature still has movement, attacks, a bonus action, a reaction trigger, or a post-hit choice remaining, you will be asked to choose the next concrete action from a fresh legal-action list.`;
   }
-  return 'Choose exactly one legal action id for the active creature. The engine applies the chosen action through Battlecast rules and rejects any action id not present in legalActions.';
+  return `${winCondition} Choose exactly one legal action id for the active creature. The engine applies the chosen action through Battlecast rules and rejects any action id not present in legalActions.`;
 }
 
 function spellActionLabel(

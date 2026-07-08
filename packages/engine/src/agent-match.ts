@@ -107,6 +107,7 @@ export function runAgentMatch(spec: AgentMatchSpec): AgentMatchResult {
 
   return withBattlecastRng(spec.seed, () => {
     const state = initAgentBattleState(spec.scenario);
+    state.matchMaxRounds = maxRounds;
     configureBattlecastTacticsForAgents(state, red, blue);
     const replay: ReplayEvent[] = [];
     replay.push({
@@ -233,6 +234,7 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
 
   return withBattlecastRngAsync(battleRng, async () => {
     const state = initAgentBattleState(spec.scenario);
+    state.matchMaxRounds = maxRounds;
     configureBattlecastTacticsForAgents(state, red, blue);
     const replay: ReplayEvent[] = [];
     replay.push({
@@ -307,21 +309,17 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
 
           const logsBefore = turnStart.logsBefore;
           const eventsBefore = turnStart.eventsBefore;
-          const reactions = await prepareOpportunityReactionChoicesForBattlecastTurn({
-            state,
-            active,
-            tactic: agent.tactic,
-            controllers: { red, blue },
-            agentRng,
-            matchId,
-            traceSink: spec.llmDecisionTraceSink,
-          });
+          // Opportunity reactions are requested at trigger time through the
+          // snapshot/retry loop instead of predeclaring before every turn, so
+          // models are only prompted when an opportunity attack actually fires.
+          const reactions: OpportunityReactionMap = new Map();
           const opportunityAttacks = createOpportunityAttackHooks({
             state,
             replay,
             matchId,
             controllers: { red, blue },
             decisions: reactions,
+            missingDecision: 'request',
           });
           const damageReactionDecisions: DamageReactionMap = new Map();
           await applyBattlecastTacticTurnWithDynamicDamageReactions({
@@ -330,6 +328,7 @@ export async function runAgentMatchAsync(spec: AgentMatchSpec): Promise<AgentMat
             tactic: agent.tactic,
             turnStartAlreadyProcessed: turnStart.turnStartAlreadyProcessed,
             opportunityAttacks,
+            opportunityDecisions: reactions,
             replay,
             matchId,
             controllers: { red, blue },
@@ -541,7 +540,7 @@ interface PreparedOpportunityReaction {
   catalogue: LegalActionCatalogue;
   requestedActionId: string;
   acceptedAction: Extract<LegalAction, { type: 'reaction' }>;
-  llmTrace: OpenRouterDecisionTrace;
+  llmTrace?: OpenRouterDecisionTrace;
 }
 
 type OpportunityReactionMap = Map<string, PreparedOpportunityReaction>;
@@ -566,6 +565,19 @@ class PendingDamageReactionDecision extends Error {
   constructor(readonly request: PendingDamageReactionRequest) {
     super('OpenRouter damage reaction decision required');
     this.name = 'PendingDamageReactionDecision';
+  }
+}
+
+interface PendingOpportunityReactionRequest {
+  reactorId: string;
+  moverId: string;
+  triggerCell: { x: number; y: number };
+}
+
+class PendingOpportunityReactionDecision extends Error {
+  constructor(readonly request: PendingOpportunityReactionRequest) {
+    super('OpenRouter opportunity reaction decision required');
+    this.name = 'PendingOpportunityReactionDecision';
   }
 }
 
@@ -771,22 +783,57 @@ async function runStepwiseOpenRouterTurn(input: {
 
     const logsBefore = step === 0 ? input.turnStart.logsBefore : input.state.logs.length;
     const eventsBefore = step === 0 ? input.turnStart.eventsBefore : input.state.events.length;
-    const selection = await chooseOpenRouterAction(input.agent, {
-      state: input.state,
-      activeCreature: active,
-      catalogue,
-      rng: input.agentRng,
-      traceMeta: {
+    let selection: Awaited<ReturnType<typeof chooseOpenRouterAction>>;
+    try {
+      selection = await chooseOpenRouterAction(input.agent, {
+        state: input.state,
+        activeCreature: active,
+        catalogue,
+        rng: input.agentRng,
+        traceMeta: {
+          matchId: input.matchId,
+          round: input.state.round,
+          turnIndex: input.state.turnIndex,
+          turnStep: step,
+          activeCreatureId: active.id,
+          activeCreatureName: active.displayName,
+          agentId: input.agent.id,
+        },
+        traceSink: input.traceSink,
+      });
+    } catch (error) {
+      // Repeated malformed output costs this creature its turn instead of
+      // aborting the whole match. Provider/network failures still throw so
+      // an outage stays loud rather than silently skewing results.
+      if (!(error instanceof Error) || !error.message.includes('did not produce a legal action')) {
+        throw error;
+      }
+      pushLog(input.state, {
+        round: input.state.round,
+        turn: input.state.turnIndex,
+        actor: active.displayName,
+        action: 'End Turn',
+        details: `${active.displayName} ends their turn because the controlling model failed to choose a legal action.`,
+        type: 'info',
+      });
+      const acceptedAction: LegalAction = { id: 'end_turn', type: 'end_turn' };
+      input.replay.push({
+        type: 'action_resolved',
         matchId: input.matchId,
         round: input.state.round,
         turnIndex: input.state.turnIndex,
         turnStep: step,
         activeCreatureId: active.id,
-        activeCreatureName: active.displayName,
         agentId: input.agent.id,
-      },
-      traceSink: input.traceSink,
-    });
+        requestedActionId: 'automatic:decision_failure',
+        acceptedAction,
+        logs: input.state.logs.slice(logsBefore),
+        events: input.state.events.slice(eventsBefore),
+        stateHash: hashBattlecastState(input.state),
+      });
+      actualTurn.ended = true;
+      break;
+    }
     const applyResult = await applyActualLegalAction({
       state: input.state,
       active,
@@ -858,6 +905,7 @@ async function applyBattlecastTacticTurnWithDynamicDamageReactions(input: {
   tactic: TacticType;
   turnStartAlreadyProcessed: boolean;
   opportunityAttacks: OpportunityAttackHooks;
+  opportunityDecisions?: OpportunityReactionMap;
   replay: ReplayEvent[];
   matchId: string;
   controllers: MatchControllers;
@@ -894,6 +942,21 @@ async function applyBattlecastTacticTurnWithDynamicDamageReactions(input: {
       );
       return;
     } catch (error) {
+      if (error instanceof PendingOpportunityReactionDecision && input.opportunityDecisions) {
+        const prepared = await chooseOpportunityReactionAtTrigger({
+          state: input.state,
+          request: error.request,
+          controllers: input.controllers,
+          agentRng: input.agentRng,
+          matchId: input.matchId,
+          traceSink: input.traceSink,
+        });
+        input.opportunityDecisions.set(prepared.key, prepared.decision);
+        restoreBattleState(input.state, stateSnapshot);
+        input.replay.length = replayLength;
+        input.battleRng.restore(rngSnapshot);
+        continue;
+      }
       if (!(error instanceof PendingDamageReactionDecision)) throw error;
       const prepared = await chooseDamageReactionAtTrigger({
         state: input.state,
@@ -910,6 +973,66 @@ async function applyBattlecastTacticTurnWithDynamicDamageReactions(input: {
   }
 
   throw new Error(`Exceeded ${maxReactionPrompts} pending damage reaction prompts in ${input.matchId}`);
+}
+
+async function chooseOpportunityReactionAtTrigger(input: {
+  state: BattleState;
+  request: PendingOpportunityReactionRequest;
+  controllers: MatchControllers;
+  agentRng: ReturnType<typeof createRng>;
+  matchId: string;
+  traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
+}): Promise<{ key: string; decision: PreparedOpportunityReaction }> {
+  const reactor = input.state.creatures.find((creature) => creature.id === input.request.reactorId);
+  const mover = input.state.creatures.find((creature) => creature.id === input.request.moverId);
+  if (!reactor || !mover) {
+    throw new Error(`Opportunity reaction trigger references missing creatures in ${input.matchId}`);
+  }
+  const agent = controllerForCreature(reactor, input.controllers);
+  if (agent.kind !== 'openrouter-llm') {
+    throw new Error(`Opportunity reaction trigger for non-LLM reactor ${reactor.id} in ${input.matchId}`);
+  }
+  const decision = await chooseOpportunityReaction({
+    state: input.state,
+    reactor,
+    mover,
+    triggerCell: input.request.triggerCell,
+    agent,
+    agentRng: input.agentRng,
+    matchId: input.matchId,
+    traceSink: input.traceSink,
+  });
+  return {
+    key: opportunityReactionKey(reactor, mover),
+    decision: decision ?? declinedOpportunityReaction(agent, reactor, mover, input.request.triggerCell),
+  };
+}
+
+function declinedOpportunityReaction(
+  agent: Extract<Agent, { kind: 'openrouter-llm' }>,
+  reactor: Creature,
+  mover: Creature,
+  triggerCell: { x: number; y: number },
+): PreparedOpportunityReaction {
+  const originalPosition = { ...mover.position };
+  mover.position = { ...triggerCell };
+  try {
+    const catalogue = generateOpportunityReactionActions(reactor, mover);
+    const decline = catalogue.actions.find((action) =>
+      action.type === 'reaction' && action.reaction === 'decline'
+    );
+    if (!decline || decline.type !== 'reaction') {
+      throw new Error(`No decline reaction available for ${reactor.id} against ${mover.id}`);
+    }
+    return {
+      agent,
+      catalogue,
+      requestedActionId: decline.id,
+      acceptedAction: decline,
+    };
+  } finally {
+    mover.position = originalPosition;
+  }
 }
 
 function cloneBattleState(state: BattleState): BattleState {
@@ -1468,50 +1591,6 @@ async function prepareOpportunityReactionChoicesForMove(
   return decisions;
 }
 
-async function prepareOpportunityReactionChoicesForBattlecastTurn(input: {
-  state: BattleState;
-  active: Creature;
-  tactic: TacticType;
-  controllers: MatchControllers;
-  agentRng: ReturnType<typeof createRng>;
-  matchId: string;
-  traceSink?: (trace: OpenRouterRawDecisionTrace) => void | Promise<void>;
-}): Promise<OpportunityReactionMap> {
-  const decisions: OpportunityReactionMap = new Map();
-  if (!shouldPredeclareBattlecastOpportunityReactions(input.active, input.tactic)) {
-    return decisions;
-  }
-  for (const reactor of input.state.creatures) {
-    if (reactor.team === input.active.team) continue;
-    if (!canMakeOpportunityAttack(reactor, input.active)) continue;
-    const agent = controllerForCreature(reactor, input.controllers);
-    if (agent.kind !== 'openrouter-llm') continue;
-    const decision = await chooseOpportunityReaction({
-      state: input.state,
-      reactor,
-      mover: input.active,
-      triggerCell: { ...input.active.position },
-      agent,
-      agentRng: input.agentRng,
-      matchId: input.matchId,
-      traceSink: input.traceSink,
-    });
-    if (decision) decisions.set(opportunityReactionKey(reactor, input.active), decision);
-  }
-  return decisions;
-}
-
-function shouldPredeclareBattlecastOpportunityReactions(active: Creature, tactic: TacticType): boolean {
-  if (tactic === 'kiting') return true;
-  const hasMelee = getMeleeActions(active).length > 0;
-  const hasRanged = getActiveActions(active).some((action) =>
-    action.attackBonus !== undefined &&
-    action.legendaryOnly !== true &&
-    (action.type === 'ranged' || action.range)
-  );
-  return !hasMelee && hasRanged;
-}
-
 async function chooseDamageReactionAtTrigger(input: {
   state: BattleState;
   request: PendingDamageReactionRequest;
@@ -1602,7 +1681,15 @@ async function chooseOpportunityReaction(input: {
         },
         traceSink: input.traceSink,
       });
-    } catch {
+    } catch (error) {
+      pushLog(input.state, {
+        round: input.state.round,
+        turn: input.state.turnIndex,
+        actor: input.reactor.displayName,
+        action: 'Opportunity Attack',
+        details: `${input.reactor.displayName} declines the opportunity attack against ${input.mover.displayName} because the controlling model failed to answer (${error instanceof Error ? error.message.slice(0, 120) : 'unknown error'}).`,
+        type: 'info',
+      });
       return undefined;
     }
     if (selection.acceptedAction.type !== 'reaction') return undefined;
@@ -1624,6 +1711,7 @@ function createOpportunityAttackHooks(input: {
   matchId: string;
   controllers: MatchControllers;
   decisions: OpportunityReactionMap;
+  missingDecision?: 'decline' | 'request';
 }): OpportunityAttackHooks {
   const started = new WeakSet<OpportunityAttackDecisionContext>();
   return {
@@ -1631,7 +1719,24 @@ function createOpportunityAttackHooks(input: {
       const controller = controllerForCreature(context.reactor, input.controllers);
       if (controller.kind !== 'openrouter-llm') return undefined;
       const decision = input.decisions.get(opportunityReactionKey(context.reactor, context.mover));
-      if (!decision) return 'decline';
+      if (!decision) {
+        if (input.missingDecision === 'request') {
+          throw new PendingOpportunityReactionDecision({
+            reactorId: context.reactor.id,
+            moverId: context.mover.id,
+            triggerCell: { ...context.triggerCell },
+          });
+        }
+        pushLog(input.state, {
+          round: input.state.round,
+          turn: input.state.turnIndex,
+          actor: context.reactor.displayName,
+          action: 'Opportunity Attack',
+          details: `${context.reactor.displayName} declines the opportunity attack against ${context.mover.displayName} because no model decision was available for this trigger.`,
+          type: 'info',
+        });
+        return 'decline';
+      }
       if (decision.acceptedAction.reaction === 'decline') return 'decline';
       return context.meleeActions.find((action) => action.name === decision.acceptedAction.actionName) ?? 'decline';
     },

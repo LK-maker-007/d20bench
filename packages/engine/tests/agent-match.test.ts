@@ -109,7 +109,7 @@ describe('agent matches', () => {
     const catalogue = generateLegalActions(match.state, active);
     const observation = buildLlmBattleObservation(match.state, active, catalogue);
 
-    expect(observation.schemaVersion).toBe('d20bench.llm_observation.v2');
+    expect(observation.schemaVersion).toBe('d20bench.llm_observation.v3');
     expect(observation.actionSpace).toBe('primitive');
     expect(observation.teamTactics.red).toEqual(expect.any(String));
     expect(observation.teamTactics.blue).toEqual(expect.any(String));
@@ -1264,8 +1264,29 @@ describe('agent matches', () => {
     globalThis.fetch = vi.fn(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       const userMessage = body.messages.find((message: { role: string }) => message.role === 'user');
-      observedPrompts.push(JSON.parse(String(userMessage.content)));
       const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const declinedReaction = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      if (declinedReaction) {
+        return jsonResponse({
+          id: `gen-reaction-${declinedReaction}`,
+          model: 'test/tool-model',
+          choices: [{
+            finish_reason: 'tool_calls',
+            message: {
+              tool_calls: [{
+                id: 'call-test',
+                type: 'function',
+                function: {
+                  name: 'choose_d20bench_action',
+                  arguments: JSON.stringify({ actionId: declinedReaction, rationale: 'Decline the reaction.' }),
+                },
+              }],
+            },
+          }],
+          usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+        });
+      }
+      observedPrompts.push(JSON.parse(String(userMessage.content)));
       const actionId = actionIds.find((id) => id.startsWith('attack:')) ?? 'end_turn';
       return jsonResponse({
         id: `gen-${body.messages.length}-${actionId}`,
@@ -2178,6 +2199,27 @@ describe('agent matches', () => {
     globalThis.fetch = vi.fn(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const declinedReaction = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      if (declinedReaction) {
+        return jsonResponse({
+          id: `gen-reaction-${declinedReaction}`,
+          model: 'test/tool-model',
+          choices: [{
+            finish_reason: 'tool_calls',
+            message: {
+              tool_calls: [{
+                id: 'call-test',
+                type: 'function',
+                function: {
+                  name: 'choose_d20bench_action',
+                  arguments: JSON.stringify({ actionId: declinedReaction, rationale: 'Decline the reaction.' }),
+                },
+              }],
+            },
+          }],
+          usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+        });
+      }
       const preferred = callIndex === 0
         ? actionIds.find((id) => id.startsWith('spell:rage'))
         : 'end_turn';
@@ -2379,6 +2421,27 @@ describe('agent matches', () => {
     globalThis.fetch = vi.fn(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const declinedReaction = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      if (declinedReaction) {
+        return jsonResponse({
+          id: `gen-reaction-${declinedReaction}`,
+          model: 'test/tool-model',
+          choices: [{
+            finish_reason: 'tool_calls',
+            message: {
+              tool_calls: [{
+                id: 'call-test',
+                type: 'function',
+                function: {
+                  name: 'choose_d20bench_action',
+                  arguments: JSON.stringify({ actionId: declinedReaction, rationale: 'Decline the reaction.' }),
+                },
+              }],
+            },
+          }],
+          usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+        });
+      }
       if (callIndex === 1) secondStepActionIds = [...actionIds];
       const preferred = callIndex === 0
         ? 'disengage'
@@ -3059,6 +3122,27 @@ describe('agent matches', () => {
     globalThis.fetch = vi.fn(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const declinedReaction = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      if (declinedReaction) {
+        return jsonResponse({
+          id: `gen-reaction-${declinedReaction}`,
+          model: 'test/tool-model',
+          choices: [{
+            finish_reason: 'tool_calls',
+            message: {
+              tool_calls: [{
+                id: 'call-test',
+                type: 'function',
+                function: {
+                  name: 'choose_d20bench_action',
+                  arguments: JSON.stringify({ actionId: declinedReaction, rationale: 'Decline the reaction.' }),
+                },
+              }],
+            },
+          }],
+          usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+        });
+      }
       const preferred = callIndex === 0 ? 'dodge' : 'end_turn';
       callIndex += 1;
       const actionId = actionIds.includes(preferred) ? preferred : 'end_turn';
@@ -3109,6 +3193,27 @@ describe('agent matches', () => {
     globalThis.fetch = vi.fn(async (_url, init) => {
       const body = JSON.parse(String(init?.body));
       const actionIds = body.tools[0].function.parameters.properties.actionId.enum as string[];
+      const declinedReaction = actionIds.find((id) => id.startsWith('reaction:decline-'));
+      if (declinedReaction) {
+        return jsonResponse({
+          id: `gen-reaction-${declinedReaction}`,
+          model: 'test/tool-model',
+          choices: [{
+            finish_reason: 'tool_calls',
+            message: {
+              tool_calls: [{
+                id: 'call-test',
+                type: 'function',
+                function: {
+                  name: 'choose_d20bench_action',
+                  arguments: JSON.stringify({ actionId: declinedReaction, rationale: 'Decline the reaction.' }),
+                },
+              }],
+            },
+          }],
+          usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+        });
+      }
       const help = actionIds.find((id) => id.startsWith('help:'));
       const preferred = callIndex === 0 ? help : 'end_turn';
       callIndex += 1;
