@@ -8,7 +8,9 @@ The project goal is to make model combat skill measurable:
 - Compare LLM agents against scripted tactical baselines.
 - Track model, prompt, and team variants on an Elo/Glicko-style ladder.
 - Publish benchmark results, head-to-head records, and replay links on a public LMArena-inspired website.
-- Reuse Battlecast's SRD rules implementation, monster data, tactics, engine ideas, and graphical assets through explicit copied/imported artifacts.
+- Reuse [Battlecast](https://battlecast.gg)'s SRD rules implementation, monster data, tactics, engine ideas, and graphical assets through explicit copied/imported artifacts.
+
+D20bench is inspired by and built on [Battlecast](https://battlecast.gg), a D&D 5e combat simulator by the same author. Battlecast provides the rules engine, the scripted tactical AI that anchors the Elo ladder, and the art used by the replay viewer. If you want to see the combat system this benchmark runs on, battlecast.gg is the place to look.
 
 The Battlecast checkout lives beside this repo at `../battlecast` and should remain unmodified. D20bench may copy or transform Battlecast code, data, and assets into this project because both projects share the same author/copyright holder, but imports should still record source paths, source commits, and attribution metadata.
 
