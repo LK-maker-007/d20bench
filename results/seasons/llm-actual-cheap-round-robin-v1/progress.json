@@ -1,0 +1,126 @@
+{
+  "seasonId": "llm-actual-cheap-round-robin-v1",
+  "description": "Delegate-free actual-action round robin for the four cheap OpenRouter models and Battlecast Smart, with four fixture contexts per ordered matchup and four combat rounds per match.",
+  "status": "running",
+  "llmActionSpace": "actual-actions-v1",
+  "startedAt": "2026-06-22T17:28:13.039Z",
+  "updatedAt": "2026-06-22T17:37:12.827Z",
+  "concurrency": 2,
+  "maxRounds": 4,
+  "totalMatches": 80,
+  "completedMatches": 3,
+  "failedMatches": 0,
+  "runningMatches": 2,
+  "costSummary": {
+    "totalDecisions": 242,
+    "promptTokens": 3755581,
+    "completionTokens": 11931,
+    "totalTokens": 3767512,
+    "estimatedCostUsd": 0.35291938000000006,
+    "byModel": [
+      {
+        "agentId": "openrouter:deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-flash",
+        "decisions": 155,
+        "promptTokens": 2392221,
+        "completionTokens": 9487,
+        "totalTokens": 2401708,
+        "estimatedCostUsd": 0.21700755000000002
+      },
+      {
+        "agentId": "openrouter:mistralai/ministral-8b-2512",
+        "model": "mistralai/ministral-8b-2512",
+        "decisions": 48,
+        "promptTokens": 833819,
+        "completionTokens": 1457,
+        "totalTokens": 835276,
+        "estimatedCostUsd": 0.12529140000000002
+      },
+      {
+        "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "decisions": 39,
+        "promptTokens": 529541,
+        "completionTokens": 987,
+        "totalTokens": 530528,
+        "estimatedCostUsd": 0.010620430000000002
+      }
+    ]
+  },
+  "activeMatches": [
+    {
+      "index": 2,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "startedAt": "2026-06-22T17:33:35.485Z"
+    },
+    {
+      "index": 4,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "startedAt": "2026-06-22T17:37:12.827Z"
+    }
+  ],
+  "recentMatches": [
+    {
+      "index": 3,
+      "status": "completed",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.smart",
+      "startedAt": "2026-06-22T17:35:21.112Z",
+      "completedAt": "2026-06-22T17:37:12.824Z",
+      "durationMs": 111712,
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__battlecast.smart",
+      "winner": "blue",
+      "llmDecisions": 36,
+      "estimatedCostUsd": 0.05182343999999999,
+      "finalStateHash": "53fcdfd73cdebd91d1e656aa1210ca4f3adcbbe2c6c8931b8deb5a76d24d57ae"
+    },
+    {
+      "index": 0,
+      "status": "completed",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "openrouter:mistralai/ministral-8b-2512",
+      "startedAt": "2026-06-22T17:28:13.233Z",
+      "completedAt": "2026-06-22T17:35:21.101Z",
+      "durationMs": 427868,
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__openrouter_mistralai_ministral-8b-2512",
+      "winner": "blue",
+      "llmDecisions": 107,
+      "estimatedCostUsd": 0.21017796,
+      "finalStateHash": "f73313e0b576184d6df4c42a2a0b9f6fccec92bc88f8d03f5d11a365ac46950d"
+    },
+    {
+      "index": 1,
+      "status": "completed",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "startedAt": "2026-06-22T17:28:13.233Z",
+      "completedAt": "2026-06-22T17:33:35.480Z",
+      "durationMs": 322247,
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__actual-actions-v1__1__openrouter_deepseek_deepseek-v4-flash__openrouter_meta-llama_llama-3.1-8b-instruct",
+      "winner": "red",
+      "llmDecisions": 99,
+      "estimatedCostUsd": 0.09091798,
+      "finalStateHash": "aac208e71f717456a31ba8a6134d75b4938a881328427123a279c99bb59aa011"
+    }
+  ],
+  "failures": []
+}

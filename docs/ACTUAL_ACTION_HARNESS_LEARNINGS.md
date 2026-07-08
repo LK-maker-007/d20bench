@@ -571,6 +571,54 @@ npm run results:site:data
 The site itself serves the generated artifacts. It should not recompute ratings
 or mutate historical results.
 
+## The July 2026 Fairness Fixes And What They Changed
+
+A deep review on 2026-07-03 found that most of the "models are not acting
+smart" impression came from harness design rather than model quality. Six
+fixes landed together (observation schema bumped to
+`d20bench.llm_observation.v3`):
+
+1. The system prompt and observation objective now state the win condition,
+   the round cap (`observation.maxRounds`, from `BattleState.matchMaxRounds`),
+   the remaining-HP tiebreak, and the grid geometry (5 ft squares, Chebyshev
+   distance, free diagonals). Models previously had to guess all of this.
+2. Scored seasons run long round caps (50) so fights close out with kills
+   instead of being decided by a hidden 3-4 round HP race.
+3. Creature views carry `distanceFromActiveFt`, `move_to` options carry
+   `nearestEnemyDistanceAfterFt`, and the movement menu grew from 16 curated
+   cells to 48 with mid-range compass coverage.
+4. Opportunity attacks by LLM-owned creatures against Battlecast movers are
+   real decisions instead of silent auto-declines. Initially predeclared for
+   every mover, then moved to trigger-time snapshot/retry (the same pattern
+   as damage reactions) because predeclarations were ~31% of all decisions.
+5. Repeated malformed output now costs the creature its turn instead of
+   aborting the match. Provider and network errors still fail loud.
+6. `max_tokens` is 8192 for all models, temperature is 0.2
+   (`D20BENCH_OPENROUTER_TEMPERATURE` overrides), and `recentLogs` widened
+   from 8 to 30 lines.
+
+The validation season `llm-actual-fairfix-tournament-v1` (DeepSeek Flash,
+Qwen 3.5 Flash, Battlecast Smart, 12 matches, $3.18) showed the fixes work:
+
+- Wasted end-turns (ending with an attack still legal) dropped to zero.
+- Both models beat `battlecast.smart` once, both on the status-pressure
+  board. Chokepoint stayed 4-0 for Smart: fine positioning is still where
+  models are weakest.
+- DeepSeek's win over Smart was a 16-round 4-0 sweep built on Healing Word
+  yo-yo healing, Stabilise triage, 153 opportunity attacks, and
+  concentration-breaking focus fire. It lost the damage race 290 to 312 and
+  won on action economy.
+
+Two honest limitations of `battlecast.smart` as a baseline are now visible
+in data and are deliberately documented rather than patched, to keep season
+results comparable:
+
+- Smart has no downed-ally triage. It leaves dying creatures to fail death
+  saves while LLMs stabilise and yo-yo heal. This is a real tactical blind
+  spot, and beating it is legitimate play.
+- Smart's repositioning logic bleeds opportunity attacks now that LLM
+  reactors actually take them.
+
 ## The Next Sensible Work
 
 The harness is now credible enough to run small public-confidence seasons. The

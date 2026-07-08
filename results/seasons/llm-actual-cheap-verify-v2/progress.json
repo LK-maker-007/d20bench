@@ -1,0 +1,90 @@
+{
+  "seasonId": "llm-actual-cheap-verify-v2",
+  "description": "Delegate-free actual-action harness verification for cheap OpenRouter models against Battlecast Smart, rerun after accepting legal JSON content fallbacks from providers that ignore tool_calls while preserving raw traces.",
+  "status": "running",
+  "llmActionSpace": "actual-actions-v1",
+  "startedAt": "2026-06-21T20:22:13.824Z",
+  "updatedAt": "2026-06-21T20:22:22.080Z",
+  "concurrency": 4,
+  "maxRounds": 3,
+  "totalMatches": 16,
+  "completedMatches": 0,
+  "failedMatches": 1,
+  "runningMatches": 4,
+  "costSummary": {
+    "totalDecisions": 0,
+    "promptTokens": 0,
+    "completionTokens": 0,
+    "totalTokens": 0,
+    "estimatedCostUsd": 0,
+    "byModel": []
+  },
+  "activeMatches": [
+    {
+      "index": 0,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "blueAgent": "battlecast.smart",
+      "startedAt": "2026-06-21T20:22:14.052Z"
+    },
+    {
+      "index": 1,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "startedAt": "2026-06-21T20:22:14.052Z"
+    },
+    {
+      "index": 2,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:mistralai/ministral-8b-2512",
+      "blueAgent": "battlecast.smart",
+      "startedAt": "2026-06-21T20:22:14.052Z"
+    },
+    {
+      "index": 4,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "blueAgent": "battlecast.smart",
+      "startedAt": "2026-06-21T20:22:22.080Z"
+    }
+  ],
+  "recentMatches": [
+    {
+      "index": 3,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:mistralai/ministral-8b-2512",
+      "error": "OpenRouter tool call did not produce a legal action after 2 attempt(s): OpenRouter response for mistralai/ministral-8b-2512 did not include parseable action JSON. Message: {\"role\":\"assistant\",\"content\":null,\"refusal\":null,\"reasoning\":null,\"tool_calls\":[{\"type\":\"function\",\"index\":0,\"id\":\"36pUCplPs\",\"function\":{\"name\":\"choose_d20bench_action\",\"arguments\":\"{\\\"actionId\\\": \\\"Longbow\\\", \\\"rationale\\\": \\\"Target the Paladin L5 (red) with Longbow to exploit Hunter's Mark and deal additional force damage.\\\"}\"}}]}. Error: model selected non-legal actionId: Longbow",
+      "status": "failed",
+      "startedAt": "2026-06-21T20:22:14.052Z",
+      "completedAt": "2026-06-21T20:22:22.079Z",
+      "durationMs": 8027
+    }
+  ],
+  "failures": [
+    {
+      "index": 3,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:mistralai/ministral-8b-2512",
+      "error": "OpenRouter tool call did not produce a legal action after 2 attempt(s): OpenRouter response for mistralai/ministral-8b-2512 did not include parseable action JSON. Message: {\"role\":\"assistant\",\"content\":null,\"refusal\":null,\"reasoning\":null,\"tool_calls\":[{\"type\":\"function\",\"index\":0,\"id\":\"36pUCplPs\",\"function\":{\"name\":\"choose_d20bench_action\",\"arguments\":\"{\\\"actionId\\\": \\\"Longbow\\\", \\\"rationale\\\": \\\"Target the Paladin L5 (red) with Longbow to exploit Hunter's Mark and deal additional force damage.\\\"}\"}}]}. Error: model selected non-legal actionId: Longbow"
+    }
+  ]
+}

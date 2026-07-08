@@ -1072,6 +1072,62 @@ export const llmActualCheapRoundRobinV2Season: LlmSeasonConfig = {
   concurrency: 6,
 };
 
+export const llmActualFairFixModelAgents: OpenRouterAgentId[] = [
+  createOpenRouterAgentId('deepseek/deepseek-v4-flash'),
+  createOpenRouterAgentId('qwen/qwen3.5-flash-02-23'),
+];
+
+export const llmActualFairFixTournamentSeason: LlmSeasonConfig = {
+  id: 'llm-actual-fairfix-tournament-v1',
+  description: 'Round robin for DeepSeek Flash, Qwen 3.5 Flash, and Battlecast Smart on the two public hero-party mirrors after the fairness fixes: visible win condition and round cap, grid geometry in the prompt, per-enemy distances, denser move_to menus, trigger-time LLM opportunity attacks against all Battlecast movers, decision failures costing a turn instead of the match, a wider log window, an 8192-token completion budget, and temperature 0.2.',
+  agents: [
+    ...llmActualFairFixModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: [1],
+  maxRounds: 50,
+  pairings: createRoundRobinPairings([
+    ...llmActualFairFixModelAgents,
+    ...llmSmartOpponentAgents,
+  ]),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 4,
+};
+
+export const llmActualFairFixCalibrationModelAgents: OpenRouterAgentId[] = [
+  ...llmActualFairFixModelAgents,
+  createOpenRouterAgentId('z-ai/glm-5.2'),
+];
+
+export const llmActualFairFixTournamentV2Season: LlmSeasonConfig = {
+  id: 'llm-actual-fairfix-tournament-v2',
+  description: 'Calibration round robin for DeepSeek Flash, Qwen 3.5 Flash, GLM 5.2, and Battlecast Smart on the two public hero-party mirrors with two seeds, after moving opportunity-attack prompts from predeclare to trigger-time snapshot/retry.',
+  agents: [
+    ...llmActualFairFixCalibrationModelAgents,
+    ...llmSmartOpponentAgents,
+  ],
+  scenarios: [
+    chokeControlHeroMirrorScenario,
+    statusPressureHeroMirrorScenario,
+  ],
+  seeds: [1, 2],
+  maxRounds: 50,
+  pairings: createRoundRobinPairings([
+    ...llmActualFairFixCalibrationModelAgents,
+    ...llmSmartOpponentAgents,
+  ]),
+  llmActionSpace: 'actual-actions-v1',
+  initialRating: 1000,
+  kFactor: 32,
+  concurrency: 6,
+};
+
 export const llmActualGlmSmartFourRoundSeason: LlmSeasonConfig = {
   id: 'llm-actual-glm-smart-4round-v1',
   description: 'Small delegate-free actual-action check for GLM 5.2 against Battlecast Smart, with four combat rounds per match.',
@@ -1368,6 +1424,8 @@ export const llmActualSpellFollowupVerifySeason: LlmSeasonConfig = {
 };
 
 export const llmSeasons = [
+  llmActualFairFixTournamentV2Season,
+  llmActualFairFixTournamentSeason,
   llmActualSpellFollowupVerifySeason,
   llmActualStabiliseVerifyV3Season,
   llmActualStabiliseVerifyV2Season,

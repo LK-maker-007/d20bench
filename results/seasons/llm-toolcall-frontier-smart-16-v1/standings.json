@@ -1,0 +1,344 @@
+{
+  "seasonId": "llm-toolcall-frontier-smart-16-v1",
+  "description": "Post-toolcall-fix frontier verification season for GPT-5.5 and Claude Opus 4.8 against Battlecast Smart, with sixteen matches per model.",
+  "generatedAt": "2026-06-21T07:38:59.010Z",
+  "startedAt": "2026-06-21T07:38:59.010Z",
+  "completedAt": "2026-06-21T07:38:59.613Z",
+  "llmActionSpace": "battlecast-full-turn",
+  "initialRating": 1000,
+  "kFactor": 32,
+  "maxRounds": 3,
+  "concurrency": 8,
+  "totalMatches": 32,
+  "completedMatches": 0,
+  "failedMatches": 32,
+  "standings": [
+    {
+      "agentId": "battlecast.smart",
+      "rating": 1000,
+      "matches": 0,
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "score": 0
+    },
+    {
+      "agentId": "openrouter:anthropic/claude-opus-4.8",
+      "rating": 1000,
+      "matches": 0,
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "score": 0
+    },
+    {
+      "agentId": "openrouter:openai/gpt-5.5",
+      "rating": 1000,
+      "matches": 0,
+      "wins": 0,
+      "losses": 0,
+      "draws": 0,
+      "score": 0
+    }
+  ],
+  "battleTypeStandings": [],
+  "costSummary": {
+    "totalDecisions": 0,
+    "promptTokens": 0,
+    "completionTokens": 0,
+    "totalTokens": 0,
+    "estimatedCostUsd": 0,
+    "byModel": []
+  },
+  "failures": [
+    {
+      "index": 1,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:anthropic/claude-opus-4.8",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 6,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 2,
+      "redAgent": "openrouter:openai/gpt-5.5",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 2,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:openai/gpt-5.5",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 0,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:anthropic/claude-opus-4.8",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 8,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 3,
+      "redAgent": "openrouter:anthropic/claude-opus-4.8",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 7,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 2,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:openai/gpt-5.5",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 5,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 2,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:anthropic/claude-opus-4.8",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 3,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:openai/gpt-5.5",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 9,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 3,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:anthropic/claude-opus-4.8",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 11,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 3,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:openai/gpt-5.5",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 10,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 3,
+      "redAgent": "openrouter:openai/gpt-5.5",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 12,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 4,
+      "redAgent": "openrouter:anthropic/claude-opus-4.8",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 4,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 2,
+      "redAgent": "openrouter:anthropic/claude-opus-4.8",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 13,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 4,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:anthropic/claude-opus-4.8",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 14,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 4,
+      "redAgent": "openrouter:openai/gpt-5.5",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 16,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "openrouter:anthropic/claude-opus-4.8",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 15,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 4,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:openai/gpt-5.5",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 17,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:anthropic/claude-opus-4.8",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 18,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "openrouter:openai/gpt-5.5",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 19,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:openai/gpt-5.5",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 21,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 2,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:anthropic/claude-opus-4.8",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 20,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 2,
+      "redAgent": "openrouter:anthropic/claude-opus-4.8",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 22,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 2,
+      "redAgent": "openrouter:openai/gpt-5.5",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 23,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 2,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:openai/gpt-5.5",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 24,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 3,
+      "redAgent": "openrouter:anthropic/claude-opus-4.8",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 25,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 3,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:anthropic/claude-opus-4.8",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 26,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 3,
+      "redAgent": "openrouter:openai/gpt-5.5",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 27,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 3,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:openai/gpt-5.5",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 28,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 4,
+      "redAgent": "openrouter:anthropic/claude-opus-4.8",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 29,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 4,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:anthropic/claude-opus-4.8",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 30,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 4,
+      "redAgent": "openrouter:openai/gpt-5.5",
+      "blueAgent": "battlecast.smart",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    },
+    {
+      "index": 31,
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 4,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:openai/gpt-5.5",
+      "error": "OpenRouter tool request failed (404): {\"error\":{\"message\":\"No endpoints found that can handle the requested parameters. To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection\",\"code\":404}}"
+    }
+  ],
+  "matches": []
+}

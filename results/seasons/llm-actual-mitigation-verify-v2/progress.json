@@ -1,0 +1,131 @@
+{
+  "seasonId": "llm-actual-mitigation-verify-v2",
+  "description": "Focused delegate-free actual-action validation where cheap OpenRouter models control trigger-time Uncanny Dodge mitigation against a Battlecast Aggressive attacker.",
+  "status": "complete",
+  "llmActionSpace": "actual-actions-v1",
+  "startedAt": "2026-06-22T12:29:14.424Z",
+  "updatedAt": "2026-06-22T12:29:33.767Z",
+  "concurrency": 4,
+  "maxRounds": 1,
+  "totalMatches": 4,
+  "completedMatches": 4,
+  "failedMatches": 0,
+  "runningMatches": 0,
+  "costSummary": {
+    "totalDecisions": 13,
+    "promptTokens": 47443,
+    "completionTokens": 2739,
+    "totalTokens": 50182,
+    "estimatedCostUsd": 0.0044947450000000005,
+    "byModel": [
+      {
+        "agentId": "openrouter:mistralai/ministral-8b-2512",
+        "model": "mistralai/ministral-8b-2512",
+        "decisions": 3,
+        "promptTokens": 11220,
+        "completionTokens": 151,
+        "totalTokens": 11371,
+        "estimatedCostUsd": 0.00170565
+      },
+      {
+        "agentId": "openrouter:qwen/qwen3.5-flash-02-23",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "decisions": 4,
+        "promptTokens": 14865,
+        "completionTokens": 2282,
+        "totalTokens": 17147,
+        "estimatedCostUsd": 0.0015595450000000003
+      },
+      {
+        "agentId": "openrouter:deepseek/deepseek-v4-flash",
+        "model": "deepseek/deepseek-v4-flash",
+        "decisions": 3,
+        "promptTokens": 10918,
+        "completionTokens": 193,
+        "totalTokens": 11111,
+        "estimatedCostUsd": 0.0010173600000000001
+      },
+      {
+        "agentId": "openrouter:meta-llama/llama-3.1-8b-instruct",
+        "model": "meta-llama/llama-3.1-8b-instruct",
+        "decisions": 3,
+        "promptTokens": 10440,
+        "completionTokens": 113,
+        "totalTokens": 10553,
+        "estimatedCostUsd": 0.00021219
+      }
+    ]
+  },
+  "activeMatches": [],
+  "recentMatches": [
+    {
+      "index": 3,
+      "status": "completed",
+      "scenarioId": "hidden.llm-mitigation-rogue-duel.v1",
+      "battleType": "mitigation-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.aggressive",
+      "blueAgent": "openrouter:qwen/qwen3.5-flash-02-23",
+      "startedAt": "2026-06-22T12:29:14.567Z",
+      "completedAt": "2026-06-22T12:29:33.764Z",
+      "durationMs": 19197,
+      "matchId": "hidden.llm-mitigation-rogue-duel.v1__actual-actions-v1__1__battlecast.aggressive__openrouter_qwen_qwen3.5-flash-02-23",
+      "winner": "red",
+      "llmDecisions": 4,
+      "estimatedCostUsd": 0.0015595450000000003,
+      "finalStateHash": "723d5c6c3d2b71eac49facb7069cc391fbd094bf0b7d3c33d8bab9ca9ec9fa7f"
+    },
+    {
+      "index": 1,
+      "status": "completed",
+      "scenarioId": "hidden.llm-mitigation-rogue-duel.v1",
+      "battleType": "mitigation-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.aggressive",
+      "blueAgent": "openrouter:mistralai/ministral-8b-2512",
+      "startedAt": "2026-06-22T12:29:14.567Z",
+      "completedAt": "2026-06-22T12:29:21.935Z",
+      "durationMs": 7368,
+      "matchId": "hidden.llm-mitigation-rogue-duel.v1__actual-actions-v1__1__battlecast.aggressive__openrouter_mistralai_ministral-8b-2512",
+      "winner": "red",
+      "llmDecisions": 3,
+      "estimatedCostUsd": 0.00170565,
+      "finalStateHash": "562d6dcb4473646801ad09a5c40091730cac9709ccabe4dbcc4d93f36a295e90"
+    },
+    {
+      "index": 0,
+      "status": "completed",
+      "scenarioId": "hidden.llm-mitigation-rogue-duel.v1",
+      "battleType": "mitigation-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.aggressive",
+      "blueAgent": "openrouter:deepseek/deepseek-v4-flash",
+      "startedAt": "2026-06-22T12:29:14.567Z",
+      "completedAt": "2026-06-22T12:29:21.245Z",
+      "durationMs": 6678,
+      "matchId": "hidden.llm-mitigation-rogue-duel.v1__actual-actions-v1__1__battlecast.aggressive__openrouter_deepseek_deepseek-v4-flash",
+      "winner": "red",
+      "llmDecisions": 3,
+      "estimatedCostUsd": 0.0010173600000000001,
+      "finalStateHash": "5ddf9bf0b66d34e05bf80c9fc4b37bdcac118fc6f6bd5f0c9028e13641a188cf"
+    },
+    {
+      "index": 2,
+      "status": "completed",
+      "scenarioId": "hidden.llm-mitigation-rogue-duel.v1",
+      "battleType": "mitigation-smoke",
+      "seed": 1,
+      "redAgent": "battlecast.aggressive",
+      "blueAgent": "openrouter:meta-llama/llama-3.1-8b-instruct",
+      "startedAt": "2026-06-22T12:29:14.567Z",
+      "completedAt": "2026-06-22T12:29:16.640Z",
+      "durationMs": 2073,
+      "matchId": "hidden.llm-mitigation-rogue-duel.v1__actual-actions-v1__1__battlecast.aggressive__openrouter_meta-llama_llama-3.1-8b-instruct",
+      "winner": "red",
+      "llmDecisions": 3,
+      "estimatedCostUsd": 0.00021219,
+      "finalStateHash": "74bf9619e1255dc24a67c7a7b9d7d3ca3d181b8c8992681cc9e11ab524a509ba"
+    }
+  ],
+  "failures": []
+}

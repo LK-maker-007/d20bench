@@ -1,0 +1,194 @@
+{
+  "seasonId": "llm-toolcall-glm-smart-20-v1",
+  "description": "Twenty-match post-toolcall-fix GLM 5.2 season against Battlecast Smart on the chokepoint and status-pressure hero-party mirrors.",
+  "status": "running",
+  "llmActionSpace": "battlecast-full-turn",
+  "startedAt": "2026-06-21T06:35:12.553Z",
+  "updatedAt": "2026-06-21T06:37:18.475Z",
+  "concurrency": 10,
+  "maxRounds": 3,
+  "totalMatches": 20,
+  "completedMatches": 2,
+  "failedMatches": 1,
+  "runningMatches": 10,
+  "costSummary": {
+    "totalDecisions": 10,
+    "promptTokens": 140998,
+    "completionTokens": 11432,
+    "totalTokens": 152430,
+    "estimatedCostUsd": 0.21606879999999995,
+    "byModel": [
+      {
+        "agentId": "openrouter:z-ai/glm-5.2",
+        "model": "z-ai/glm-5.2",
+        "decisions": 10,
+        "promptTokens": 140998,
+        "completionTokens": 11432,
+        "totalTokens": 152430,
+        "estimatedCostUsd": 0.21606879999999995
+      }
+    ]
+  },
+  "activeMatches": [
+    {
+      "index": 0,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "openrouter:z-ai/glm-5.2",
+      "blueAgent": "battlecast.smart",
+      "startedAt": "2026-06-21T06:35:12.704Z"
+    },
+    {
+      "index": 3,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 2,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:z-ai/glm-5.2",
+      "startedAt": "2026-06-21T06:35:12.704Z"
+    },
+    {
+      "index": 4,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 3,
+      "redAgent": "openrouter:z-ai/glm-5.2",
+      "blueAgent": "battlecast.smart",
+      "startedAt": "2026-06-21T06:35:12.704Z"
+    },
+    {
+      "index": 6,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 4,
+      "redAgent": "openrouter:z-ai/glm-5.2",
+      "blueAgent": "battlecast.smart",
+      "startedAt": "2026-06-21T06:35:12.704Z"
+    },
+    {
+      "index": 7,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 4,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:z-ai/glm-5.2",
+      "startedAt": "2026-06-21T06:35:12.704Z"
+    },
+    {
+      "index": 8,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 5,
+      "redAgent": "openrouter:z-ai/glm-5.2",
+      "blueAgent": "battlecast.smart",
+      "startedAt": "2026-06-21T06:35:12.704Z"
+    },
+    {
+      "index": 9,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 5,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:z-ai/glm-5.2",
+      "startedAt": "2026-06-21T06:35:12.704Z"
+    },
+    {
+      "index": 10,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "openrouter:z-ai/glm-5.2",
+      "blueAgent": "battlecast.smart",
+      "startedAt": "2026-06-21T06:36:37.529Z"
+    },
+    {
+      "index": 11,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:z-ai/glm-5.2",
+      "startedAt": "2026-06-21T06:37:10.087Z"
+    },
+    {
+      "index": 12,
+      "status": "running",
+      "scenarioId": "public.hero-mirror-status-l5.v1",
+      "battleType": "hero-party-status",
+      "seed": 2,
+      "redAgent": "openrouter:z-ai/glm-5.2",
+      "blueAgent": "battlecast.smart",
+      "startedAt": "2026-06-21T06:37:18.475Z"
+    }
+  ],
+  "recentMatches": [
+    {
+      "index": 1,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:z-ai/glm-5.2",
+      "error": "OpenRouter tool call did not produce a legal action after 2 attempt(s): OpenRouter response for z-ai/glm-5.2 did not include parseable action JSON. Message: {\"role\":\"assistant\",\"content\":\"[Wafer: response was truncated before the model finished its internal reasoning. Increase max_tokens, or disable thinking on this model (e.g. chat_template_kwargs.enable_thinking=false), then retry.]\",\"refusal\":null,\"reasoning\":\"Let me analyze the situation:\\n\\n**Active creature:** Ranger L5 4 (blue) at (17, 12), HP 30/44, AC 16\\n\\n**Allies:**\\n- Druid L5 2 (blue) at (16, 11), HP 26/38\\n- Paladin L5 (blue) at (16, 8), HP 14/44 - very low! Has Hunter's Mark and Slow on him from enemy ranger\\n- Sorcerer L5 3 (blue) at (17, 9), HP 37/37\\n\\n**Enemies:**\\n- Druid L5 2 (red) at (3, 11), HP 38/38 - concentrating on Call Lightning at point (17, 11)\\n- Paladin L5 (red) . Error: OpenRouter response did not include tool_calls.",
+      "status": "failed",
+      "startedAt": "2026-06-21T06:35:12.704Z",
+      "completedAt": "2026-06-21T06:37:18.474Z",
+      "durationMs": 125770
+    },
+    {
+      "index": 2,
+      "status": "completed",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 2,
+      "redAgent": "openrouter:z-ai/glm-5.2",
+      "blueAgent": "battlecast.smart",
+      "startedAt": "2026-06-21T06:35:12.704Z",
+      "completedAt": "2026-06-21T06:37:10.085Z",
+      "durationMs": 117381,
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__battlecast-full-turn__2__openrouter_z-ai_glm-5.2__battlecast.smart",
+      "winner": "blue",
+      "llmDecisions": 7,
+      "estimatedCostUsd": 0.1516169,
+      "finalStateHash": "0afd993273954c77a5d061c6f156959b50fe62c961374d361426a8dd430fbd37"
+    },
+    {
+      "index": 5,
+      "status": "completed",
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 3,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:z-ai/glm-5.2",
+      "startedAt": "2026-06-21T06:35:12.704Z",
+      "completedAt": "2026-06-21T06:36:37.526Z",
+      "durationMs": 84822,
+      "matchId": "public.hero-mirror-chokepoint-l5.v1__battlecast-full-turn__3__battlecast.smart__openrouter_z-ai_glm-5.2",
+      "winner": "red",
+      "llmDecisions": 3,
+      "estimatedCostUsd": 0.06445189999999999,
+      "finalStateHash": "4eee5271e4ef4f7919a876bbaa5ebe61ef1239dda1d519ede1d8d2cd87d7fa1f"
+    }
+  ],
+  "failures": [
+    {
+      "index": 1,
+      "scenarioId": "public.hero-mirror-chokepoint-l5.v1",
+      "battleType": "hero-party-chokepoint",
+      "seed": 1,
+      "redAgent": "battlecast.smart",
+      "blueAgent": "openrouter:z-ai/glm-5.2",
+      "error": "OpenRouter tool call did not produce a legal action after 2 attempt(s): OpenRouter response for z-ai/glm-5.2 did not include parseable action JSON. Message: {\"role\":\"assistant\",\"content\":\"[Wafer: response was truncated before the model finished its internal reasoning. Increase max_tokens, or disable thinking on this model (e.g. chat_template_kwargs.enable_thinking=false), then retry.]\",\"refusal\":null,\"reasoning\":\"Let me analyze the situation:\\n\\n**Active creature:** Ranger L5 4 (blue) at (17, 12), HP 30/44, AC 16\\n\\n**Allies:**\\n- Druid L5 2 (blue) at (16, 11), HP 26/38\\n- Paladin L5 (blue) at (16, 8), HP 14/44 - very low! Has Hunter's Mark and Slow on him from enemy ranger\\n- Sorcerer L5 3 (blue) at (17, 9), HP 37/37\\n\\n**Enemies:**\\n- Druid L5 2 (red) at (3, 11), HP 38/38 - concentrating on Call Lightning at point (17, 11)\\n- Paladin L5 (red) . Error: OpenRouter response did not include tool_calls."
+    }
+  ]
+}

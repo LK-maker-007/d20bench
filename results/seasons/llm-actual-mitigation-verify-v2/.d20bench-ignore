@@ -1,0 +1,1 @@
+Discarded local validation artifact: generated before async Battlecast RNG isolation, so trigger prompt damage could diverge from replay damage under parallel LLM matches.
