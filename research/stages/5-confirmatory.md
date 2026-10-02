@@ -91,6 +91,28 @@ The four complete pairings are tested as planned, with Holm over the whole famil
 
 Status pressure, not tested, as played: 153 of 155 against Smart, 26 of 30 against Aggressive. No claim is made for the status pressure pairings until they are run in full.
 
-No draws. The audit of the first 5 seeds per pairing has not been run yet.
+No draws.
 
 `research/data/stage-5-confirmatory.jsonl`: 825 lines, sha256 `edea5ab546cf9dc4b3c8a763fa1654b778faab8c6a4324e6d3001df17fcee5c2`.
+
+### Audit of the first 5 seeds
+
+Run on 2026-10-03 at commit `5124370`. Since `f013c11`, the only change under `packages/` adds the `lk-47.16x` entry to `variants.ts`, so `lk-47` is the policy that played [V, `git diff f013c11 5124370 -- packages`]. Each game was replayed and its final state hash checked against the hash recorded for it in `stage-5-confirmatory.jsonl`.
+
+The plan names 80 games. 60 exist: seeds 100001 to 100005, both sides, in the four chokepoint pairings and the status pressure pairings against Smart and Aggressive. The status pressure pairings against Kiting and Defensive had not started when the run was stopped, so their 20 games were never played and are not audited.
+
+| map | opponent | games | hash matches | LK-47 turns | decisions | reactions taken | violations |
+|---|---|---:|---:|---:|---:|---:|---:|
+| chokepoint | `battlecast.smart` | 10 | 10 | 377 | 1,105 | 3 | 0 |
+| chokepoint | `battlecast.aggressive` | 10 | 10 | 380 | 1,063 | 0 | 0 |
+| chokepoint | `battlecast.kiting` | 10 | 10 | 467 | 1,279 | 2 | 0 |
+| chokepoint | `battlecast.defensive` | 10 | 10 | 480 | 1,385 | 0 | 0 |
+| status pressure | `battlecast.smart` | 10 | 10 | 473 | 1,431 | 28 | 0 |
+| status pressure | `battlecast.aggressive` | 10 | 10 | 653 | 1,909 | 20 | 0 |
+
+In total, 60 of 60 hashes match and 2,830 LK-47 turns with 8,172 decisions show 0 violations [V]. No menu offered a whole bot turn and none was picked. No action was logged as invalid, and no move left no log. The most decisions in one turn was 10. Every restored resource came from Dash (873 times) or Action Surge (20 uses). No opportunity attack followed another reaction in these games. The most attack rolls in one turn were 4 for the Fighter and 2 for every other class.
+
+```
+node research/scripts/audit-turns.mjs lk-47 <opponent> public.hero-mirror-chokepoint-l5.v1 100001 5 research/data/stage-5-confirmatory.jsonl
+node research/scripts/audit-turns.mjs lk-47 <opponent> public.hero-mirror-status-l5.v1 100001 5 research/data/stage-5-confirmatory.jsonl
+```
