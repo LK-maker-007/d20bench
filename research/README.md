@@ -1,16 +1,17 @@
 # D20 research
 
-Research for a CPU-only, non-LLM agent that beats every opponent on [D20bench](https://github.com/bjedrzejewski/d20bench), a D&D 5e combat benchmark. This folder is ours. Outside it, everything is the upstream benchmark at commit `ad8a355` except the LK-47 code: `packages/engine/src/lk-47/`, its harness wiring in `agents.ts`, `agent-match.ts` and `replay.ts`, and `packages/engine/tests/lk-47.test.ts`.
+Research toward a CPU-only, non-LLM agent that beats every opponent on [D20bench](https://github.com/bjedrzejewski/d20bench), a D&D 5e combat benchmark. The agent, LK-47, picks every action from the legal menu. Inside its simulations it predicts the other creatures with Battlecast Smart's own turn logic; [stage 6b](stages/6b-independence.md) reports a variant without it. This folder is ours. Outside it, everything is the upstream benchmark at commit `ad8a355` except the LK-47 code: `packages/engine/src/lk-47/`, its harness wiring in `agents.ts`, `agent-match.ts` and `replay.ts`, and `packages/engine/tests/lk-47.test.ts`.
 
 Status, 2026-10-02:
 
 - Stage 0, harness integrity: passed all gates ([report](stages/0-integrity.md)). A turn audit added later found a third benchmark defect.
 - Stage 1, bot imitation through the menu: failed its parity gate. The causes are two defects in the benchmark ([report](stages/1-imitation.md)).
-- Stage 2, the planner: passed. Under the fairfix protocol LK-47 won 231 of 400 against `battlecast.smart` on chokepoint and 329 of 400 on status pressure. Against the other three bots it is clearly ahead on status pressure, and only narrowly ahead of `aggressive` and `defensive` on chokepoint ([report](stages/2-planner.md)).
+- Stage 2, the planner: passed. Under the fairfix protocol LK-47 won 231 of 400 against `battlecast.smart` on chokepoint and 329 of 400 on status pressure. Against the other three bots it won 0.688 to 0.868 on status pressure. On chokepoint it beat `kiting` 0.710, while its 0.532 against `aggressive` and 0.527 against `defensive` are not significant ([report](stages/2-planner.md)).
 - Stage 3, thinking budget: four times the rollouts beat the stage 2 planner, 0.805 to 0.610 against `battlecast.aggressive` (paired p = 1.46e-19). The final agent uses 4x ([report](stages/3-budget.md)).
 - Stage 6b, the independence variant: with no bot code in its simulations it won 0.195 on chokepoint and 0.640 on status pressure against Smart ([report](stages/6b-independence.md)).
-- Stage 5, the confirmatory run: on chokepoint the 4x agent beat all four bots (Smart and Aggressive 121 of 160, Kiting 135, Defensive 115; each passes with Holm over 8). I stopped the run at 825 of 1,280 games, so status pressure makes no claim. Its season entry, the 8 games every LLM played against Smart, went 6-2: second, 4.2 points behind GLM 5.2 ([report](stages/5-confirmatory.md)).
-- Stage 7, a 16x version: it won 90 of 100 practice games against Smart on chokepoint where 4x won 82, then won all 8 season games. Appended to the published season it ranks first at 1107.0, 38.5 points above GLM 5.2; with both versions appended, 1090.6. All 16 season games replay exactly with 0 violations ([report](stages/7-strength.md)). Stage 6 needs LLM games and has no budget.
+- Stage 5, the confirmatory run: on chokepoint the 4x agent beat all four bots (Smart and Aggressive 121 of 160, Kiting 135, Defensive 115; each passes with Holm over 8). I stopped the run at 825 of 1,280 games, so status pressure makes no claim. The 4x season entry, the 8 games every LLM played against Smart, went 6-2: second, 4.2 points behind GLM 5.2 ([report](stages/5-confirmatory.md)).
+- Stage 7, a 16x version: it won 90 of 100 development games against Smart on chokepoint where 4x won 82, then won all 8 season games. Appended to the published season it ranks first at 1107.0, 38.5 points above GLM 5.2; with both versions appended, 1090.6. All 16 season games replay exactly with 0 violations ([report](stages/7-strength.md)). Stage 6 needs LLM games and has no budget.
+- Upstream: the agent is offered in [PR #1](https://github.com/bjedrzejewski/d20bench/pull/1), and the three engine defects are reported in [issue #2](https://github.com/bjedrzejewski/d20bench/issues/2).
 
 ## Reading order
 
@@ -33,7 +34,7 @@ Status, 2026-10-02:
 - No published search or RL agent beats a mature scripted 5e AI ([D&D combat AI](04-literature/dnd-combat-ai.md)).
 - The engine plays a full battle in 12 to 13 ms; 88.5% of harness time is replay bookkeeping an agent does not need ([03](03-performance-and-language.md)). Inside LK-47 the cost is elsewhere: 68.5% of a 4x game goes to Smart's own turn logic run by the rollouts ([stage 7](stages/7-strength.md#why)).
 - Submission costs nothing; there is no submission process yet. Only LLM opponents cost money ([01](01-benchmark.md#publishing-and-submission)).
-- The benchmark favours its scripted bots over every menu-driven player, the published LLMs included: 15 hero spell entries lack a range, so the menu centres them on the caster or limits them to 5 ft while the bots cast them from afar, and the kiting bot gets a second attack per turn. Copies of the bots played through the menu win 0 to 5% against the originals on the hero maps ([stage 1](stages/1-imitation.md)). A third defect lets a creature take an opportunity attack after spending its reaction on something else ([stage 0](stages/0-integrity.md#a-third-benchmark-defect-two-reactions-before-the-next-turn)).
+- The benchmark favours its scripted bots over every menu-driven player, the fairfix LLMs included. 15 hero spell entries lack a range, so the menu centres them on the caster or limits them to 5 ft, while the bots cast them from afar. The kiting bot gets a second attack per turn. Copies of the bots played through the menu win 0 to 5% against the originals on the hero maps ([stage 1](stages/1-imitation.md)). A third defect lets a creature take an opportunity attack after spending its reaction on something else ([stage 0](stages/0-integrity.md#a-third-benchmark-defect-two-reactions-before-the-next-turn)).
 - LK-47's strength on chokepoint comes mostly from predicting the other creatures with Smart's turn logic inside its simulations. Without it, the planner wins 0.195 there ([stage 6b](stages/6b-independence.md)).
 
 ## Evidence tags
@@ -46,6 +47,8 @@ Status, 2026-10-02:
 | (WF) | seen only through a web summary, not checked against raw text |
 
 `file:line` references point at upstream commit `ad8a355`, not at the working tree.
+
+Other commit hashes in these notes, such as `538b504`, `f013c11`, `cd7c54b` and `d883839`, name commits in the private development history. The public fork holds the same files as a single commit.
 
 ## Reproducing the numbers
 

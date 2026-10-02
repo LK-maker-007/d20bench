@@ -4,7 +4,7 @@
 
 Build a non-LLM agent that runs on CPU and beats every opponent D20bench offers, scripted and LLM, under the benchmark's own protocol. Prove it with statistics a sceptical reader can rerun.
 
-"Perfectly" is read as: the highest win rate the dice allow, reported with intervals. No agent can win every game. In the default bot ladder, each of the four Battlecast bots lost 26 to 31 of its 112 games [V, `npm run d20bench -- ladder run`].
+Beating an opponent means the highest win rate the dice allow, reported with intervals. No agent can win every game. In the default bot ladder, each of the four Battlecast bots lost 26 to 31 of its 112 games [V, `npm run d20bench -- ladder run`].
 
 ## The claim we intend to make, and its limits
 

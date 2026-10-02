@@ -47,7 +47,7 @@ The compiled engine was rebuilt before the regression and fingerprinted (sha256 
 
 ## Next
 
-Stage 1, after approval: the simulator with private dice and its isolation test, then one menu imitator per bot tactic and the parity test against the real bot ([05-architecture.md](../05-architecture.md#7-plan-with-kill-criteria-written-before-any-run)).
+Stage 1: the simulator with private dice and its isolation test, then one menu imitator per bot tactic and the parity test against the real bot ([05-architecture.md](../05-architecture.md#7-plan-with-kill-criteria-written-before-any-run)).
 
 ## Turn audit, added 2026-10-02
 
@@ -82,4 +82,4 @@ The audit found two opportunity attacks by LK-47 creatures that had already used
 - Opportunity attacks are checked with `reactionsUsed ?? (reactionUsed ? 1 : 0)`: for bots at `ai-turn.ts:693`, and for menu-driven players at `agent-match.ts:1911`.
 - Every turn start sets `reactionsUsed` to 0 (`processTurnStart`, `ai-turn.ts:384`), so the fallback never applies after a creature's first turn.
 
-The reverse order is blocked: an opportunity attack also sets `reactionUsed` (`ai-turn.ts:776`). LK-47 does not seek this out. It takes every reaction it is offered, as the bots do, and the harness offers the second one. The audit counts these cases apart from violations. They go into the upstream report with the other two defects.
+The reverse order is blocked: an opportunity attack also sets `reactionUsed` (`ai-turn.ts:776`). LK-47 does not seek this out. It takes every reaction it is offered, as the bots do, and the harness offers the second one. The audit counts these cases apart from violations. They are reported upstream with the other two defects in [issue #2](https://github.com/bjedrzejewski/d20bench/issues/2).

@@ -7,7 +7,7 @@ Status: stage 0 passed ([report](stages/0-integrity.md)); stage 1 failed its par
 | decision | choice | reason |
 |---|---|---|
 | agent name | LK-47; agent id `lk-47`, variants `lk-47.<variant>`; code in `packages/engine/src/lk-47/` | my choice; id follows upstream `family.variant` style, folder follows upstream kebab-case |
-| repository | private GitHub repo `LK-maker-007/LK-47` (remote `lk47`), one branch per stage, starting with `lk-47/stage-0`; `main` is not pushed. A public fork of `bjedrzejewski/d20bench` comes later, as the route for the upstream PR | upstream has no license, so the work stays private until a fork is made to publish it; forks of public repos are public |
+| repository | private GitHub repo `LK-maker-007/LK-47` (remote `lk47`), one branch per stage, starting with `lk-47/stage-0`; `main` is not pushed. The public fork `LK-maker-007/d20bench` carries the upstream PR and these notes | upstream has no license, so the work stayed private until the fork published it; forks of public repos are public |
 | CI | none | upstream has none; unit tests take seconds locally and the bot-matrix regression takes 20 minutes; each stage gate requires pasted `npm test` and `npm run typecheck` output instead |
 | language | TypeScript; Rust only if stage 3 shows the agent is compute-bound | [03-performance-and-language.md](03-performance-and-language.md#the-language-decision) |
 

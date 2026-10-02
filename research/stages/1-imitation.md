@@ -53,7 +53,7 @@ Level-5 hero spells shaped as a sphere or cylinder, from `buildHero(<class>, 5)`
 
 Cones, lines and emanations start at the caster in both: the menu aims them from the caster's square (`directionalAreaActions` in `legal-actions.ts`) and the bots treat them as caster-origin shapes (`aoeOriginKind` in `ai-spellcasting.ts`). The two may still pick different directions.
 
-This limits every menu-driven agent, including every LLM in the published seasons, and the planner cannot work around it without leaving the benchmark's protocol. The parity run will show how much it costs.
+This limits every menu-driven agent, including every LLM in the fairfix v2 season, and the planner cannot work around it without leaving the benchmark's protocol. The parity run will show how much it costs.
 
 ## Results
 
@@ -109,7 +109,7 @@ Attribution, from `node research/scripts/parity-attribution.mjs smart <scenario>
 | chokepoint | 113 | 12 | Sorcerer Fireball 22 turns, Druid Call Lightning 5 |
 | status pressure | 620 | 34 | Cleric Sacred Flame 55, Warlock Fireball 14, Bard Hypnotic Pattern 13, Bard Shatter 11 |
 
-Causal test: the same smart parity with those spells given their SRD range in in-memory copies of both maps, for both teams (`research/scripts/parity-counterfactual.mjs`; the range values were entered by hand and not checked against the SRD) [V]:
+Causal test: the same smart parity with those spells given a range in in-memory copies of both maps, for both teams (`research/scripts/parity-counterfactual.mjs`; the range values were entered by hand and not checked against the SRD) [V]:
 
 | map | real data | ranges filled in |
 |---|---|---|
@@ -136,6 +136,6 @@ The missing ranges cause a large share of the collapse. They do not explain all 
 
 The pre-registered response to a failed parity gate is to build planner candidates from the menu itself instead of from bot plans. The evidence supports that, with one refinement: bot plans translate well wherever the menu can express them (the warband control), so they stay as one candidate source and are not the only one.
 
-The failure does not show that the bots cannot be beaten through the menu. GLM 5.2 beat `battlecast.smart` 5-3 under the same handicaps ([02-measurements.md](../02-measurements.md#published-llm-results)). The imitator loses because it follows plans built on spells the menu does not offer, and idles when they are missing; a planner that only ever chooses from the menu does not have that failure mode.
+The failure does not show that the bots cannot be beaten through the menu. GLM 5.2 beat `battlecast.smart` 5-3 under the same handicaps ([02-measurements.md](../02-measurements.md#published-llm-results)). Much of the imitator's loss comes from following plans built on spells the menu does not offer; it idles when they are missing. A planner that only ever chooses from the menu does not have that failure mode.
 
-Both causes are defects in the benchmark, not in LK-47, and they affect every LLM result published so far.
+Both causes are defects in the benchmark, not in LK-47. The missing ranges handicap every LLM in the fairfix v2 season, which plays through this menu. Both are reported upstream in [issue #2](https://github.com/bjedrzejewski/d20bench/issues/2).
