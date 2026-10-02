@@ -1,0 +1,14 @@
+{"red":"battlecast.smart","blue":"battlecast.kiting","scenario":"choke","n":200,"redWins":132,"blueWins":68,"draws":0,"meanRounds":5.79,"sec":51.6}
+{"red":"battlecast.kiting","blue":"battlecast.smart","scenario":"choke","n":200,"redWins":38,"blueWins":162,"draws":0,"meanRounds":5.79,"sec":55.7}
+{"red":"battlecast.smart","blue":"battlecast.smart","scenario":"choke","n":200,"redWins":85,"blueWins":115,"draws":0,"meanRounds":6.18,"sec":60.7}
+{"red":"battlecast.smart","blue":"battlecast.aggressive","scenario":"choke","n":200,"redWins":76,"blueWins":124,"draws":0,"meanRounds":6.77,"sec":71.2}
+{"red":"battlecast.aggressive","blue":"battlecast.smart","scenario":"choke","n":200,"redWins":110,"blueWins":90,"draws":0,"meanRounds":6.74,"sec":71.8}
+{"red":"battlecast.smart","blue":"battlecast.defensive","scenario":"choke","n":200,"redWins":97,"blueWins":103,"draws":0,"meanRounds":7.23,"sec":73.9}
+{"red":"battlecast.defensive","blue":"battlecast.smart","scenario":"choke","n":200,"redWins":99,"blueWins":101,"draws":0,"meanRounds":7.28,"sec":77.3}
+{"red":"battlecast.smart","blue":"battlecast.kiting","scenario":"status","n":200,"redWins":156,"blueWins":44,"draws":0,"meanRounds":12.75,"sec":222.6}
+{"red":"battlecast.kiting","blue":"battlecast.smart","scenario":"status","n":200,"redWins":45,"blueWins":155,"draws":0,"meanRounds":13.51,"sec":251.4}
+{"red":"battlecast.defensive","blue":"battlecast.smart","scenario":"status","n":200,"redWins":89,"blueWins":111,"draws":0,"meanRounds":17.18,"sec":361.2}
+{"red":"battlecast.smart","blue":"battlecast.smart","scenario":"status","n":200,"redWins":96,"blueWins":104,"draws":0,"meanRounds":16.5,"sec":363.7}
+{"red":"battlecast.aggressive","blue":"battlecast.smart","scenario":"status","n":200,"redWins":118,"blueWins":82,"draws":0,"meanRounds":17.75,"sec":378.1}
+{"red":"battlecast.smart","blue":"battlecast.defensive","scenario":"status","n":200,"redWins":104,"blueWins":96,"draws":0,"meanRounds":18.3,"sec":397.4}
+{"red":"battlecast.smart","blue":"battlecast.aggressive","scenario":"status","n":200,"redWins":82,"blueWins":118,"draws":0,"meanRounds":18.7,"sec":408.6}
