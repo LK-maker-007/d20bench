@@ -89,7 +89,7 @@ The four complete pairings are tested as planned, with Holm over the whole famil
 | chokepoint | `battlecast.defensive` | 115 / 160 | 0.719 | [0.645, 0.783] | 1.49e-08 | 7.5e-08 | yes |
 | status pressure | four bots | | | | | | not completed |
 
-Status pressure, not tested, as played: 153 of 155 against Smart, 26 of 30 against Aggressive. No claim is made for the status pressure pairings until they are run in full.
+Status pressure, not tested, as played: 153 of 155 against Smart, 26 of 30 against Aggressive. No claim is made for the status pressure pairings until they are run in full. They were, on 2026-10-03 ([result](#result-of-the-full-run)).
 
 No draws.
 
@@ -131,4 +131,47 @@ Plan written on 2026-10-03, before any of these games. Every game is fixed by it
 python3 research/scripts/missing-games.py research/data/stage-5-confirmatory.jsonl lk-47 100001 80 public.hero-mirror-status-l5.v1 battlecast.smart battlecast.aggressive battlecast.kiting battlecast.defensive | xargs -P 8 -L 1 node research/scripts/run-matches.mjs | tee -a research/data/stage-5-confirmatory-rest.jsonl
 python3 research/scripts/summarize-evaluation.py <(cat research/data/stage-5-confirmatory.jsonl research/data/stage-5-confirmatory-rest.jsonl) lk-47
 node research/scripts/audit-turns.mjs lk-47 <opponent> public.hero-mirror-status-l5.v1 100001 5 research/data/stage-5-confirmatory-rest.jsonl
+```
+
+### Result of the full run
+
+Run on 2026-10-03 from 07:58 to 09:49 at commit `f420d14`, 8 jobs at a time. The machine rebooted at 10:10 for a kernel update and the run log went with `/tmp`, so the exit statuses of the pipeline are lost. Completeness was checked from the data instead [V]. `stage-5-confirmatory-rest.jsonl` has 455 lines. With the first file it holds 1,280 distinct games, 160 per pairing and 80 per side. No game is missing, none falls outside the design and none is in both files.
+
+14 games played on 2026-10-03 have the final state hash of a game played on 2026-10-02 with the same seed and side against another bot. In those games the two bots made the same choices, and LK-47 made the same choices in both sessions. This agrees with `git diff f013c11 f420d14 -- packages`, which adds only the `lk-47.16x` entry. Over all 1,280 games, 148 share a hash with another game, and every such group has the same map, seed, side, rounds, decisions and winner. Each pairing still holds 160 distinct seeds.
+
+All 8 pairings pass [V, `summarize-evaluation.py`]. LK-47 beat every bot on both maps:
+
+| map | opponent | wins | win rate | 95% Wilson | p | Holm p over 8 | passes |
+|---|---|---:|---:|---|---:|---:|---|
+| chokepoint | `battlecast.smart` | 121 / 160 | 0.756 | [0.684, 0.816] | 2.85e-11 | 8.56e-11 | yes |
+| chokepoint | `battlecast.aggressive` | 121 / 160 | 0.756 | [0.684, 0.816] | 2.85e-11 | 8.56e-11 | yes |
+| chokepoint | `battlecast.kiting` | 135 / 160 | 0.844 | [0.780, 0.892] | 9.45e-20 | 3.78e-19 | yes |
+| chokepoint | `battlecast.defensive` | 115 / 160 | 0.719 | [0.645, 0.783] | 1.49e-08 | 1.49e-08 | yes |
+| status pressure | `battlecast.smart` | 157 / 160 | 0.981 | [0.946, 0.994] | 4.67e-43 | 3.74e-42 | yes |
+| status pressure | `battlecast.aggressive` | 145 / 160 | 0.906 | [0.851, 0.942] | 3.41e-28 | 1.71e-27 | yes |
+| status pressure | `battlecast.kiting` | 155 / 160 | 0.969 | [0.929, 0.987] | 5.80e-40 | 4.06e-39 | yes |
+| status pressure | `battlecast.defensive` | 153 / 160 | 0.956 | [0.912, 0.979] | 3.34e-37 | 2.00e-36 | yes |
+
+No draws. The chokepoint Holm values are smaller than in the table above, which counted the four unfinished pairings as p = 1.
+
+`research/data/stage-5-confirmatory-rest.jsonl`: 455 lines, sha256 `3037b91edbef3d1b478d4b99e5bf30e669c9e24e65ad7729f303ba9bbec05842`. `stage-5-confirmatory.jsonl` is unchanged, sha256 `edea5ab546cf9dc4b3c8a763fa1654b778faab8c6a4324e6d3001df17fcee5c2`.
+
+### Audit of the remaining 20 games
+
+Run on 2026-10-03 at commit `f420d14`, against `stage-5-confirmatory-rest.jsonl`. With these, all 80 audit games of the plan are covered.
+
+| map | opponent | games | hash matches | LK-47 turns | decisions | reactions taken | violations |
+|---|---|---:|---:|---:|---:|---:|---:|
+| status pressure | `battlecast.kiting` | 10 | 10 | 570 | 1,624 | 32 | 0 |
+| status pressure | `battlecast.defensive` | 10 | 10 | 528 | 1,606 | 21 | 0 |
+
+The most decisions in one turn was 8. Every restored resource came from Dash (560 times) or Action Surge (20 uses). The most attack rolls in one turn were 4 for the Fighter and 2 for every other class.
+
+Two of LK-47's opportunity attacks against Kiting came after its creature had spent its reaction on something else, which the [third defect](0-integrity.md#a-third-benchmark-defect-two-reactions-before-the-next-turn) allows. `audit-turns.mjs` run on seeds 100003 and 100005 alone counts one in each. A one-off replay of the 10 games, not kept in the repo, matched all 10 recorded hashes and shows both with LK-47 as red, in round 2: the Bard used Cutting Words, then made a rapier opportunity attack on the Fighter. The audit counts these apart from violations, as planned. The 60 games audited earlier had none.
+
+Over all 80 games, 80 hashes match and 3,928 LK-47 turns with 11,402 decisions show 0 violations [V].
+
+```
+node research/scripts/audit-turns.mjs lk-47 <opponent> public.hero-mirror-status-l5.v1 100001 5 research/data/stage-5-confirmatory-rest.jsonl
+node research/scripts/audit-turns.mjs lk-47 battlecast.kiting public.hero-mirror-status-l5.v1 <seed> 1 research/data/stage-5-confirmatory-rest.jsonl
 ```
