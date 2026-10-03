@@ -71,6 +71,7 @@ python3 research/scripts/compare-paired.py <a.jsonl> <agent-a> <b.jsonl> <agent-
 python3 research/scripts/paired-power.py <pairs> <baseline-win-rate>
 node research/scripts/audit-turns.mjs <lk-47-agent> <opponent> <scenario-id> <first-seed> <seed-count> [evaluation.jsonl]
 python3 research/scripts/season-entry.py <season standings.json> <entry.jsonl> <agent-id> [<entry.jsonl> <agent-id> ...]
+python3 research/scripts/missing-games.py <played.jsonl> <agent> <first-seed> <seeds-per-side> <scenario-id> <opponent> [opponent ...]
 ```
 
 Every script reads the compiled engine from `packages/engine/dist`, which `npm run build` and `npm run typecheck` both write. The numbers in 02 and 03 came from a build of `ad8a355` before any LK-47 code; stage 0 rebuilt the engine with LK-47 wired in and confirmed every bot-vs-bot outcome is unchanged. Launchers stream each result line to the terminal as it lands and append it to the data file.

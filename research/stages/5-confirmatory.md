@@ -116,3 +116,19 @@ In total, 60 of 60 hashes match and 2,830 LK-47 turns with 8,172 decisions show 
 node research/scripts/audit-turns.mjs lk-47 <opponent> public.hero-mirror-chokepoint-l5.v1 100001 5 research/data/stage-5-confirmatory.jsonl
 node research/scripts/audit-turns.mjs lk-47 <opponent> public.hero-mirror-status-l5.v1 100001 5 research/data/stage-5-confirmatory.jsonl
 ```
+
+### Resuming the stopped run
+
+Plan written on 2026-10-03, before any of these games. Every game is fixed by its seed and the code, so playing the missing games now gives exactly the results the uninterrupted run would have given. The stop was for time, after the live tally had been seen. Resuming to the planned size, with no further stop, keeps the design as registered.
+
+- Games: the 455 status pressure games of the design that `stage-5-confirmatory.jsonl` does not contain: 5 against Smart, 130 against Aggressive, 160 against Kiting and 160 against Defensive. `research/scripts/missing-games.py` lists them as 95 jobs. A check confirmed the jobs cover exactly the missing games, none twice and none already played.
+- Code: `lk-47` as played in the run. Since `f013c11` the only change under `packages/` adds the `lk-47.16x` entry.
+- Data: `research/data/stage-5-confirmatory-rest.jsonl`. The original file is not changed.
+- Analysis as planned: the two files together must hold 1,280 distinct games, 160 per pairing. Each of the 8 pairings gets the one-sided exact binomial test with Holm over all 8, passing at adjusted p < 0.025. Every pairing is reported whatever the result. No early stop and no rerun.
+- Then the audit of the first 5 seeds against Kiting and Defensive on status pressure: the 20 games the earlier audit could not cover.
+
+```
+python3 research/scripts/missing-games.py research/data/stage-5-confirmatory.jsonl lk-47 100001 80 public.hero-mirror-status-l5.v1 battlecast.smart battlecast.aggressive battlecast.kiting battlecast.defensive | xargs -P 8 -L 1 node research/scripts/run-matches.mjs | tee -a research/data/stage-5-confirmatory-rest.jsonl
+python3 research/scripts/summarize-evaluation.py <(cat research/data/stage-5-confirmatory.jsonl research/data/stage-5-confirmatory-rest.jsonl) lk-47
+node research/scripts/audit-turns.mjs lk-47 <opponent> public.hero-mirror-status-l5.v1 100001 5 research/data/stage-5-confirmatory-rest.jsonl
+```
